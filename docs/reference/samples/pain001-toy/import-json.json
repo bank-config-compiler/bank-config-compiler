@@ -1,0 +1,37 @@
+{
+  "standardCode": "ISO20022",
+  "messageCode": "pain.001",
+  "messageName": "Customer Credit Transfer Initiation",
+  "sceneCode": "BANK_PAYMENT_IMPORT",
+  "fieldConfigs": [
+    {
+      "fieldCode": "GRP_HDR_MSG_ID",
+      "fieldName": "MsgId",
+      "fieldPath": "GrpHdr.MsgId",
+      "fieldType": "STRING",
+      "controlType": "INPUT",
+      "required": true,
+      "maxLength": 35,
+      "parentFieldCode": "GRP_HDR",
+      "level": 2,
+      "repeated": false,
+      "source": "AI_MVP",
+      "status": "DRAFT"
+    },
+    {
+      "fieldCode": "PMT_INF_CDT_TRF_TX_INF",
+      "fieldName": "CdtTrfTxInf",
+      "fieldPath": "PmtInf.CdtTrfTxInf",
+      "fieldType": "LIST",
+      "controlType": "TABLE",
+      "required": true,
+      "maxLength": null,
+      "parentFieldCode": "PMT_INF",
+      "level": 2,
+      "repeated": true,
+      "source": "AI_MVP",
+      "status": "DRAFT"
+    }
+  ]
+}
+
