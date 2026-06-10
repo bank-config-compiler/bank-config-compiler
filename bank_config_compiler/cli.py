@@ -4,7 +4,7 @@ import argparse
 import sys
 from pathlib import Path
 
-from .workspace import WorkspaceError, ingest_raw_doc
+from .workspace import WorkspaceError, check_workspace, ingest_raw_doc
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -19,6 +19,15 @@ def build_parser() -> argparse.ArgumentParser:
     ingest.add_argument("--workspace", required=True, type=Path, help="Workspace output directory.")
     ingest.add_argument("--overwrite", action="store_true", help="Overwrite an existing raw-doc.md.")
 
+    check = subparsers.add_parser("check", help="Validate workspace artifacts for a Phase0a profile.")
+    check.add_argument("--workspace", required=True, type=Path, help="Workspace directory to validate.")
+    check.add_argument(
+        "--profile",
+        choices=["raw", "phase0a"],
+        default="phase0a",
+        help="Artifact set to validate.",
+    )
+
     return parser
 
 
@@ -30,6 +39,10 @@ def main(argv: list[str] | None = None) -> int:
         if args.command == "ingest":
             output_path = ingest_raw_doc(args.input, args.workspace, overwrite=args.overwrite)
             print(f"saved raw document: {output_path}")
+            return 0
+        if args.command == "check":
+            checked = check_workspace(args.workspace, profile=args.profile)
+            print(f"workspace check passed: {args.workspace} ({checked} artifacts)")
             return 0
     except WorkspaceError as exc:
         print(f"error: {exc}", file=sys.stderr)
