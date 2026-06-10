@@ -43,12 +43,76 @@ Skill、Agent 或 Dify-style workflow 可以作为辅助组件，但不是完整
 
 ## 当前实现状态
 
-当前仓库仍处于文档和规划阶段，尚未定义运行时代码、构建命令或验证命令。
+当前仓库已开始实现 Phase0a-PoC 的无 UI CLI 链路。
 
-进入实现前，Phase0-PoC 仍需确认：
+已完成：
+
+- Phase0a TASK 1：Python 项目与 CLI 骨架。
+- CLI 支持从 `.md` / `.txt` 输入文件创建 workspace，并保存 `raw-doc.md`。
+- Phase0a TASK 2：Workspace 产物协议。
+- CLI 支持校验 Phase0a workspace 的固定 artifact 名称、UTF-8 no BOM 编码和 JSON 可解析性。
+
+尚未完成：
+
+- DocIR / SchemaIR 生成。
+- SchemaIR Validator。
+- Rule Engine、Import JSON Draft 和 golden regression。
+
+后续 Phase0-PoC 仍需确认：
 
 - DocIR 最小格式和质量标准。
 - SchemaIR 最小字段、类型枚举和校验规则。
 - Import JSON 真实格式边界和样例来源。
 - Golden sample 目录结构和回归方式。
 - 技术栈和无 UI 验证形态。
+
+## 本地命令
+
+安装与测试通过 `uv` 执行：
+
+```powershell
+uv run --group dev pytest
+```
+
+导入原始输入到 workspace：
+
+```powershell
+uv run bank-config-compiler ingest --input docs/reference/samples/pain001-toy/raw-doc.md --workspace workspace/phase0a-smoke --overwrite
+```
+
+`ingest` 只是 Phase0a 链路的第一步：把外部 `.md` / `.txt` 输入标准化保存为 workspace 内的 `raw-doc.md`。它不生成 DocIR、SchemaIR 或 Validator 结果；后续转换应由独立生成、校验或编排命令负责。
+
+校验只包含 raw doc 的 workspace：
+
+```powershell
+uv run bank-config-compiler check --workspace workspace/phase0a-smoke --profile raw
+```
+
+校验完整 Phase0a artifact 协议。该命令要求 workspace 中已经存在全部 Phase0a artifact；当前 Task1/2 不生成 DocIR / SchemaIR 内容：
+
+```powershell
+uv run bank-config-compiler check --workspace workspace/phase0a-protocol-smoke --profile phase0a
+```
+
+等价模块入口：
+
+```powershell
+uv run python -m bank_config_compiler ingest --input docs/reference/samples/pain001-toy/raw-doc.md --workspace workspace/phase0a-smoke --overwrite
+```
+
+`docs/reference/samples/pain001-toy/` 只用于 smoke 示例，不是 MVP golden sample。
+
+## Phase0a workspace artifacts
+
+Task1/2 固定以下文件名：
+
+| Artifact | 格式 | 当前用途 |
+|---|---|---|
+| `raw-doc.md` | Markdown / text | 由 `ingest` 从外部输入导入，作为后续生成命令的输入。 |
+| `docir-draft.md` | Markdown | 仅定义文件协议，生成逻辑属于后续 Task。 |
+| `docir-final.md` | Markdown | 仅定义文件协议，人工确认流程属于后续 Task。 |
+| `schemair-draft.json` | JSON | 仅定义文件协议，生成逻辑属于后续 Task。 |
+| `schemair-validation-result.json` | JSON | 仅定义文件协议，Validator 规则属于后续 Task。 |
+| `schemair-final.json` | JSON | 仅定义文件协议，人工确认流程属于后续 Task。 |
+
+所有 artifact 必须使用 UTF-8 with no BOM。
