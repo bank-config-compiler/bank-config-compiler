@@ -10,6 +10,8 @@ Phase1-MVP 目标是将 Phase0-PoC 链路产品化为最小可用能力。
 
 本阶段应提供可用的 Review 入口，支持人工 Review、校验、确认、预览和下载，并建立基本测试、日志、错误处理和回归机制。
 
+交付形态应是轻量 Review Tool，而不是完整生产系统。它可以是本地 Web UI、轻量服务或等价工具，但必须承载 Review、Validator、Rule Engine、Import JSON Draft 预览下载和 golden sample regression。
+
 ## 2. In Scope
 
 - 创建解析任务，保存任务名称、报文类型和原始输入。
@@ -29,6 +31,7 @@ Phase1-MVP 目标是将 Phase0-PoC 链路产品化为最小可用能力。
 ## 3. Out of Scope
 
 - 真实导入银企直连生产配置库。
+- Skill、纯 Agent 或单纯 Prompt workflow 作为完整交付物。
 - 生产权限体系、登录认证、审批流、多用户协同。
 - `.docx` 解析。
 - PDF、OCR、bbox、高亮和原文区域定位。

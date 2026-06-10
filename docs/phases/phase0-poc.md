@@ -10,6 +10,10 @@ Phase0-PoC 目标是确认样例、格式、链路和技术边界，证明项目
 
 本阶段不追求产品化 UI，不验证生产集成。成功标准是核心链路能够基于真实脱敏样例稳定产出可检查、可追溯、可回归的中间产物和 Import JSON Draft。
 
+交付形态应是可重复运行的链路验证工具，例如 CLI、script 或 lightweight workflow runner，加文件 workspace、golden sample fixtures、Validator 和 Rule Engine。
+
+Skill、Agent 或 Dify workflow 可以作为 LLM 草稿生成组件，但不能作为 Phase0 的完整交付物，因为它们不能单独证明控制、校验、人工确认和回归边界。
+
 ## 2. In Scope
 
 - 使用一份真实脱敏银行接口文档作为验证样例。
@@ -30,6 +34,7 @@ Phase0-PoC 目标是确认样例、格式、链路和技术边界，证明项目
 ## 3. Out of Scope
 
 - UI。
+- Skill、纯 Agent 或单纯 Prompt workflow 作为完整交付物。
 - 真实生产库导入。
 - `.docx`、PDF、OCR、bbox 和原文区域高亮。
 - 多用户协作、权限、审批流。

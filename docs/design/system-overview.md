@@ -28,7 +28,22 @@ Raw Docs
 
 早期阶段可以省略 UI，以命令、API 测试或本地脚本模拟 Human Review。产品化阶段应提供可用的 Review 入口，但 UI 不应改变核心产物格式。
 
-## 2. 模块边界
+## 2. 交付形态
+
+项目交付形态按阶段演进：
+
+- Phase0-PoC：可重复运行的链路验证工具，例如 CLI、script 或 lightweight workflow runner，加文件 workspace、fixtures、Validator、Rule Engine 和 golden sample regression。
+- Phase1-MVP：轻量 Review Tool，承载 Review、校验、确认、预览和下载。
+- Phase2-Pilot：受控内部试点工具或小型内部系统，用于验证真实提效、稳定性和运维边界。
+- Phase3-Production：暂不定义。
+
+Skill、Agent 和 Dify workflow 的定位：
+
+- Skill 可以辅助开发、验证或封装局部操作流程，但不是业务交付物。
+- Agent 可以承担 DocIR Draft 和 SchemaIR Draft 生成，但不能决定最终配置可信性。
+- Dify workflow 可以作为 Phase0-PoC 的 LLM 编排实验工具，但不应替代 Validator、Rule Engine、Human Review 边界和 golden sample regression。
+
+## 3. 模块边界
 
 ### Main App
 
@@ -77,7 +92,7 @@ Raw Docs
 - Review Workbench 是人工确认入口，不是生产级配置平台。
 - 未进入相应阶段前，不应加入权限、审批、多用户协同、复杂配置管理或 PDF 高亮。
 
-## 3. 候选任务状态
+## 4. 候选任务状态
 
 以下状态用于表达链路中的关键产物边界，具体命名仍可在实现计划中调整：
 
@@ -98,7 +113,7 @@ IMPORT_JSON_GENERATED
 - `SCHEMAIR_VALIDATED` 是否区分 valid / invalid。
 - 无 UI 阶段人工确认如何映射状态。
 
-## 4. 候选 Workspace 结构
+## 5. 候选 Workspace 结构
 
 ```text
 workspace/{taskId}/
