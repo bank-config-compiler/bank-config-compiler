@@ -27,7 +27,7 @@ Phase0a 不覆盖完整 Phase0 的 `Rule Engine` 和 `Import JSON Draft`。因�
 | TASK | 状态 | 依赖 | 阻塞点 | 说明 |
 |---|---|---|---|---|
 | TASK 0：Phase0a planning 文档 | Done | 无 | 无 | 当前文档记录阶段边界、任务拆分和验证路径。 |
-| TASK 1：Python 项目与 CLI 骨架 | Not Started | TASK 0 | 无 | 建立最小可运行 CLI 和 raw doc 保存能力。 |
+| TASK 1：Python 项目与 CLI 骨架 | Done | TASK 0 | 无 | 已建立最小可运行 CLI 和 raw doc 保存能力。 |
 | TASK 2：Workspace 产物协议 | Not Started | TASK 1 | 无 | 定义 Phase0a 文件产物命名和读写规则。 |
 | TASK 3：DocIR Draft Generator 接口、stub 与 OpenAI-compatible adapter | Not Started | TASK 1、TASK 2 | LLM 配置可后置 | 默认真实 LLM，stub 用于稳定测试。 |
 | TASK 4：SchemaIR Draft Generator 接口、stub 与 OpenAI-compatible adapter | Not Started | TASK 1、TASK 2、TASK 3 | LLM 配置可后置 | 基于 Final DocIR fixture 生成 SchemaIR Draft。 |
@@ -136,12 +136,13 @@ Dependencies：
 
 验证命令：
 
-- 待 TASK 1 实现时确定。
+- `uv run --group dev pytest`
+- `uv run bank-config-compiler ingest --input docs/reference/samples/pain001-toy/raw-doc.md --workspace workspace/phase0a-smoke --overwrite`
 
 验证补充：
 
-- CLI smoke test。
-- unit test。
+- CLI smoke test 已覆盖。
+- unit test 已覆盖 `.md` / `.txt` 输入、缺失输入、非法后缀和 overwrite 行为。
 
 ### TASK 2：Workspace 产物协议
 

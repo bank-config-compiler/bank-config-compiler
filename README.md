@@ -43,7 +43,19 @@ Skill、Agent 或 Dify-style workflow 可以作为辅助组件，但不是完整
 
 ## 当前实现状态
 
-当前仓库仍处于文档和规划阶段，尚未定义运行时代码、构建命令或验证命令。
+当前仓库已开始实现 Phase0a-PoC 的无 UI CLI 链路。
+
+已完成：
+
+- Phase0a TASK 1：Python 项目与 CLI 骨架。
+- CLI 支持从 `.md` / `.txt` 输入文件创建 workspace，并保存 `raw-doc.md`。
+
+尚未完成：
+
+- Workspace 全量产物协议校验。
+- DocIR / SchemaIR 生成。
+- SchemaIR Validator。
+- Rule Engine、Import JSON Draft 和 golden regression。
 
 进入实现前，Phase0-PoC 仍需确认：
 
@@ -52,3 +64,25 @@ Skill、Agent 或 Dify-style workflow 可以作为辅助组件，但不是完整
 - Import JSON 真实格式边界和样例来源。
 - Golden sample 目录结构和回归方式。
 - 技术栈和无 UI 验证形态。
+
+## 本地命令
+
+安装与测试通过 `uv` 执行：
+
+```powershell
+uv run --group dev pytest
+```
+
+保存原始输入到 workspace：
+
+```powershell
+uv run bank-config-compiler ingest --input docs/reference/samples/pain001-toy/raw-doc.md --workspace workspace/phase0a-smoke --overwrite
+```
+
+等价模块入口：
+
+```powershell
+uv run python -m bank_config_compiler ingest --input docs/reference/samples/pain001-toy/raw-doc.md --workspace workspace/phase0a-smoke --overwrite
+```
+
+`docs/reference/samples/pain001-toy/` 只用于 smoke 示例，不是 MVP golden sample。
