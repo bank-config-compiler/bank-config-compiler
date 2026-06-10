@@ -14,7 +14,8 @@ def build_parser() -> argparse.ArgumentParser:
     )
     subparsers = parser.add_subparsers(dest="command", required=True)
 
-    ingest = subparsers.add_parser("ingest", help="Save a .md or .txt raw document into a workspace.")
+    # ingest 只建立 raw-doc.md 这个入口产物；DocIR / SchemaIR 生成应由后续命令承载。
+    ingest = subparsers.add_parser("ingest", help="Import a .md or .txt raw document into a workspace.")
     ingest.add_argument("--input", required=True, type=Path, help="Path to a .md or .txt input file.")
     ingest.add_argument("--workspace", required=True, type=Path, help="Workspace output directory.")
     ingest.add_argument("--overwrite", action="store_true", help="Overwrite an existing raw-doc.md.")

@@ -35,6 +35,7 @@ class WorkspaceError(Exception):
 
 
 def ingest_raw_doc(input_path: Path, workspace_path: Path, *, overwrite: bool = False) -> Path:
+    # 只导入原始文档，避免把后续 DocIR / SchemaIR 生成语义混入 ingest。
     input_path = input_path.resolve()
     workspace_path = workspace_path.resolve()
 

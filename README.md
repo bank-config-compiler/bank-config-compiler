@@ -74,11 +74,13 @@ Skill、Agent 或 Dify-style workflow 可以作为辅助组件，但不是完整
 uv run --group dev pytest
 ```
 
-保存原始输入到 workspace：
+导入原始输入到 workspace：
 
 ```powershell
 uv run bank-config-compiler ingest --input docs/reference/samples/pain001-toy/raw-doc.md --workspace workspace/phase0a-smoke --overwrite
 ```
+
+`ingest` 只是 Phase0a 链路的第一步：把外部 `.md` / `.txt` 输入标准化保存为 workspace 内的 `raw-doc.md`。它不生成 DocIR、SchemaIR 或 Validator 结果；后续转换应由独立生成、校验或编排命令负责。
 
 校验只包含 raw doc 的 workspace：
 
@@ -89,7 +91,7 @@ uv run bank-config-compiler check --workspace workspace/phase0a-smoke --profile 
 校验完整 Phase0a artifact 协议。该命令要求 workspace 中已经存在全部 Phase0a artifact；当前 Task1/2 不生成 DocIR / SchemaIR 内容：
 
 ```powershell
-uv run bank-config-compiler check --workspace workspace/phase0a-smoke --profile phase0a
+uv run bank-config-compiler check --workspace workspace/phase0a-protocol-smoke --profile phase0a
 ```
 
 等价模块入口：
@@ -106,7 +108,7 @@ Task1/2 固定以下文件名：
 
 | Artifact | 格式 | 当前用途 |
 |---|---|---|
-| `raw-doc.md` | Markdown / text | 已由 `ingest` 创建并可校验。 |
+| `raw-doc.md` | Markdown / text | 由 `ingest` 从外部输入导入，作为后续生成命令的输入。 |
 | `docir-draft.md` | Markdown | 仅定义文件协议，生成逻辑属于后续 Task。 |
 | `docir-final.md` | Markdown | 仅定义文件协议，人工确认流程属于后续 Task。 |
 | `schemair-draft.json` | JSON | 仅定义文件协议，生成逻辑属于后续 Task。 |
