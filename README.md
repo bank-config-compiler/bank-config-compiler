@@ -1,0 +1,54 @@
+# Bank Config Compiler
+
+## Status
+
+Draft.
+
+## 项目定位
+
+本项目面向银企直连实施场景，用于将真实脱敏的银行接口文档转换为可 Review、可校验、可追溯、可回归的配置草稿。
+
+本项目不是全自动生产配置生成器。LLM / Agent 能力可以生成草稿，但可信链路必须包含人工 Review、SchemaIR 校验、确定性 Rule Engine 转换和回归证据。
+
+## 交付形态
+
+项目按阶段演进：
+
+| Phase | 交付形态 |
+|---|---|
+| Phase0-PoC | 可重复运行的链路验证工具，例如 CLI、script 或 lightweight workflow runner，加文件 workspace、fixtures、Validator、Rule Engine 和 golden sample regression。 |
+| Phase1-MVP | 轻量 Review Tool，支持 Review、校验、确认、预览和下载。 |
+| Phase2-Pilot | 受控内部试点工具或小型内部系统，用于真实或准真实项目验证。 |
+| Phase3-Production | 暂不定义。 |
+
+Skill、Agent 或 Dify-style workflow 可以作为辅助组件，但不是完整交付物，也不是可信边界。
+
+## 文档结构
+
+当前 source of truth 位于 `docs/`：
+
+- `docs/requirements.md`：项目级需求、原则、交付形态和跨阶段约束。
+- `docs/phases/`：各阶段需求。
+- `docs/design/`：系统设计、IR 设计、Import JSON 映射和 golden sample 策略。
+- `docs/adr/`：已接受的架构决策。
+- `docs/reference/`：参考草案和样例，不是正式承诺。
+
+建议阅读顺序：
+
+1. `docs/requirements.md`
+2. `docs/adr/README.md`
+3. `docs/design/README.md`
+4. `docs/phases/phase0-poc.md`
+5. `docs/phases/phase1-mvp.md`
+
+## 当前实现状态
+
+当前仓库仍处于文档和规划阶段，尚未定义运行时代码、构建命令或验证命令。
+
+进入实现前，Phase0-PoC 仍需确认：
+
+- DocIR 最小格式和质量标准。
+- SchemaIR 最小字段、类型枚举和校验规则。
+- Import JSON 真实格式边界和样例来源。
+- Golden sample 目录结构和回归方式。
+- 技术栈和无 UI 验证形态。
