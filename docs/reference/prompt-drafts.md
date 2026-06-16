@@ -15,7 +15,7 @@ Reference / Draft. Not accepted prompt.
 正式方向要求：
 
 - LLM 只生成 DocIR Draft 和 SchemaIR Draft。
-- LLM 不直接生成 Import JSON。
+- LLM 不直接生成最终 Schema Workbook。
 - 所有 LLM 输出必须经过校验后才能进入后续流程。
 - DocIR / SchemaIR 最小格式仍需讨论。
 - Golden sample 应用于 Prompt 回归。
@@ -165,4 +165,3 @@ dataType 枚举：
 - path 推导字段如何标注。
 - 是否保留 `confidence`。
 - JSON 修复和 retry 是否在 prompt 外实现。
-

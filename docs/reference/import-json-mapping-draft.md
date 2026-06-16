@@ -2,7 +2,7 @@
 
 ## Status
 
-Reference / Draft. Not accepted mapping.
+Superseded reference. Current project target is Schema Workbook, not Import JSON.
 
 ## Date
 
@@ -10,13 +10,9 @@ Reference / Draft. Not accepted mapping.
 
 ## Context
 
-本文从 `tmp/docs/import-json.md` 整理候选 Import JSON 结构和基础映射规则。
+本文从 `tmp/docs/import-json.md` 整理候选 Import JSON 结构和基础映射规则。该方向已被 `docs/adr/ADR-0004-schemair-and-workbook-artifacts.md` supersede，本文仅作为历史参考保留。
 
-当前正式文档已明确：
-
-- Import JSON 应贴近真实银企直连导入格式。
-- 用户后续会提供真实或接近真实的 Import JSON 样例。
-- 本文中的结构和规则只能作为候选草案，不能作为最终兼容承诺。
+当前正式文档已明确：项目不再以 Import JSON 作为目标产物，`Final SchemaIR` 是内部事实源，Schema Workbook 是面向配置人员的人工配置交付物。
 
 ## 候选定义
 
@@ -144,4 +140,3 @@ MVP 仅保留条件描述，不实现复杂 condition DSL。
 - 必填、长度、类型和控件字段的真实名称。
 - draft/source/status 是否真实存在。
 - 无法从文档推导的信息如何表达。
-
