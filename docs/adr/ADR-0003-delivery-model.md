@@ -11,7 +11,7 @@ Accepted.
 - Skill：封装给 Codex 或其他开发助手使用的流程能力。
 - Agent：面向文档理解和草稿生成的智能组件。
 - Dify workflow 或类似 workflow：编排 LLM、Prompt 和结构化输出。
-- 独立系统：承载任务状态、产物管理、Review、Validator、Rule Engine、预览下载和回归验证。
+- 独立系统：承载任务状态、产物管理、Review、Validator、Workbook Generator、预览下载和回归验证。
 
 如果一开始建设完整系统，容易过重；如果只选择 Skill、Agent 或 workflow，又无法完整证明控制、校验、人工确认和回归边界。
 
@@ -19,8 +19,8 @@ Accepted.
 
 项目采用分阶段工具链交付形态：
 
-- Phase0-PoC：交付可重复运行的链路验证工具，例如 CLI、script 或 lightweight workflow runner，加文件 workspace、golden sample fixtures、Validator、Rule Engine 和 golden sample regression。
-- Phase1-MVP：交付轻量 Review Tool，支持实施人员 Review、校验、确认、预览和下载。
+- Phase0-PoC：交付可重复运行的链路验证工具，例如 CLI、script 或 lightweight workflow runner，加文件 workspace、golden sample fixtures、Validator、Workbook Generator 和 golden sample regression。
+- Phase1-MVP：交付轻量 Review Tool，支持实施人员 Review、校验、确认、Schema Workbook 预览和下载。
 - Phase2-Pilot：交付受控内部试点工具或小型内部系统，用真实或准真实项目验证提效、稳定性和运维边界。
 - Phase3-Production：暂不定义。
 
@@ -28,7 +28,7 @@ Skill、Agent 和 Dify workflow 可以作为组件或辅助方式：
 
 - Skill 可用于开发、验证或局部流程封装，但不是完整业务交付物。
 - Agent 可用于 DocIR Draft 和 SchemaIR Draft 生成，但不是可信边界。
-- Dify workflow 可用于 Phase0 的 LLM 编排实验，但不替代 Validator、Rule Engine、Human Review 边界和 golden sample regression。
+- Dify workflow 可用于 Phase0 的 LLM 编排实验，但不替代 Validator、Workbook Generator、Human Review 边界和 golden sample regression。
 
 ## Alternatives Considered
 
@@ -60,7 +60,7 @@ Cons:
 
 - 输出不稳定。
 - 不能作为最终可信边界。
-- 不应直接生成 Import JSON 或绕过 Validator。
+- 不应直接生成最终 Schema Workbook 或绕过 Validator。
 
 Why not chosen:
 
@@ -75,7 +75,7 @@ Pros:
 
 Cons:
 
-- 更像编排层，不天然提供项目所需的持久化产物、Review 记录、字段级 Validator、Rule Engine 测试和 golden sample regression。
+- 更像编排层，不天然提供项目所需的持久化产物、Review 记录、字段级 Validator、Workbook Generator 测试和 golden sample regression。
 - 容易把 LLM 编排误当成可信配置流程。
 
 Why not chosen:

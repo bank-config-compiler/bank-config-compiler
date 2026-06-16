@@ -6,9 +6,11 @@ Draft.
 
 ## 项目定位
 
-本项目面向银企直连实施场景，用于将真实脱敏的银行接口文档转换为可 Review、可校验、可追溯、可回归的配置草稿。
+本项目面向银企直连实施场景，用于将真实脱敏的银行接口文档转换为可 Review、可校验、可追溯、可回归的 SchemaIR，并生成面向配置人员的 Schema Workbook。
 
-本项目不是全自动生产配置生成器。LLM / Agent 能力可以生成草稿，但可信链路必须包含人工 Review、SchemaIR 校验、确定性 Rule Engine 转换和回归证据。
+本项目不是全自动生产配置生成器，也不以目标系统 Import JSON 作为当前交付目标。LLM / Agent 能力可以生成草稿，但可信链路必须包含人工 Review、SchemaIR 校验、确定性 Workbook Generator 和回归证据。
+
+`Final SchemaIR` 是系统内部事实源。Schema Workbook 是由 `Final SchemaIR` 确定性生成的 Excel 交付物，用于指导配置人员人工配置目标系统。
 
 ## 交付形态
 
@@ -16,8 +18,8 @@ Draft.
 
 | Phase | 交付形态 |
 |---|---|
-| Phase0-PoC | 可重复运行的链路验证工具，例如 CLI、script 或 lightweight workflow runner，加文件 workspace、fixtures、Validator、Rule Engine 和 golden sample regression。 |
-| Phase1-MVP | 轻量 Review Tool，支持 Review、校验、确认、预览和下载。 |
+| Phase0-PoC | 可重复运行的链路验证工具，例如 CLI、script 或 lightweight workflow runner，加文件 workspace、fixtures、Validator、Workbook Generator 和 golden sample regression。 |
+| Phase1-MVP | 轻量 Review Tool，支持 Review、校验、确认、Schema Workbook 预览和下载。 |
 | Phase2-Pilot | 受控内部试点工具或小型内部系统，用于真实或准真实项目验证。 |
 | Phase3-Production | 暂不定义。 |
 
@@ -29,7 +31,7 @@ Skill、Agent 或 Dify-style workflow 可以作为辅助组件，但不是完整
 
 - `docs/requirements.md`：项目级需求、原则、交付形态和跨阶段约束。
 - `docs/phases/`：各阶段需求。
-- `docs/design/`：系统设计、IR 设计、Import JSON 映射和 golden sample 策略。
+- `docs/design/`：系统设计、IR 设计、Schema Workbook 策略和 golden sample 策略。
 - `docs/adr/`：已接受的架构决策。
 - `docs/reference/`：参考草案和样例，不是正式承诺。
 
@@ -56,13 +58,13 @@ Skill、Agent 或 Dify-style workflow 可以作为辅助组件，但不是完整
 
 - DocIR / SchemaIR 生成。
 - SchemaIR Validator。
-- Rule Engine、Import JSON Draft 和 golden regression。
+- Workbook Generator、Schema Workbook 和 golden regression。
 
 后续 Phase0-PoC 仍需确认：
 
 - DocIR 最小格式和质量标准。
 - SchemaIR 最小字段、类型枚举和校验规则。
-- Import JSON 真实格式边界和样例来源。
+- Schema Workbook 的 sheet、列、样式和结构化断言。
 - Golden sample 目录结构和回归方式。
 - 技术栈和无 UI 验证形态。
 
