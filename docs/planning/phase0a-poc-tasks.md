@@ -20,7 +20,7 @@ Raw Docs
 → golden regression
 ```
 
-Phase0a 不覆盖完整 Phase0 的 `Rule Engine` 和 `Import JSON Draft`。因此 Phase0a 通过不等于完整 Phase0-PoC 通过；后续应将 `Rule Engine` 和 `Import JSON Draft` 作为 Phase0b 或完整 Phase0 后续任务单独规划。
+Phase0a 不覆盖完整 Phase0 的 `Workbook Generator` 和 `Schema Workbook`。因此 Phase0a 通过不等于完整 Phase0-PoC 通过；后续应将 `Workbook Generator` 和 `Schema Workbook` 作为 Phase0b 或完整 Phase0 后续任务单独规划。
 
 ## 2. Phase0a 进度总览
 
@@ -46,8 +46,8 @@ Phase0a 不覆盖完整 Phase0 的 `Rule Engine` 和 `Import JSON Draft`。因�
 ## 3. Out of Scope
 
 - UI。
-- `Rule Engine`。
-- `Import JSON Draft`。
+- `Workbook Generator`。
+- `Schema Workbook`。
 - 真实生产库导入。
 - `.docx`、PDF、OCR、bbox 和原文区域高亮。
 - 多用户协作、权限、审批流。
@@ -278,8 +278,8 @@ Dependencies：
 不包含：
 
 - Validator 规则实现。
-- Import JSON。
-- Rule Engine。
+- Schema Workbook。
+- Workbook Generator。
 
 完成标志：
 
@@ -329,8 +329,8 @@ Dependencies：
 
 不包含：
 
-- Import JSON。
-- Rule Engine。
+- Schema Workbook。
+- Workbook Generator。
 - 复杂 condition DSL。
 
 完成标志：
@@ -388,8 +388,8 @@ Dependencies：
 
 - 正式银行样例。
 - 真实 LLM 质量门禁。
-- Import JSON。
-- Rule Engine。
+- Schema Workbook。
+- Workbook Generator。
 
 完成标志：
 
