@@ -29,8 +29,8 @@ Raw Docs
 → SchemaIR Validator
 → Human Review
 → Final SchemaIR
-→ Rule Engine
-→ Import JSON Draft
+→ Workbook Generator
+→ Schema Workbook
 → Preview / Download
 ```
 
@@ -43,15 +43,15 @@ Raw Docs
 候选职责：
 
 - 任务创建与状态流转。
-- 保存 Raw Docs、DocIR、SchemaIR、Validator 结果和 Import JSON。
+- 保存 Raw Docs、DocIR、SchemaIR、Validator 结果和 Schema Workbook。
 - SchemaIR Validator。
-- Rule Engine。
+- Workbook Generator。
 - 对 UI 或测试客户端提供 API。
 
 当前讨论结论：
 
 - Java 是候选实现，但技术栈尚未最终确认。
-- 如果采用 Java，它更适合承担可信边界、Validator、Rule Engine 和系统集成边界。
+- 如果采用 Java，它更适合承担可信边界、Validator、Workbook Generator 和系统集成边界。
 
 ### Agent Sidecar
 
@@ -77,7 +77,7 @@ Raw Docs
 - Raw Docs 输入。
 - DocIR Markdown 展示、编辑、保存、确认。
 - SchemaIR 表格展示、编辑、校验、确认。
-- Import JSON 预览、复制、下载。
+- Schema Workbook 预览和下载。
 
 当前讨论结论：
 
@@ -119,7 +119,7 @@ workspace/{taskId}/
 ├── schemair-draft.json
 ├── schemair-final.json
 ├── schemair-validation-result.json
-└── import-json.json
+└── schema-workbook.xlsx
 ```
 
 后续需要讨论：
@@ -144,4 +144,3 @@ workspace/{taskId}/
 - 技术栈仍需讨论。
 - 第一阶段应优先证明无 UI 端到端链路。
 - 不应为了符合草案而提前扩大架构。
-

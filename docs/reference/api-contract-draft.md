@@ -139,10 +139,10 @@ Response:
 }
 ```
 
-### 生成 Import JSON
+### 生成 Schema Workbook
 
 ```http
-POST /api/tasks/{taskId}/import-json/generate
+POST /api/tasks/{taskId}/schema-workbook/generate
 ```
 
 Response:
@@ -150,8 +150,11 @@ Response:
 ```json
 {
   "taskId": "task-001",
-  "status": "IMPORT_JSON_GENERATED",
-  "importJson": {}
+  "status": "SCHEMA_WORKBOOK_GENERATED",
+  "workbook": {
+    "fileName": "task-001-schema-workbook.xlsx",
+    "sheets": ["Overview", "ASSEMBLY", "PARSE", "Warnings", "Legend"]
+  }
 }
 ```
 
@@ -224,4 +227,3 @@ Response:
 - 错误是否需要 `taskId`、`stage`、`timestamp`。
 - Validator 错误是否和系统错误使用同一 envelope。
 - 错误码命名是否需要稳定化。
-

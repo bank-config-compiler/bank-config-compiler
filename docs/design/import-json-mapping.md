@@ -2,135 +2,57 @@
 
 ## Status
 
-Draft.
+Superseded by `docs/adr/ADR-0004-schemair-and-workbook-artifacts.md`.
 
-## 1. 设计边界
+## 1. 历史背景
 
-Import JSON 是银企直连系统可导入或可预览的配置 JSON。
+早期设计曾考虑由确定性 Rule Engine 基于 `Final SchemaIR` 生成目标系统 Import JSON Draft。
 
-当前阶段 Import JSON 只生成 Draft，不直接落库。Import JSON 只能由 Rule Engine 基于 Final SchemaIR 生成，禁止由 LLM 直接生成。
+在接入 `docs/reference/samples/b2eboc/` 后，真实或接近真实的导出 JSON 暴露出较高目标系统适配成本：同一接口存在 `ASSEMBLY` / `PARSE` 两个方向，导出 JSON 中还包含历史 ID、目标系统状态字段、父子引用和导入模板字段。这些字段并不完全来自银行 raw doc。
 
-Import JSON 应贴近真实银企直连导入格式。用户提供真实或接近真实的 Import JSON 样例后，必须重新确认目标字段模型、字段命名、层级关系和兼容性边界。
+继续以 Import JSON 作为目标产物会把项目重心从“配置人员可审计的字段整理”推向“目标系统导入适配器维护”，与当前阶段目标不匹配。
 
-## 2. 候选示例
+## 2. 当前决策
 
-```json
-{
-  "standardCode": "ISO20022",
-  "messageCode": "pain.001",
-  "messageName": "CustomerCreditTransferInitiation",
-  "sceneCode": "BANK_PAYMENT_IMPORT",
-  "fieldConfigs": [
-    {
-      "fieldCode": "GRP_HDR_MSG_ID",
-      "fieldName": "MsgId",
-      "fieldPath": "GrpHdr.MsgId",
-      "fieldType": "STRING",
-      "controlType": "INPUT",
-      "required": true,
-      "maxLength": 35,
-      "parentFieldCode": "GRP_HDR",
-      "level": 2,
-      "repeated": false,
-      "source": "AI_MVP",
-      "status": "DRAFT"
-    }
-  ]
-}
-```
+项目不再以 Import JSON 作为最终目标产物。
 
-该示例是候选结构，不是长期兼容承诺。
-
-## 3. 候选映射规则
-
-### fieldCode
-
-由 `path` 生成：
+当前目标是：
 
 ```text
-GrpHdr.MsgId → GRP_HDR_MSG_ID
-PmtInf.CdtTrfTxInf → PMT_INF_CDT_TRF_TX_INF
+Raw Docs
+→ DocIR
+→ Final SchemaIR
+→ SchemaIR Validator
+→ Schema Workbook
 ```
 
-待确认：
+`Final SchemaIR` 是系统内部事实源。Schema Workbook 是面向配置人员的人工配置交付物。
 
-- 是否符合真实系统字段编码规范。
-- 缩写、大小写、重复字段冲突如何处理。
-- `parentFieldCode` 是否使用同一规则生成。
+## 3. 历史样例处理
 
-### fieldType
+`docs/reference/samples/b2eboc/b2e0061-assembly.json` 和 `docs/reference/samples/b2eboc/b2e0061-parse.json` 保留为历史参考输入，用于理解目标系统曾经的导出形态。
 
-| SchemaIR | Import JSON |
-|---|---|
-| `string` | `STRING` |
-| `integer` | `INTEGER` |
-| `decimal` | `DECIMAL` |
-| `boolean` | `BOOLEAN` |
-| `date` | `DATE` |
-| `datetime` | `DATETIME` |
-| `object` | `NODE` |
-| `array` | `LIST` |
+这些 JSON 不再作为：
 
-### node / list
+- 项目最终目标产物。
+- MVP 验收标准。
+- Rule Engine 输出兼容性标准。
+- SchemaIR 字段模型的来源。
 
-```text
-hasChildren=true + multiple=false → NODE
-hasChildren=true + multiple=true → LIST
-hasChildren=false → 基础字段类型
-```
+它们可以作为：
 
-待确认：
+- 理解 `ASSEMBLY` / `PARSE` 方向的参考。
+- 识别目标系统人工配置时可能关注的字段的辅助材料。
+- 后续如果重新启动导入自动化时的参考样例。
 
-- `dataType=array` 与 `hasChildren=false` 是否允许。
-- group 类型原文如何映射。
-- list item 是否需要独立字段配置。
+## 4. 不再适用的候选规则
 
-### controlType
+以下早期候选内容已不再适用：
 
-| fieldType | controlType |
-|---|---|
-| `STRING` | `INPUT` |
-| `INTEGER` | `NUMBER_INPUT` |
-| `DECIMAL` | `NUMBER_INPUT` |
-| `DATE` | `DATE_PICKER` |
-| `DATETIME` | `DATETIME_PICKER` |
-| `BOOLEAN` | `SWITCH` |
-| `NODE` | `CONTAINER` |
-| `LIST` | `TABLE` |
+- `fieldConfigs` 扁平数组格式。
+- 从 SchemaIR 生成目标系统 Import JSON。
+- `controlType` 映射。
+- `ImportTargetProfile` / `ImportAdapter` / 接口级导入例外清单。
+- 用 Import JSON 兼容性作为阶段成功条件。
 
-待确认：
-
-- 真实系统是否使用这些 `controlType`。
-- `controlType` 是否能完全从 SchemaIR 推导。
-- 是否存在需要人工补充的 UI 控件配置。
-
-### condition
-
-当前阶段仅保留条件描述，不实现复杂 condition DSL。
-
-如果 SchemaIR 中存在条件说明，可候选放入 `ext`：
-
-```json
-{
-  "ext": {
-    "conditionText": "Required when ..."
-  }
-}
-```
-
-待确认：
-
-- 真实 Import JSON 是否支持 `ext`。
-- condition 文本是否应进入字段配置、报文配置，还是独立规则配置。
-- 后续是否需要 condition DSL。
-
-## 4. 用户样例到位后必须确认
-
-- 顶层字段模型。
-- 字段配置数组名称。
-- 字段编码规范。
-- 父子关系表达方式。
-- list / node 真实配置规则。
-- 必填、长度、类型和控件字段的真实名称。
-- draft/source/status 是否真实存在。
-- 无法从文档推导的信息如何表达。
+后续若重新决定支持目标系统导入，应新建 ADR，明确恢复目标、兼容范围、ID 策略、导入校验方式和维护成本边界。

@@ -34,7 +34,7 @@ DocIR 是银行接口文档的标准化 Markdown 版本。
 候选非职责：
 
 - 不直接判断最终字段类型是否为 string / node / list。
-- 不生成 Import JSON。
+- 不生成 Schema Workbook。
 - 不表达系统最终配置逻辑。
 - 不执行字段映射规则。
 
@@ -112,7 +112,7 @@ SchemaIR 是银行报文结构的语义中间表示，使用 JSON 格式。
 
 - 机器校验。
 - Human Review。
-- Rule Engine 转换。
+- Workbook Generator 输入。
 - 后续扩展到 DTO、Mock、Diff、Mapping 等能力。
 
 ## SchemaIR 候选顶层结构
