@@ -84,5 +84,5 @@ Why not chosen:
 - 所有实现应优先保证 `Final SchemaIR` 的完整性、可校验性和可回归性。
 - Workbook Generator 不得补业务字段，不得静默丢弃不确定字段。
 - Workbook 回归应读取 xlsx 做结构化断言，不比较整个二进制文件。
-- 历史 Import JSON 样例可保留为 reference，但不得作为目标产物或阶段成功条件。
+- 与当前 raw doc 样例绑定的历史导出 JSON 可保留为 reference，但不得作为目标产物、Workbook Generator 输入或阶段成功条件；过期 toy 样例应清除。
 - 如果未来重新启动 Import JSON 支持，必须通过新的 ADR 明确范围、兼容策略和维护成本。

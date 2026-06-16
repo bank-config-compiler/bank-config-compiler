@@ -137,7 +137,7 @@ Dependencies：
 验证命令：
 
 - `uv run --group dev pytest`
-- `uv run bank-config-compiler ingest --input docs/reference/samples/pain001-toy/raw-doc.md --workspace workspace/phase0a-smoke --overwrite`
+- `uv run bank-config-compiler ingest --input docs/reference/samples/b2eboc/b2e0061.md --workspace workspace/phase0a-smoke --overwrite`
 
 验证补充：
 

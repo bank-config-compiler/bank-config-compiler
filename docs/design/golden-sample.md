@@ -24,20 +24,20 @@ Golden sample 不只是演示样例。它必须证明系统对真实或接近真
 
 ## 3. 当前 reference sample 边界
 
-`docs/reference/samples/pain001-toy/` 只能作为 reference sample 保留。
+`docs/reference/samples/b2eboc/` 是当前 reference sample。它包含一个真实语境下的接口 raw doc，以及历史导出 JSON 用于理解 `ASSEMBLY` / `PARSE` 两个方向。
 
 它可以用于：
 
-- 文档链路说明示例。
-- Prompt smoke test 的最小输入。
-- Workbook Generator 单字段或少字段格式示例。
+- 当前 SchemaIR / Schema Workbook 设计依据。
+- CLI ingest smoke test 的输入。
+- 后续构造 b2e0061 golden sample 的 raw doc 来源。
 
 它不能用于：
 
-- MVP 验收。
-- 字段覆盖率证明。
-- 真实业务价值证明。
-- Schema Workbook 指导人工配置能力证明。
+- 直接作为 MVP 验收。
+- 在缺少 expected DocIR / SchemaIR / Validator / workbook assertions 时作为回归基准。
+- 将历史导出 JSON 重新定义为目标产物或 Workbook Generator 输入。
+- 证明 Schema Workbook 指导人工配置能力。
 
 ## 4. 候选目录结构
 
