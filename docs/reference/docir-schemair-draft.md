@@ -10,7 +10,7 @@ Reference / Draft. Not accepted schema.
 
 ## Context
 
-本文从 `tmp/docs/docir.md` 和 `tmp/docs/schemair.md` 整理候选中间表示。当前正式文档已明确 DocIR / SchemaIR 最小格式仍需继续讨论，因此本文只作为候选输入。
+本文从 `tmp/docs/docir.md` 和 `tmp/docs/schemair.md` 整理候选中间表示。当前正式结构以 `docs/design/intermediate-representations.md` 为准；本文只保留为低优先级参考，不作为实现契约。
 
 ## DocIR 候选定义
 
@@ -106,7 +106,7 @@ Human Review 可重点检查：
 
 ## SchemaIR 候选定义
 
-SchemaIR 是银行报文结构的语义中间表示，使用 JSON 格式。
+SchemaIR 是银行接口和报文结构的语义中间表示，使用 JSON 格式。
 
 候选用途：
 
@@ -119,10 +119,23 @@ SchemaIR 是银行报文结构的语义中间表示，使用 JSON 格式。
 
 ```json
 {
-  "messageName": "pain.001",
-  "messageType": "payment",
-  "format": "ISO20022",
-  "version": "001.001.03",
+  "interfaceCode": "b2e0061",
+  "interfaceName": "公对私转账汇款",
+  "messageFormat": "XML",
+  "version": "120",
+  "sourceDocument": "docs/reference/samples/b2eboc/b2e0061.md",
+  "messages": []
+}
+```
+
+## SchemaIR 候选 message 结构
+
+```json
+{
+  "functionType": "ASSEMBLY",
+  "messageName": "b2e0061-rq",
+  "rootPath": "Root.bocb2e.trans.trn-b2e0061-rq",
+  "description": "组装请求报文",
   "fields": []
 }
 ```
@@ -131,29 +144,41 @@ SchemaIR 是银行报文结构的语义中间表示，使用 JSON 格式。
 
 ```json
 {
-  "path": "GrpHdr.MsgId",
-  "fieldName": "MsgId",
-  "displayName": "Message Identification",
-  "parentPath": "GrpHdr",
-  "level": 2,
+  "path": "Root.bocb2e.trans.trn-b2e0061-rq.b2e0061-rq.toactn.acttyp",
+  "fieldName": "acttyp",
+  "displayName": "收款账户类型",
+  "parentPath": "Root.bocb2e.trans.trn-b2e0061-rq.b2e0061-rq.toactn",
+  "level": 5,
+  "nodeKind": "XML_ELEMENT",
   "dataType": "string",
   "format": null,
   "length": {
-    "max": 35,
-    "min": null,
-    "raw": "35"
+    "max": 3,
+    "min": 0,
+    "raw": "0-3"
   },
-  "required": true,
+  "required": false,
   "multiple": false,
   "hasChildren": false,
-  "occurs": "1..1",
-  "description": "Message Identification",
-  "sourceText": "MsgId | GrpHdr.MsgId | String | 35 | 1..1 | M | Message Identification",
+  "occurs": "0..1",
+  "description": "收款账户类型",
+  "conditionText": null,
+  "sourceText": "| <acttyp> | 收款账户类型 | 数码 长度0-3 | ... |",
   "confidence": 0.95,
   "uncertain": false,
-  "uncertainReason": null
+  "uncertainReason": null,
+  "reviewNote": null,
+  "configGuidance": null
 }
 ```
+
+## nodeKind 候选枚举
+
+- `XML_ELEMENT`
+- `XML_ATTRIBUTE`
+- `JSON_OBJECT`
+- `JSON_ARRAY`
+- `SCALAR`
 
 ## dataType 候选枚举
 
@@ -198,16 +223,22 @@ SchemaIR 是银行报文结构的语义中间表示，使用 JSON 格式。
 
 ## Validator 候选规则
 
+- `interfaceCode` 非空。
+- `messageFormat` 属于允许枚举。
+- `messages` 至少包含一个 message。
+- `functionType` 属于允许枚举。
 - `path` 非空。
 - `fieldName` 非空。
+- `nodeKind` 属于允许枚举。
 - `dataType` 属于允许枚举。
 - `required` 是 boolean。
 - `multiple` 是 boolean。
+- `hasChildren` 是 boolean。
 - `confidence` 在 0 到 1 之间。
 - `sourceText` 非空。
-- `path` 不重复。
+- 同一 message 内 `path` 不重复。
 - `parentPath` 存在或可推导。
-- `hasChildren`、`multiple`、`dataType` 不冲突。
+- `hasChildren`、`multiple`、`dataType`、`nodeKind` 不冲突。
 
 ## SchemaIR 候选 Review 边界
 

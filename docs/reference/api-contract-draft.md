@@ -26,8 +26,9 @@ Request:
 
 ```json
 {
-  "taskName": "pain001-demo",
-  "messageType": "pain.001",
+  "taskName": "b2e0061-demo",
+  "interfaceCode": "b2e0061",
+  "messageFormat": "XML",
   "rawDocumentText": "..."
 }
 ```
@@ -174,7 +175,8 @@ Request:
 {
   "taskId": "task-001",
   "rawDocumentText": "...",
-  "messageType": "pain.001"
+  "interfaceCode": "b2e0061",
+  "messageFormat": "XML"
 }
 ```
 

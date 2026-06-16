@@ -79,7 +79,7 @@ uv run --group dev pytest
 导入原始输入到 workspace：
 
 ```powershell
-uv run bank-config-compiler ingest --input docs/reference/samples/pain001-toy/raw-doc.md --workspace workspace/phase0a-smoke --overwrite
+uv run bank-config-compiler ingest --input docs/reference/samples/b2eboc/b2e0061.md --workspace workspace/phase0a-smoke --overwrite
 ```
 
 `ingest` 只是 Phase0a 链路的第一步：把外部 `.md` / `.txt` 输入标准化保存为 workspace 内的 `raw-doc.md`。它不生成 DocIR、SchemaIR 或 Validator 结果；后续转换应由独立生成、校验或编排命令负责。
@@ -99,10 +99,10 @@ uv run bank-config-compiler check --workspace workspace/phase0a-protocol-smoke -
 等价模块入口：
 
 ```powershell
-uv run python -m bank_config_compiler ingest --input docs/reference/samples/pain001-toy/raw-doc.md --workspace workspace/phase0a-smoke --overwrite
+uv run python -m bank_config_compiler ingest --input docs/reference/samples/b2eboc/b2e0061.md --workspace workspace/phase0a-smoke --overwrite
 ```
 
-`docs/reference/samples/pain001-toy/` 只用于 smoke 示例，不是 MVP golden sample。
+`docs/reference/samples/b2eboc/` 是当前 reference sample。它用于设计和 smoke 验证，不等同于已确认的 golden sample。
 
 ## Phase0a workspace artifacts
 
