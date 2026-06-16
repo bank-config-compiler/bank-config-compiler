@@ -39,7 +39,7 @@ Cons:
 
 - 显著增加 Phase0 复杂度。
 - 容易把核心链路验证变成文档解析平台建设。
-- OCR 和 bbox 问题会掩盖 DocIR / SchemaIR / Rule Engine 的真实风险。
+- OCR 和 bbox 问题会掩盖 DocIR / SchemaIR / Workbook Generator 的真实风险。
 
 Why not chosen:
 
@@ -50,7 +50,7 @@ Why not chosen:
 Pros:
 
 - 实现最简单。
-- 可以直接验证 SchemaIR 和 Rule Engine。
+- 可以直接验证 SchemaIR 和 Workbook Generator。
 
 Cons:
 

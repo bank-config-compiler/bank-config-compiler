@@ -1,8 +1,8 @@
-# ADR-0001: Human Review 与确定性 Rule Engine 作为可信边界
+# ADR-0001: Human Review 与确定性生成器作为可信边界
 
 ## Status
 
-Accepted.
+Accepted. Partially superseded by `ADR-0004-schemair-and-workbook-artifacts.md`.
 
 ## Context
 
@@ -12,12 +12,14 @@ Accepted.
 
 ## Decision
 
-系统采用 Human Review 与确定性 Rule Engine 作为可信边界：
+系统采用 Human Review 与确定性生成器作为可信边界：
 
 - LLM 只生成 DocIR Draft 和 SchemaIR Draft。
 - Draft 必须经过人工 Review 才能成为 Final DocIR 或 Final SchemaIR。
-- Import JSON Draft 只能由 Rule Engine 基于 Final SchemaIR 生成。
-- Validator 必须在 SchemaIR 进入 Rule Engine 前拦截明显结构错误。
+- 最终交付物只能由确定性生成器基于 Final SchemaIR 生成。
+- Validator 必须在 SchemaIR 进入最终交付物生成器前拦截明显结构错误。
+
+注：本 ADR 原先将 Import JSON Draft 作为确定性最终产物。该部分已由 `ADR-0004-schemair-and-workbook-artifacts.md` supersede；当前最终交付物为 Schema Workbook。
 
 ## Alternatives Considered
 
@@ -49,7 +51,7 @@ Pros:
 Cons:
 
 - 无法降低从零阅读和整理字段的起步成本。
-- 不能沉淀可复用的 DocIR、SchemaIR 和 Rule Engine 链路。
+- 不能沉淀可复用的 DocIR、SchemaIR 和确定性生成链路。
 
 Why not chosen:
 
@@ -57,7 +59,7 @@ Why not chosen:
 
 ## Consequences
 
-- 系统必须保留 Raw Docs、DocIR、SchemaIR、Validator 结果和 Import JSON Draft 等关键中间产物。
+- 系统必须保留 Raw Docs、DocIR、SchemaIR、Validator 结果和确定性生成的最终交付物等关键中间产物。
 - SchemaIR 字段必须尽量保留 `sourceText` 和不确定信息。
-- Rule Engine 需要保持简单、确定、可测试。
+- 最终交付物生成器需要保持简单、确定、可测试。
 - UI 或无 UI 流程都必须表达人工确认边界。
