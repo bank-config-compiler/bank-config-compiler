@@ -45,14 +45,12 @@ Skill、Agent 或 Dify-style workflow 可以作为辅助组件，但不是完整
 
 ## 当前实现状态
 
-当前仓库已完成 Phase0a-PoC 的 bootstrap 子阶段。
+当前仓库已完成 Phase0 bootstrap 工作。Phase0 的 active task 状态只在 `docs/planning/phase0-poc-plan.md` 维护。
 
 已完成：
 
-- Phase0a TASK 1：Python 项目与 CLI 骨架。
 - CLI 支持从 `.md` / `.txt` 输入文件创建 workspace，并保存 `raw-doc.md`。
-- Phase0a TASK 2：Workspace 产物协议。
-- CLI 支持校验 Phase0a workspace 的固定 artifact 名称、UTF-8 no BOM 编码和 JSON 可解析性。
+- CLI 支持校验 workspace 的固定 artifact 名称、UTF-8 no BOM 编码和 JSON 可解析性。
 - Phase0 当前 reference raw doc 已提供：`docs/reference/samples/b2eboc/b2e0061.md`。
 
 尚未完成：
@@ -87,7 +85,7 @@ uv run --group dev pytest
 uv run bank-config-compiler ingest --input docs/reference/samples/b2eboc/b2e0061.md --workspace workspace/phase0a-smoke --overwrite
 ```
 
-`ingest` 只是 Phase0a 链路的第一步：把外部 `.md` / `.txt` 输入标准化保存为 workspace 内的 `raw-doc.md`。它不生成 DocIR、SchemaIR 或 Validator 结果；后续转换应由独立生成、校验或编排命令负责。
+`ingest` 只是 Phase0 bootstrap 链路的第一步：把外部 `.md` / `.txt` 输入标准化保存为 workspace 内的 `raw-doc.md`。它不生成 DocIR、SchemaIR 或 Validator 结果；后续转换应由独立生成、校验或编排命令负责。
 
 校验只包含 raw doc 的 workspace：
 
@@ -95,7 +93,7 @@ uv run bank-config-compiler ingest --input docs/reference/samples/b2eboc/b2e0061
 uv run bank-config-compiler check --workspace workspace/phase0a-smoke --profile raw
 ```
 
-校验完整 Phase0a artifact 协议。该命令要求 workspace 中已经存在全部 Phase0a artifact；当前 Task1/2 不生成 DocIR / SchemaIR 内容：
+校验完整 workspace artifact 协议。该命令要求 workspace 中已经存在全部 artifact；当前 bootstrap 不生成 DocIR / SchemaIR 内容。CLI profile 名称仍为 `phase0a`：
 
 ```powershell
 uv run bank-config-compiler check --workspace workspace/phase0a-protocol-smoke --profile phase0a
@@ -109,9 +107,9 @@ uv run python -m bank_config_compiler ingest --input docs/reference/samples/b2eb
 
 `docs/reference/samples/b2eboc/` 是当前 reference sample。它用于设计和 smoke 验证，不等同于已确认的 golden sample。
 
-## Phase0a workspace artifacts
+## Workspace artifacts
 
-Task1/2 固定以下文件名：
+当前 bootstrap 固定以下文件名：
 
 | Artifact | 格式 | 当前用途 |
 |---|---|---|
