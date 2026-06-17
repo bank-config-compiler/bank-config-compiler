@@ -14,6 +14,7 @@ Active.
 
 - `system-overview.md`：总体链路、模块职责、可信边界和候选 workspace 结构。
 - `intermediate-representations.md`：DocIR / SchemaIR 的职责、最小结构和待确认点。
+- `ir-field-reference.md`：DocIR / SchemaIR 字段含义、review 规则和 confidence 阈值。
 - `schema-workbook.md`：Schema Workbook 的 sheet、列、格式规则和回归策略。
 - `import-json-mapping.md`：已 superseded 的 Import JSON 历史设计说明。
 - `golden-sample.md`：golden sample 的作用、最低覆盖内容和参考目录结构。
