@@ -2,7 +2,7 @@
 
 ## Status
 
-Draft. P0-T2 baseline decisions are captured here before expected fixtures are promoted to golden sample.
+Draft. P0-T2 baseline decisions are captured here and reflected in the b2e0061 Review Golden sample.
 
 ## 1. 设计原则
 
@@ -45,7 +45,7 @@ Raw doc 仍表示受控输入源。本次 `b2e0061` 样例以人工修正后的 
 | Interface Name | 公对私转账汇款 |  |
 | Message Format | XML |  |
 | Version | 120 | raw doc 示例也出现 100，需确认。 |
-| Source Document | samples/candidates/b2eboc-b2e0061/raw-doc.md |  |
+| Source Document | samples/golden/b2eboc-b2e0061/raw-doc.md |  |
 ```
 
 ```md
@@ -110,7 +110,7 @@ SchemaIR 使用 JSON。`Final SchemaIR` 是系统内部事实源，Workbook Gene
   "interfaceName": "公对私转账汇款",
   "messageFormat": "XML",
   "version": "120",
-  "sourceDocument": "samples/candidates/b2eboc-b2e0061/raw-doc.md",
+  "sourceDocument": "samples/golden/b2eboc-b2e0061/raw-doc.md",
   "envelope": {},
   "messages": []
 }

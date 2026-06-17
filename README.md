@@ -53,24 +53,22 @@ Skill、Agent 或 Dify-style workflow 可以作为辅助组件，但不是完整
 - CLI 支持校验 workspace 的固定 artifact 名称、UTF-8 no BOM 编码和 JSON 可解析性。
 - Phase0 当前 reference raw doc 已提供：`docs/reference/samples/b2eboc/b2e0061.md`。
 - 正式 DocIR / SchemaIR 设计基线已沉淀到 `docs/design/intermediate-representations.md`、`docs/design/ir-field-reference.md` 和 `docs/adr/ADR-0005-schemair-envelope-and-evidence.md`。
-- `samples/candidates/b2eboc-b2e0061/` 已提供基于 human review 更新后的 review-only candidate DocIR / SchemaIR 和 review notes。
+- `samples/golden/b2eboc-b2e0061/` 已提供 b2e0061 Review Golden sample，冻结 expected DocIR、expected SchemaIR 和 expected review notes。
 
 尚未完成：
 
 - DocIR / SchemaIR 生成。
 - SchemaIR Validator。
 - Workbook Generator、Schema Workbook 和 golden regression。
-- 基于 `b2e0061.md` 的 expected DocIR / expected SchemaIR / Validator result / workbook assertions。
+- 基于 `b2e0061.md` 的 expected Validator result / workbook assertions。
 
-后续 Phase0-PoC 正在确认 expected IR 和 golden sample 边界。下一步不是直接实现 Validator 或 Workbook Generator，而是基于正式 IR 设计继续确认 `samples/candidates/b2eboc-b2e0061/` 下的 updated candidate，并形成 expected DocIR / SchemaIR。
+后续 Phase0-PoC 已完成 Review Golden sample 边界。下一步可以基于 `samples/golden/b2eboc-b2e0061/schemair.expected.json` 实现 Validator、Workbook Generator 和结构化回归断言。
 
 仍需确认：
 
-- 基于 `b2e0061.md` 的 expected DocIR 和 expected SchemaIR。
-- DocIR 最小格式和质量标准。
-- SchemaIR 最小字段、类型枚举和校验规则。
+- Validator result 的 warning、error 和 coverage 输出格式。
 - Schema Workbook 的 sheet、列、样式和结构化断言。
-- Golden sample 目录结构和回归方式。
+- Golden sample 回归命令。
 - 技术栈和无 UI 验证形态。
 
 ## 本地命令
