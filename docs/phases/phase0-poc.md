@@ -14,9 +14,9 @@ Phase0-PoC 目标是确认样例、格式、链路和技术边界，证明项目
 
 Skill、Agent 或 Dify workflow 可以作为 LLM 草稿生成组件，但不能作为 Phase0 的完整交付物，因为它们不能单独证明控制、校验、人工确认和回归边界。
 
-当前 Phase0 样例输入已落地：`docs/reference/samples/b2eboc/b2e0061.md`。基于该 raw doc 的 review-only candidate IR 已落地到 `samples/candidates/b2eboc-b2e0061/`；在 expected DocIR、expected SchemaIR、Validator 结果和 workbook assertions 确认前，它仍不是完整 golden sample。
+当前 Phase0 样例输入已落地：`docs/reference/samples/b2eboc/b2e0061.md`。正式 DocIR / SchemaIR 设计基线已落地到 `docs/design/` 和 `docs/adr/ADR-0005-schemair-envelope-and-evidence.md`。基于 human review 更新后的 review-only candidate IR 已落地到 `samples/candidates/b2eboc-b2e0061/`；在 expected DocIR、expected SchemaIR、Validator 结果和 workbook assertions 确认前，它仍不是完整 golden sample。
 
-当前执行计划见 `docs/planning/phase0-poc-plan.md`。已完成的 Python CLI、`ingest`、workspace artifact 协议、`check` 和 P0-T1 candidate IR 作为 Phase0 bootstrap / candidate 工作记录；Phase0 仍受 expected IR 未确认阻塞，下一步应 review candidate DocIR / SchemaIR 并形成 golden sample boundary。
+当前执行计划见 `docs/planning/phase0-poc-plan.md`。已完成的 Python CLI、`ingest`、workspace artifact 协议、`check`、P0-T1 candidate IR 和 formal IR review 设计作为 Phase0 bootstrap / candidate 工作记录；Phase0 仍受 expected IR 未确认阻塞，下一步应基于 updated candidate 形成 golden sample boundary。
 
 ## 2. In Scope
 
@@ -84,6 +84,8 @@ SchemaIR 顶层至少包含：
 - `interfaceName`
 - `messageFormat`
 - `version`
+- `sourceDocument`
+- `envelope`
 - `messages`
 
 每个 message 至少包含：
@@ -103,6 +105,7 @@ SchemaIR 顶层至少包含：
 - `multiple`
 - `hasChildren`
 - `sourceText`
+- `evidence`
 - `confidence`
 - `uncertain`
 - `uncertainReason`
@@ -127,6 +130,7 @@ Validator 至少应校验：
 - `hasChildren` 是 boolean。
 - `confidence` 在 0 到 1 之间。
 - `sourceText` 非空。
+- `evidence.kind` 属于允许枚举。
 - 同一 message 内 `path` 不重复。
 - 父子路径关系可解释。
 - `hasChildren`、`multiple`、`dataType` 和 `nodeKind` 不存在明显冲突。

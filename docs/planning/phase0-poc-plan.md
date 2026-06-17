@@ -23,8 +23,8 @@ Phase0a 不再作为独立 active phase。已完成的 CLI、`ingest`、workspac
 | TASK | 状态 | 依赖 | 阻塞点 | 完成标志 |
 |---|---|---|---|---|
 | P0-T0：Bootstrap | Done | 无 | 无 | CLI 可导入 raw doc，workspace artifact 协议和 `check --profile raw|phase0a` 已可用。 |
-| P0-T1：`b2e0061` IR candidate / review | Done | P0-T0 | 无 | 已产出 candidate DocIR / SchemaIR，并列出需人工确认的问题。 |
-| P0-T2：Golden sample boundary | Next | P0-T1 | candidate IR 待人工确认 | 形成 expected DocIR、expected SchemaIR、validator expected result 和 workbook assertions。 |
+| P0-T1：`b2e0061` IR candidate / review | Done | P0-T0 | 无 | 已产出并按 human review 更新 candidate DocIR / SchemaIR，正式 IR 设计已沉淀，review-only 边界清晰。 |
+| P0-T2：Golden sample boundary | Next | P0-T1 | expected IR 和 workbook assertions 待确认 | 形成 expected DocIR、expected SchemaIR、validator expected result 和 workbook assertions。 |
 | P0-T3：Trusted chain | Blocked | P0-T2 | golden sample 未确认 | 实现 SchemaIR Validator、Workbook Generator 和 golden regression。 |
 | P0-T4：Draft generators | Blocked | P0-T3 | trusted chain 未完成 | 接入 stub / OpenAI-compatible draft generator，LLM 只生成 draft。 |
 
@@ -36,10 +36,10 @@ Phase0a 不再作为独立 active phase。已完成的 CLI、`ingest`、workspac
 
 ## 3. 当前阻塞点
 
-当前不能直接实现正式 trusted chain，因为 P0-T1 candidate IR 已产出但尚未人工确认：
+当前不能直接实现正式 trusted chain，因为 formal IR 设计和 updated candidate IR 已产出，但 expected/golden artifacts 尚未确认：
 
-- `DocIR` candidate 已产出，最小格式和质量标准仍待人工确认。
-- `SchemaIR` candidate 已产出，字段集合、枚举、`sourceText` 粒度和 `uncertain` 规则仍待人工确认。
+- `DocIR` candidate 已按 metadata table 结构更新，但 expected DocIR 尚未冻结。
+- `SchemaIR` candidate 已包含 `envelope`、`evidence`、confidence 阈值和 `ASSEMBLY` / `PARSE` 消息，但 expected SchemaIR 尚未冻结。
 - `b2e0061.md` 对应的 expected DocIR / expected SchemaIR 尚未形成。
 - workbook assertions 依赖 confirmed SchemaIR，尚未确认。
 
@@ -58,7 +58,8 @@ samples/candidates/b2eboc-b2e0061/
 ├── raw-doc.md
 ├── docir.candidate.md
 ├── schemair.candidate.json
-└── review-notes.md
+├── review-notes.md
+└── human-review-result.md
 ```
 
 完成标志：
@@ -72,6 +73,8 @@ samples/candidates/b2eboc-b2e0061/
 ### P0-T2：Golden sample boundary
 
 目标：review P0-T1 candidate IR，经人工确认后形成正式 golden sample 输入。
+
+P0-T2 应以 formal IR 设计和 `samples/candidates/b2eboc-b2e0061/` 下的 updated candidate 为输入；历史导出 JSON 只能作为人工对照，不作为字段来源、expected SchemaIR 来源或回归输入。
 
 正式 golden sample 至少应包含：
 

@@ -51,7 +51,9 @@ Skill、Agent 或 Dify-style workflow 可以作为辅助组件，但不是完整
 
 - CLI 支持从 `.md` / `.txt` 输入文件创建 workspace，并保存 `raw-doc.md`。
 - CLI 支持校验 workspace 的固定 artifact 名称、UTF-8 no BOM 编码和 JSON 可解析性。
-- Phase0 当前 reference raw doc 已提供：`docs/reference/samples/b2eboc/b2e0061.md`。`samples/candidates/b2eboc-b2e0061/` 已提供 review-only candidate DocIR / SchemaIR 和人工确认问题清单。
+- Phase0 当前 reference raw doc 已提供：`docs/reference/samples/b2eboc/b2e0061.md`。
+- 正式 DocIR / SchemaIR 设计基线已沉淀到 `docs/design/intermediate-representations.md`、`docs/design/ir-field-reference.md` 和 `docs/adr/ADR-0005-schemair-envelope-and-evidence.md`。
+- `samples/candidates/b2eboc-b2e0061/` 已提供基于 human review 更新后的 review-only candidate DocIR / SchemaIR、review notes 和 review 输入记录。
 
 尚未完成：
 
@@ -60,7 +62,7 @@ Skill、Agent 或 Dify-style workflow 可以作为辅助组件，但不是完整
 - Workbook Generator、Schema Workbook 和 golden regression。
 - 基于 `b2e0061.md` 的 expected DocIR / expected SchemaIR / Validator result / workbook assertions。
 
-后续 Phase0-PoC 正在确认 IR 和 golden sample 边界。下一步不是直接实现 Validator 或 Workbook Generator，而是先 review `samples/candidates/b2eboc-b2e0061/` 下的 candidate IR，并形成 expected DocIR / SchemaIR。
+后续 Phase0-PoC 正在确认 expected IR 和 golden sample 边界。下一步不是直接实现 Validator 或 Workbook Generator，而是基于正式 IR 设计继续确认 `samples/candidates/b2eboc-b2e0061/` 下的 updated candidate，并形成 expected DocIR / SchemaIR。
 
 仍需确认：
 
