@@ -26,16 +26,18 @@ Draft. Applies to P0-T2 expected DocIR / SchemaIR work.
 
 | 列 | 含义 |
 |---|---|
-| `Field Name` | XML tag、attribute 或 JSON 字段名，不含父路径。 |
-| `Path` | 规范化完整路径，用于区分重复 tag。 |
+| `Index` | 面向人工 review 的层级序号，例如 `2.0`、`2.1`、`2.1.1`。 |
+| `Or` | 表达原文中的互斥选择关系；无互斥关系时留空。 |
+| `Message Item` | XML item name，不带尖括号；attribute 使用 `@version`。可用缩进表达父子层级。 |
+| `Mult.` | 出现次数，例如 `[1..1]`、`[0..1]`、`[0..1000]`。 |
 | `Type` | 面向人阅读的候选类型，例如 `String`、`Object`、`Decimal`。 |
-| `Length` | raw doc 中的长度或格式说明，不强行规范成唯一数字。 |
-| `Occurs` | 出现次数，例如 `1..1`、`0..1`、`0..1000`。 |
 | `Required` | `Y`、`N` 或 `C`。`C` 表示条件必填。 |
-| `Description` | 字段业务说明。 |
-| `Condition / Review` | 条件、枚举、冲突、推导说明和人工 review 提醒。 |
+| `说明` | 字段业务说明，保留 raw doc 中的中文含义。 |
+| `前置机校验点/格式` | raw doc 中前置机侧的格式或校验说明。 |
+| `接口平台校验点` | raw doc 中接口平台侧的校验说明。 |
+| `Review` | 不确定、冲突、推导说明和人工 review 提醒。 |
 
-DocIR 中的 `Path` 可以由表格层级推导，但必须在 review 信息中保留不确定点。DocIR 不负责把复杂条件转换为 DSL。
+DocIR 主表不展示完整 `Path`，避免人工 review 时被长路径淹没。完整 path 由 SchemaIR 表达；DocIR 必须通过 `Index`、`Message Item` 缩进和 review 信息保留足够层级线索。DocIR 不负责把复杂条件转换为 DSL。
 
 ## 3. SchemaIR 顶层字段
 
