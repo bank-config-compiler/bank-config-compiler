@@ -3,7 +3,7 @@
   "interfaceName": "公对私转账汇款",
   "messageFormat": "XML",
   "version": "120",
-  "sourceDocument": "samples/candidates/b2eboc-b2e0061/raw-doc.md",
+  "sourceDocument": "samples/golden/b2eboc-b2e0061/raw-doc.md",
   "envelope": {
     "rootPath": "Root.bocb2e",
     "description": "BOCB2E 请求/响应共享 envelope，包含 XML 顶层属性、head 和 trans。",
