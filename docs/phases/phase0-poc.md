@@ -14,9 +14,9 @@ Phase0-PoC 目标是确认样例、格式、链路和技术边界，证明项目
 
 Skill、Agent 或 Dify workflow 可以作为 LLM 草稿生成组件，但不能作为 Phase0 的完整交付物，因为它们不能单独证明控制、校验、人工确认和回归边界。
 
-当前 Phase0 样例输入已落地：`docs/reference/samples/b2eboc/b2e0061.md`。该 raw doc 可用于后续构造 golden sample，但在 expected DocIR、expected SchemaIR、Validator 结果和 workbook assertions 确认前，仍不是完整 golden sample。
+当前 Phase0 样例输入已落地：`docs/reference/samples/b2eboc/b2e0061.md`。基于该 raw doc 的 review-only candidate IR 已落地到 `samples/candidates/b2eboc-b2e0061/`；在 expected DocIR、expected SchemaIR、Validator 结果和 workbook assertions 确认前，它仍不是完整 golden sample。
 
-当前执行计划见 `docs/planning/phase0-poc-plan.md`。已完成的 Python CLI、`ingest`、workspace artifact 协议和 `check` 作为 Phase0 bootstrap 工作记录；Phase0 仍受 IR 未确认阻塞，下一步应先基于 `b2e0061.md` 产出 candidate DocIR / SchemaIR 并人工 review。
+当前执行计划见 `docs/planning/phase0-poc-plan.md`。已完成的 Python CLI、`ingest`、workspace artifact 协议、`check` 和 P0-T1 candidate IR 作为 Phase0 bootstrap / candidate 工作记录；Phase0 仍受 expected IR 未确认阻塞，下一步应 review candidate DocIR / SchemaIR 并形成 golden sample boundary。
 
 ## 2. In Scope
 
