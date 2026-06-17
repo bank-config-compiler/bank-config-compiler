@@ -79,15 +79,21 @@ Raw doc 仍表示受控输入源。本次 `b2e0061` 样例以人工修正后的 
 
 ## Fields
 
-| Field Name | Path | Type | Length | Occurs | Required | Description | Condition / Review |
-|---|---|---|---|---|---|---|---|
-| acttyp | Root.bocb2e.trans.trn-b2e0061-rq.b2e0061-rq.toactn.acttyp | String | 0-3 | 0..1 | N | 收款账户类型 | 可空，默认借记卡。 |
+| Index | Or | Message Item | Mult. | Type | Required | 说明 | 前置机校验点/格式 | 接口平台校验点 | Review |
+|---|---|---|---|---|---|---|---|---|---|
+| 2.0 |  | `trn-b2e0061-rq` | [1..1] | Object | Y | 转账交易请求 |  |  | 交易包装节点。 |
+| 2.1 |  | `ceitinfo` | [0..1] | String | N | 数字签名 |  | 该标签由前置机自动添加，企业无需上送 | 是否进入可配置字段需确认。 |
+| 2.2 |  | `transtype` | [0..1] | String | N | 交易类型 | 不超过1位数字；可空 | 1 委托待授权；2 授权退回修改；非空只能为1或2 |  |
+| 2.3 |  | `b2e0061-rq` | [0..1000] | Object | Y | 转账请求内容 | 不超过1000笔 |  | 最小出现次数需确认。 |
+| 2.4 |  | 　`insid` | [1..1] | String | Y | 指令ID；客户端唯一标识 | 非空字符串；长度1-32 | 客户号下不能重复；不支持中文 |  |
 ```
+
+`Message Item` 存 XML item name，不带尖括号；XML attribute 使用 `@version` 形式。DocIR 字段主表不展示完整 `path`，避免人工 review 表过宽；完整 path 属于 SchemaIR 字段对象。层级通过 `Index` 和 `Message Item` 前的缩进表达。
 
 ### 2.5 Review 要点
 
 - 字段表是否完整，列是否错位，字段是否遗漏。
-- Path 是否明显错误；推导 path 是否标记 review 依据。
+- Message Item 层级是否能正确还原 XML 树；推导 path 是否能在 SchemaIR 中对应。
 - 请求组装和响应处理是否正确区分为 `ASSEMBLY` / `PARSE`。
 - 可复用 envelope/head 字段是否被保留。
 - 条件说明、枚举、长度冲突和平台/前置机约束是否保留。
