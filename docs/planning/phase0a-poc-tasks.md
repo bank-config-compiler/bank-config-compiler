@@ -33,7 +33,7 @@ Phase0a 不覆盖完整 Phase0 的 `Workbook Generator` 和 `Schema Workbook`。
 | TASK 4：SchemaIR Draft Generator 接口、stub 与 OpenAI-compatible adapter | Not Started | TASK 1、TASK 2、TASK 3 | LLM 配置可后置 | 基于 Final DocIR fixture 生成 SchemaIR Draft。 |
 | TASK 5：SchemaIR Validator | Not Started | TASK 2、TASK 4 | 无 | 输出字段级校验结果。 |
 | TASK 6：Phase0a Stub Golden Regression | Not Started | TASK 1、TASK 2、TASK 3、TASK 4、TASK 5 | 无 | 不依赖正式银行样例，作为自动化硬门禁。 |
-| TASK 7：正式脱敏银行样例接入 | Blocked | TASK 6 | 等待正式脱敏 `raw-doc.md` 和确认后的 expected IR | 接入正式 golden sample。 |
+| TASK 7：正式脱敏银行样例接入 | Blocked | TASK 6 | `b2e0061.md` raw doc 已提供；等待确认后的 expected IR 和 TASK 6 | 接入正式 golden sample。 |
 | TASK 8：README 与 docs-sync | Not Started | TASK 1 到 TASK 7 的实际实现结果 | 无 | 同步用户可见命令、配置和阶段状态。 |
 
 状态说明：
@@ -411,13 +411,13 @@ Dependencies：
 Dependencies：
 
 - TASK 6。
-- 用户提供正式脱敏 `raw-doc.md`。
+- 用户已提供正式 raw doc：`docs/reference/samples/b2eboc/b2e0061.md`。
 - 用户确认 `docir.expected.md`。
 - 用户确认 `schemair.expected.json`。
 
 输入：
 
-- 用户提供并确认可入库的正式脱敏 `raw-doc.md`。
+- 已入库的正式 raw doc：`docs/reference/samples/b2eboc/b2e0061.md`。
 - 人工确认后的 `docir.expected.md`。
 - 人工确认后的 `schemair.expected.json`。
 
@@ -494,15 +494,18 @@ Dependencies：
 
 ## 5. 待用户提供资产
 
-正式银行样例不阻塞 TASK 0 到 TASK 6。正式样例从 TASK 7 开始成为前置条件。
+正式银行 raw doc 已提供，不阻塞 TASK 0 到 TASK 6。正式样例从 TASK 7 开始成为前置条件。
 
-用户需要提供：
+已提供：
 
-- 正式脱敏 `raw-doc.md`。
+- `docs/reference/samples/b2eboc/b2e0061.md`
+
+仍需用户确认或补充：
+
 - 人工确认后的 `docir.expected.md`。
 - 人工确认后的 `schemair.expected.json`。
 
-如用户只能先提供 `raw-doc.md`，可先由后续执行者生成 DocIR / SchemaIR expected 初稿，再与用户逐字段确认。确认后的版本才能作为 golden fixture 入库。
+可先由后续执行者基于 `b2e0061.md` 生成 DocIR / SchemaIR expected 初稿，再与用户逐字段确认。确认后的版本才能作为 golden fixture 入库。
 
 脱敏要求：
 

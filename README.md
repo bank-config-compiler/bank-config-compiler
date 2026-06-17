@@ -53,15 +53,18 @@ Skill、Agent 或 Dify-style workflow 可以作为辅助组件，但不是完整
 - CLI 支持从 `.md` / `.txt` 输入文件创建 workspace，并保存 `raw-doc.md`。
 - Phase0a TASK 2：Workspace 产物协议。
 - CLI 支持校验 Phase0a workspace 的固定 artifact 名称、UTF-8 no BOM 编码和 JSON 可解析性。
+- Phase0 当前 reference raw doc 已提供：`docs/reference/samples/b2eboc/b2e0061.md`。
 
 尚未完成：
 
 - DocIR / SchemaIR 生成。
 - SchemaIR Validator。
 - Workbook Generator、Schema Workbook 和 golden regression。
+- 基于 `b2e0061.md` 的 expected DocIR / expected SchemaIR / Validator result。
 
 后续 Phase0-PoC 仍需确认：
 
+- 基于 `b2e0061.md` 的 expected DocIR 和 expected SchemaIR。
 - DocIR 最小格式和质量标准。
 - SchemaIR 最小字段、类型枚举和校验规则。
 - Schema Workbook 的 sheet、列、样式和结构化断言。
