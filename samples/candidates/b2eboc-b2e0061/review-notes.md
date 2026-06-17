@@ -2,7 +2,7 @@
 
 Status: 仅用于 human review，不是 golden sample，也不是 runtime contract。
 
-Review input: 本文件吸收 `human-review-result.md` 中的人工评审结论；`human-review-result.md` 保留原文，不在本轮重写。
+Review input: 本文件吸收当前人工评审反馈；评审过程中的 scratch 文件不作为 repository artifact 管理。
 
 ## 必须确认
 

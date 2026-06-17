@@ -53,7 +53,7 @@ Skill、Agent 或 Dify-style workflow 可以作为辅助组件，但不是完整
 - CLI 支持校验 workspace 的固定 artifact 名称、UTF-8 no BOM 编码和 JSON 可解析性。
 - Phase0 当前 reference raw doc 已提供：`docs/reference/samples/b2eboc/b2e0061.md`。
 - 正式 DocIR / SchemaIR 设计基线已沉淀到 `docs/design/intermediate-representations.md`、`docs/design/ir-field-reference.md` 和 `docs/adr/ADR-0005-schemair-envelope-and-evidence.md`。
-- `samples/candidates/b2eboc-b2e0061/` 已提供基于 human review 更新后的 review-only candidate DocIR / SchemaIR、review notes 和 review 输入记录。
+- `samples/candidates/b2eboc-b2e0061/` 已提供基于 human review 更新后的 review-only candidate DocIR / SchemaIR 和 review notes。
 
 尚未完成：
 

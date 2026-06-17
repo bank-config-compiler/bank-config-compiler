@@ -58,8 +58,7 @@ samples/candidates/b2eboc-b2e0061/
 ├── raw-doc.md
 ├── docir.candidate.md
 ├── schemair.candidate.json
-├── review-notes.md
-└── human-review-result.md
+└── review-notes.md
 ```
 
 完成标志：
