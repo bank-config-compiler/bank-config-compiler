@@ -10,13 +10,19 @@ Golden sample 是后续回归、Prompt 调整、Validator 修改、Workbook Gene
 
 Golden sample 不只是演示样例。它必须证明系统对真实或接近真实银行接口文档有帮助，并能让团队判断输出变化是可接受调整还是退化。
 
+Phase0 先采用 Review Golden sample：冻结 expected DocIR、expected SchemaIR 和 expected review notes。Review notes 中的 unresolved questions 是样例价值的一部分，用于定义后续生成器必须暴露的人工确认入口，而不是成为 sample 的阻塞项。
+
 ## 2. 最低要求
 
-正式 golden sample 至少应覆盖：
+正式 Review Golden sample 至少应覆盖：
 
 - 真实脱敏 Raw Docs。
-- 期望或确认后的 DocIR。
-- 期望或确认后的 SchemaIR。
+- 期望 DocIR。
+- 期望 SchemaIR。
+- 期望 review notes，包含低置信、推导、冲突和人工确认项。
+
+Trusted chain 阶段再补充：
+
 - Validator 结果。
 - Schema Workbook expected assertions。
 
@@ -30,26 +36,33 @@ Golden sample 不只是演示样例。它必须证明系统对真实或接近真
 
 - 当前 SchemaIR / Schema Workbook 设计依据。
 - CLI ingest smoke test 的输入。
-- 后续构造 b2e0061 golden sample 的 raw doc 来源。
+- 已构造 b2e0061 Review Golden sample 的 raw doc 来源。
 
 它不能用于：
 
 - 直接作为 MVP 验收。
-- 在缺少 expected DocIR / SchemaIR / Validator / workbook assertions 时作为回归基准。
+- 在缺少 expected DocIR / SchemaIR / review notes 时作为回归基准。
 - 将历史导出 JSON 重新定义为目标产物或 Workbook Generator 输入。
 - 证明 Schema Workbook 指导人工配置能力。
 
-## 4. 候选目录结构
+## 4. Review Golden 目录结构
 
 ```text
 samples/golden/b2eboc-b2e0061/
 ├── raw-doc.md
 ├── docir.expected.md
 ├── schemair.expected.json
+├── review-notes.expected.md
+└── README.md
+```
+
+Trusted chain 阶段可继续添加：
+
+```text
+samples/golden/b2eboc-b2e0061/
 ├── schemair-validation.expected.json
 ├── workbook-assertions.expected.json
-├── schema-workbook.expected.xlsx
-└── README.md
+└── schema-workbook.expected.xlsx
 ```
 
 `schema-workbook.expected.xlsx` 可作为人工查看用的参考输出。自动回归不应比较整个 xlsx 二进制，而应读取 workbook 后按 `workbook-assertions.expected.json` 做结构化断言。

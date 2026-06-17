@@ -8,14 +8,14 @@
 | Interface Name | 公对私转账汇款 | 直接来自交易标题。 |
 | Message Format | XML | 直接来自 BOCB2E 文件格式说明。 |
 | Version | 120 | 推测值；协议说明推荐 `120`，但示例也出现 `version="100"`，不确定性在 SchemaIR envelope 字段中标记。 |
-| Source Document | samples/candidates/b2eboc-b2e0061/raw-doc.md | 本 candidate 使用人工修正后的 raw-doc 作为样例 source。 |
-| Candidate Status | REVIEW_ONLY | 仅用于 human review，不是 golden sample，也不是 runtime contract。 |
+| Source Document | samples/golden/b2eboc-b2e0061/raw-doc.md | 本 Review Golden sample 使用人工修正后的 raw-doc 作为样例 source。 |
+| Review Golden Status | REVIEW_GOLDEN | 用于冻结 expected DocIR / SchemaIR / review notes；不是 final business answer，也不是 runtime final contract。 |
 
 ---
 
 # Source Context / 来源上下文
 
-BOCB2E 使用 HTTP POST 和 `application/xml` 内容。XML payload 包含一个 `<bocb2e>` block，并包含 `<head>` 与 `<trans>` 子节点。本 candidate DocIR 保留通用 envelope/head 上下文，同时只抽取 b2e0061 的 `ASSEMBLY` / `PARSE` 交易消息。
+BOCB2E 使用 HTTP POST 和 `application/xml` 内容。XML payload 包含一个 `<bocb2e>` block，并包含 `<head>` 与 `<trans>` 子节点。本 Review Golden DocIR 保留通用 envelope/head 上下文，同时只抽取 b2e0061 的 `ASSEMBLY` / `PARSE` 交易消息。
 
 从 raw-doc 保留的通用规则：
 
@@ -135,4 +135,4 @@ BOCB2E 使用 HTTP POST 和 `application/xml` 内容。XML payload 包含一个 
 ## Conditions
 
 - 报文级 `status` 与每条响应内 `status` 是两个不同层级下的重复 tag，必须由 SchemaIR path 区分。
-- 响应字段表未给出大部分字段长度和必填性，本 candidate 需人工确认。
+- 响应字段表未给出大部分字段长度和必填性，本 Review Golden sample 期望保留人工确认项。

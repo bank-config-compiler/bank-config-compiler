@@ -24,8 +24,8 @@ Phase0a 不再作为独立 active phase。已完成的 CLI、`ingest`、workspac
 |---|---|---|---|---|
 | P0-T0：Bootstrap | Done | 无 | 无 | CLI 可导入 raw doc，workspace artifact 协议和 `check --profile raw|phase0a` 已可用。 |
 | P0-T1：`b2e0061` IR candidate / review | Done | P0-T0 | 无 | 已产出并按 human review 更新 candidate DocIR / SchemaIR，正式 IR 设计已沉淀，review-only 边界清晰。 |
-| P0-T2：Golden sample boundary | Next | P0-T1 | expected IR 和 workbook assertions 待确认 | 形成 expected DocIR、expected SchemaIR、validator expected result 和 workbook assertions。 |
-| P0-T3：Trusted chain | Blocked | P0-T2 | golden sample 未确认 | 实现 SchemaIR Validator、Workbook Generator 和 golden regression。 |
+| P0-T2：Review Golden sample boundary | Done | P0-T1 | 无 | 已形成 b2e0061 Review Golden sample，包含 expected DocIR、expected SchemaIR 和 expected review notes。 |
+| P0-T3：Trusted chain | Next | P0-T2 | Validator result 和 workbook assertions 尚未实现 | 实现 SchemaIR Validator、Workbook Generator、expected Validator result、workbook assertions 和 golden regression。 |
 | P0-T4：Draft generators | Blocked | P0-T3 | trusted chain 未完成 | 接入 stub / OpenAI-compatible draft generator，LLM 只生成 draft。 |
 
 状态说明：
@@ -36,58 +36,58 @@ Phase0a 不再作为独立 active phase。已完成的 CLI、`ingest`、workspac
 
 ## 3. 当前阻塞点
 
-当前不能直接实现正式 trusted chain，因为 formal IR 设计和 updated candidate IR 已产出，但 expected/golden artifacts 尚未确认：
+当前可以进入 trusted chain，但 Phase0-PoC 尚未完成，因为 Validator、Workbook Generator 和结构化回归断言仍未实现：
 
-- `DocIR` candidate 已按 metadata table 结构更新，但 expected DocIR 尚未冻结。
-- `SchemaIR` candidate 已包含 `envelope`、`evidence`、confidence 阈值和 `ASSEMBLY` / `PARSE` 消息，但 expected SchemaIR 尚未冻结。
-- `b2e0061.md` 对应的 expected DocIR / expected SchemaIR 尚未形成。
-- workbook assertions 依赖 confirmed SchemaIR，尚未确认。
+- `samples/golden/b2eboc-b2e0061/docir.expected.md` 已冻结 expected DocIR。
+- `samples/golden/b2eboc-b2e0061/schemair.expected.json` 已冻结 expected SchemaIR。
+- `samples/golden/b2eboc-b2e0061/review-notes.expected.md` 已冻结 expected review output，未确认业务问题是样例的一部分。
+- `schemair-validation.expected.json` 和 `workbook-assertions.expected.json` 仍需随 trusted chain 实现补齐。
 
-在这些内容确认前，不应实现正式 SchemaIR Validator、Workbook Generator 或 golden regression，避免把候选 IR 固化为 runtime contract。
+在 trusted chain 完成前，不应声称 Phase0 已具备完整 Validator、Workbook Generator 或 golden regression。
 
 ## 4. 下一步任务
 
 ### P0-T1：`b2e0061` IR candidate / review
 
-目标：基于 `docs/reference/samples/b2eboc/b2e0061.md` 产出用于人工 review 的 candidate IR。当前 P0-T1 产物已落地到 `samples/candidates/b2eboc-b2e0061/`。
+目标：基于 `docs/reference/samples/b2eboc/b2e0061.md` 产出用于人工 review 的 candidate IR。P0-T1 产物已在 P0-T2 提升为 `samples/golden/b2eboc-b2e0061/` 下的 Review Golden sample。
 
-已产出：
+已提升为：
 
 ```text
-samples/candidates/b2eboc-b2e0061/
+samples/golden/b2eboc-b2e0061/
 ├── raw-doc.md
-├── docir.candidate.md
-├── schemair.candidate.json
-└── review-notes.md
+├── docir.expected.md
+├── schemair.expected.json
+├── review-notes.expected.md
+└── README.md
 ```
 
 完成标志：
 
-- `docir.candidate.md` 可用于确认 DocIR 最小格式和质量标准。
-- `schemair.candidate.json` 可用于确认 SchemaIR 字段集合、枚举和来源规则。
-- `review-notes.md` 明确列出未确认字段、推导点和人工确认问题。
+- `docir.expected.md` 固定 DocIR 最小格式和质量标准。
+- `schemair.expected.json` 固定 SchemaIR 字段集合、枚举和来源规则。
+- `review-notes.expected.md` 明确列出未确认字段、推导点和人工确认问题。
 
-注意：candidate 不是 golden，不作为 runtime contract。
+注意：Review Golden sample 不是 final business answer，也不是 runtime final contract。
 
-### P0-T2：Golden sample boundary
+### P0-T2：Review Golden sample boundary
 
-目标：review P0-T1 candidate IR，经人工确认后形成正式 golden sample 输入。
+目标：将 P0-T1 candidate IR 提升为 Review Golden sample，冻结 expected DocIR、expected SchemaIR 和 expected review notes。
 
-P0-T2 应以 formal IR 设计和 `samples/candidates/b2eboc-b2e0061/` 下的 updated candidate 为输入；历史导出 JSON 只能作为人工对照，不作为字段来源、expected SchemaIR 来源或回归输入。
+P0-T2 以 formal IR 设计和 human review 更新后的 candidate 为输入；历史导出 JSON 只能作为人工对照，不作为字段来源、expected SchemaIR 来源或回归输入。
 
-正式 golden sample 至少应包含：
+Review Golden sample 已包含：
 
 - `raw-doc.md`
 - `docir.expected.md`
 - `schemair.expected.json`
-- `schemair-validation.expected.json`
-- `workbook-assertions.expected.json`
+- `review-notes.expected.md`
 
 完成标志：
 
-- expected DocIR / SchemaIR 已经人工确认。
-- workbook assertions 的最小检查范围已确认。
-- 后续 Validator 和 Workbook Generator 可以基于 confirmed artifacts 实施。
+- expected DocIR / SchemaIR 已冻结为生成器回归目标。
+- review notes 中的 unresolved questions 已冻结为 expected review output。
+- 后续 Validator 和 Workbook Generator 可以基于 Review Golden sample 实施。
 
 ### P0-T3：Trusted chain
 
@@ -97,6 +97,7 @@ P0-T2 应以 formal IR 设计和 `samples/candidates/b2eboc-b2e0061/` 下的 upd
 
 - SchemaIR Validator。
 - Workbook Generator。
+- `schemair-validation.expected.json`。
 - 结构化 workbook assertions。
 - golden regression。
 
