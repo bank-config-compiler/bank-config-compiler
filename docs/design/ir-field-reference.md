@@ -26,7 +26,7 @@ Draft. Applies to P0-T2 expected DocIR / SchemaIR work.
 
 | 列 | 含义 |
 |---|---|
-| `Index` | 面向人工 review 的层级序号，例如 `2.0`、`2.1`、`2.1.1`。 |
+| `Index` | 面向人工 review 的结构编号，例如 `2`、`2.1`、`2.1.1`；同级递增最后一段，子节点追加一段。 |
 | `Or` | 表达原文中的互斥选择关系；无互斥关系时留空。 |
 | `Message Item` | XML item name，不带尖括号；attribute 使用 `@version`。可用缩进表达父子层级。 |
 | `Mult.` | 出现次数，例如 `[1..1]`、`[0..1]`、`[0..1000]`。 |
@@ -37,7 +37,7 @@ Draft. Applies to P0-T2 expected DocIR / SchemaIR work.
 | `接口平台校验点` | raw doc 中接口平台侧的校验说明。 |
 | `Review` | 不确定、冲突、推导说明和人工 review 提醒。 |
 
-DocIR 主表不展示完整 `Path`，避免人工 review 时被长路径淹没。完整 path 由 SchemaIR 表达；DocIR 必须通过 `Index`、`Message Item` 缩进和 review 信息保留足够层级线索。DocIR 不负责把复杂条件转换为 DSL。
+DocIR 主表不展示完整 `Path`，避免人工 review 时被长路径淹没。完整 path 由 SchemaIR 表达；DocIR 必须通过 `Index`、`Message Item` 缩进和 review 信息保留足够层级线索。`Index` 不是展示行号，不能用连续行号跨越层级；例如 `2.3.4` 的子节点应编号为 `2.3.4.1`，而不是后续行号 `2.17`。DocIR 不负责把复杂条件转换为 DSL。
 
 ## 3. SchemaIR 顶层字段
 
