@@ -8,6 +8,8 @@ Reference / Draft. Not golden sample.
 
 本目录是当前唯一维护的 reference sample。已过期的 toy 示例不再保留，避免与当前 `SchemaIR -> Schema Workbook` pivot 混淆。
 
+`b2e0061.md` 已作为 Phase0 当前 raw doc 样例输入。它还不是完整 golden sample；后续仍需确认 expected DocIR、expected SchemaIR、Validator 结果和 workbook assertions。
+
 | 文件 | 说明 | 当前用途 |
 |---|---|---|
 | `b2e0061.md` | BOCB2E 公对私转账汇款接口 raw doc，已脱敏或不含真实业务数据。 | 当前 SchemaIR / Schema Workbook 设计依据。 |

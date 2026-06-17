@@ -14,6 +14,8 @@ Phase0-PoC 目标是确认样例、格式、链路和技术边界，证明项目
 
 Skill、Agent 或 Dify workflow 可以作为 LLM 草稿生成组件，但不能作为 Phase0 的完整交付物，因为它们不能单独证明控制、校验、人工确认和回归边界。
 
+当前 Phase0 样例输入已落地：`docs/reference/samples/b2eboc/b2e0061.md`。该 raw doc 可用于后续构造 golden sample，但在 expected DocIR、expected SchemaIR、Validator 结果和 workbook assertions 确认前，仍不是完整 golden sample。
+
 ## 2. In Scope
 
 - 使用一份真实脱敏银行接口文档作为验证样例。
@@ -146,6 +148,8 @@ Schema Workbook 不直接落库、不直接导入目标系统。它应是配置�
 
 ## 6. 待确认问题
 
+- 基于 `b2e0061.md` 的 expected DocIR。
+- 基于 `b2e0061.md` 的 expected SchemaIR。
 - DocIR 最小格式和质量标准。
 - SchemaIR 最小字段集合、字段类型枚举和校验规则。
 - `sourceText` 粒度、推导规则和 `uncertain` 标记规则。
