@@ -2,13 +2,13 @@
 
 ## Status
 
-Draft.
+Archived bootstrap plan.
 
 ## 1. 目标与边界
 
-Phase0a-PoC 是 `docs/phases/phase0-poc.md` 中完整 Phase0-PoC 的子阶段。本阶段目标是先证明从真实或准真实文本输入到 DocIR / SchemaIR / Validator / golden regression 的无 UI 链路可独立运行。
+Phase0a-PoC 是 `docs/phases/phase0-poc.md` 中完整 Phase0-PoC 的 bootstrap 子阶段。当前已完成范围只包括 Python CLI 骨架、`ingest`、workspace artifact 协议和 `check`。
 
-Phase0a 覆盖链路：
+早期 Phase0a 草案曾计划覆盖以下链路：
 
 ```text
 Raw Docs
@@ -20,7 +20,9 @@ Raw Docs
 → golden regression
 ```
 
-Phase0a 不覆盖完整 Phase0 的 `Workbook Generator` 和 `Schema Workbook`。因此 Phase0a 通过不等于完整 Phase0-PoC 通过；后续应将 `Workbook Generator` 和 `Schema Workbook` 作为 Phase0b 或完整 Phase0 后续任务单独规划。
+最新结论是：Phase0a 不再继续承载完整 Phase0 的后续实现。完整 Phase0 的当前执行计划见 `docs/planning/phase0-poc-plan.md`。
+
+Phase0a 通过不等于完整 Phase0-PoC 通过。完整 Phase0 仍必须覆盖 `Final SchemaIR -> SchemaIR Validator -> Schema Workbook -> golden regression`。
 
 ## 2. Phase0a 进度总览
 
@@ -29,12 +31,12 @@ Phase0a 不覆盖完整 Phase0 的 `Workbook Generator` 和 `Schema Workbook`。
 | TASK 0：Phase0a planning 文档 | Done | 无 | 无 | 当前文档记录阶段边界、任务拆分和验证路径。 |
 | TASK 1：Python 项目与 CLI 骨架 | Done | TASK 0 | 无 | 已建立最小可运行 CLI 和 raw doc 保存能力。 |
 | TASK 2：Workspace 产物协议 | Done | TASK 1 | 无 | 已定义 Phase0a 文件产物命名和读写校验规则。 |
-| TASK 3：DocIR Draft Generator 接口、stub 与 OpenAI-compatible adapter | Not Started | TASK 1、TASK 2 | LLM 配置可后置 | 默认真实 LLM，stub 用于稳定测试。 |
-| TASK 4：SchemaIR Draft Generator 接口、stub 与 OpenAI-compatible adapter | Not Started | TASK 1、TASK 2、TASK 3 | LLM 配置可后置 | 基于 Final DocIR fixture 生成 SchemaIR Draft。 |
-| TASK 5：SchemaIR Validator | Not Started | TASK 2、TASK 4 | 无 | 输出字段级校验结果。 |
-| TASK 6：Phase0a Stub Golden Regression | Not Started | TASK 1、TASK 2、TASK 3、TASK 4、TASK 5 | 无 | 不依赖正式银行样例，作为自动化硬门禁。 |
-| TASK 7：正式脱敏银行样例接入 | Blocked | TASK 6 | `b2e0061.md` raw doc 已提供；等待确认后的 expected IR 和 TASK 6 | 接入正式 golden sample。 |
-| TASK 8：README 与 docs-sync | Not Started | TASK 1 到 TASK 7 的实际实现结果 | 无 | 同步用户可见命令、配置和阶段状态。 |
+| TASK 3：DocIR Draft Generator 接口、stub 与 OpenAI-compatible adapter | Superseded | TASK 1、TASK 2 | IR 未确认 | 不再按旧顺序直接实施；trusted chain 之前需先完成 `b2e0061` IR candidate / review。 |
+| TASK 4：SchemaIR Draft Generator 接口、stub 与 OpenAI-compatible adapter | Superseded | TASK 1、TASK 2、TASK 3 | IR 未确认 | 不再按旧顺序直接实施；draft generator 应在 trusted chain 后接入。 |
+| TASK 5：SchemaIR Validator | Superseded | TASK 2、TASK 4 | IR 未确认 | Validator 依赖 confirmed SchemaIR，不应基于 draft IR 直接实现。 |
+| TASK 6：Phase0a Stub Golden Regression | Superseded | TASK 1、TASK 2、TASK 3、TASK 4、TASK 5 | IR 未确认 | golden regression 应在 confirmed IR 和 workbook assertions 后建立。 |
+| TASK 7：正式脱敏银行样例接入 | Superseded | TASK 6 | expected IR 未确认 | 改为先产出 `b2e0061` IR candidate 并人工 review。 |
+| TASK 8：README 与 docs-sync | Superseded | TASK 1 到 TASK 7 的实际实现结果 | 计划已调整 | 文档同步纳入完整 Phase0 当前计划。 |
 
 状态说明：
 
@@ -42,6 +44,7 @@ Phase0a 不覆盖完整 Phase0 的 `Workbook Generator` 和 `Schema Workbook`。
 - `In Progress`：正在执行。
 - `Blocked`：存在明确外部输入或确认依赖。
 - `Done`：完成标志和验证均已满足。
+- `Superseded`：旧计划项已被完整 Phase0 当前执行计划替代，不作为下一步直接实施边界。
 
 ## 3. Out of Scope
 
@@ -56,6 +59,8 @@ Phase0a 不覆盖完整 Phase0 的 `Workbook Generator` 和 `Schema Workbook`。
 - 多银行、多报文标准泛化。
 
 ## 4. TASK 列表
+
+以下 TASK 0-2 是已完成的 Phase0a bootstrap 范围。TASK 3-8 保留为历史草案，不再作为可直接执行的后续计划；后续执行顺序以 `docs/planning/phase0-poc-plan.md` 为准。
 
 ### TASK 0：Phase0a planning 文档
 
@@ -84,8 +89,8 @@ Dependencies：
 
 完成标志：
 
-- 后续 TASK 可直接按本文档执行，无需重新解释 Phase0a 与完整 Phase0 的边界。
-- 文档明确记录 TASK、依赖关系、验证路径和正式样例接入前置条件。
+- 已记录当时的 Phase0a 任务、依赖关系、验证路径和正式样例接入前置条件。
+- 当前后续执行不再以本文档的 TASK 3-8 为准，应改以 `docs/planning/phase0-poc-plan.md` 为准。
 
 验证命令：
 
@@ -494,7 +499,7 @@ Dependencies：
 
 ## 5. 待用户提供资产
 
-正式银行 raw doc 已提供，不阻塞 TASK 0 到 TASK 6。正式样例从 TASK 7 开始成为前置条件。
+本节保留 Phase0a 旧计划中的资产状态。当前完整 Phase0 的下一步不是直接进入旧 TASK 7，而是先基于已提供的 raw doc 产出 IR candidate 并人工 review。
 
 已提供：
 
@@ -505,7 +510,7 @@ Dependencies：
 - 人工确认后的 `docir.expected.md`。
 - 人工确认后的 `schemair.expected.json`。
 
-可先由后续执行者基于 `b2e0061.md` 生成 DocIR / SchemaIR expected 初稿，再与用户逐字段确认。确认后的版本才能作为 golden fixture 入库。
+可先由后续执行者基于 `b2e0061.md` 生成 DocIR / SchemaIR candidate，再与用户逐字段确认。确认后的版本才能整理为 expected artifacts 并作为 golden fixture 入库。
 
 脱敏要求：
 
@@ -534,7 +539,7 @@ Dependencies：
 - 文档自检。
 - `git diff --check`
 
-后续实现 TASK 的最低验证要求：
+后续完整 Phase0 实现的最低验证要求：
 
 - CLI smoke test。
 - unit test。

@@ -12,4 +12,5 @@ Active.
 
 ## Documents
 
+- `phase0-poc-plan.md`：完整 Phase0-PoC 的当前执行计划、Phase0a bootstrap 状态、IR blocker 和后续任务顺序。
 - `phase0a-poc-tasks.md`：Phase0a-PoC 的任务拆分、依赖关系、验证路径和正式样例接入前置条件。

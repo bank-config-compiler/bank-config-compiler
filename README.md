@@ -45,7 +45,7 @@ Skill、Agent 或 Dify-style workflow 可以作为辅助组件，但不是完整
 
 ## 当前实现状态
 
-当前仓库已开始实现 Phase0a-PoC 的无 UI CLI 链路。
+当前仓库已完成 Phase0a-PoC 的 bootstrap 子阶段。
 
 已完成：
 
@@ -60,9 +60,11 @@ Skill、Agent 或 Dify-style workflow 可以作为辅助组件，但不是完整
 - DocIR / SchemaIR 生成。
 - SchemaIR Validator。
 - Workbook Generator、Schema Workbook 和 golden regression。
-- 基于 `b2e0061.md` 的 expected DocIR / expected SchemaIR / Validator result。
+- 基于 `b2e0061.md` 的 expected DocIR / expected SchemaIR / Validator result / workbook assertions。
 
-后续 Phase0-PoC 仍需确认：
+后续 Phase0-PoC 正在确认 IR 和 golden sample 边界。下一步不是直接实现 Validator 或 Workbook Generator，而是先基于 `b2e0061.md` 产出 candidate DocIR / SchemaIR 并人工 review。
+
+仍需确认：
 
 - 基于 `b2e0061.md` 的 expected DocIR 和 expected SchemaIR。
 - DocIR 最小格式和质量标准。
