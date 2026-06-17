@@ -1,26 +1,26 @@
 # b2e0061 Review Golden Sample
 
-## Status
+## 状态
 
 Review Golden.
 
-## Purpose
+## 目的
 
-This sample freezes the expected DocIR, SchemaIR, and review notes for the `b2e0061` raw document. It is not a final business answer and is not a runtime final contract.
+本样例冻结 `b2e0061` raw document 对应的 expected DocIR、SchemaIR 和 review notes。它不是最终业务答案，也不是运行时最终契约。
 
-The unresolved questions in `review-notes.expected.md` are intentional. They define the review output that later generators must preserve, including uncertainty, confidence, evidence, and human confirmation points.
+`review-notes.expected.md` 中的未确认问题是有意保留的。它们定义后续生成器必须保留的 review 输出，包括不确定性、confidence、evidence 和人工确认点。
 
-## Artifacts
+## 产物
 
-| Artifact | Purpose |
+| 产物 | 用途 |
 |---|---|
-| `raw-doc.md` | Controlled raw document source for this sample. |
-| `docir.expected.md` | Expected DocIR structure generated from the raw document. |
-| `schemair.expected.json` | Expected SchemaIR generated from the expected DocIR. |
-| `review-notes.expected.md` | Expected human review notes, including unresolved confirmation points. |
+| `raw-doc.md` | 本样例的受控 raw document 来源。 |
+| `docir.expected.md` | 从 raw document 生成的 expected DocIR 结构。 |
+| `schemair.expected.json` | 从 expected DocIR 生成的 expected SchemaIR。 |
+| `review-notes.expected.md` | expected 人工 review notes，包含未解决的确认点。 |
 
-## Boundary
+## 边界
 
-- Historical exported JSON may be used only as human review reference.
-- Historical exported JSON must not be used to fill fields, enter expected SchemaIR, or act as regression input.
-- `schemair-validation.expected.json` and `workbook-assertions.expected.json` are intentionally deferred until Validator and Workbook assertion boundaries are implemented.
+- 历史导出 JSON 只能作为人工 review 对照材料。
+- 历史导出 JSON 不得用于补字段、进入 expected SchemaIR，或作为回归输入。
+- `schemair-validation.expected.json` 和 `workbook-assertions.expected.json` 有意延后到 Validator 与 Workbook assertion 边界实现时再补齐。
