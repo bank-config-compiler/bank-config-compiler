@@ -26,6 +26,8 @@ Workbook Generator 必须基于通过校验的 `Final SchemaIR` 确定性生成 
 
 如果某个接口暂时只有一个方向，仍应保留固定 sheet；缺失方向的字段 sheet 可以为空，并在 `Overview` 标记。
 
+不新增独立 `ENVELOPE` sheet。`ASSEMBLY` 和 `PARSE` sheet 都应先展示 `SchemaIR.envelope.fields` 中的 BOCB2E envelope/head/trans 字段，再展示对应方向的交易消息字段。重复展示 envelope/head 是有意设计，用于让配置人员在单个方向 sheet 内完整 review 报文结构。
+
 ## 3. 字段 sheet 列
 
 `ASSEMBLY` 和 `PARSE` sheet 使用相同列：
@@ -51,6 +53,18 @@ Workbook Generator 必须基于通过校验的 `Final SchemaIR` 确定性生成 
 | `Uncertain` | SchemaIR | 是否不确定。 |
 | `Review Note` | SchemaIR | 人工 Review 备注。 |
 | `Config Guidance` | SchemaIR / generator | 配置建议。 |
+
+字段排序规则：
+
+1. 先输出 envelope/head/trans 字段。
+2. 再输出当前方向的交易 wrapper、payload、业务字段或响应字段。
+3. 同一字段集合内按 `Path` 层级和原文顺序稳定排序。
+
+字段来源规则：
+
+- `Source Text` 必须来自 SchemaIR 字段，不允许由 generator 补写。
+- `Evidence Kind` 后续可以作为列加入 workbook；Phase0 最小 workbook 可先把 evidence 信息合并到 `Review Note` 或 `Warnings`。
+- `uncertain=true`、`confidence < 0.9` 或 `evidence.kind != "DIRECT"` 的字段必须进入 `Warnings`。
 
 ## 4. 格式规则
 
