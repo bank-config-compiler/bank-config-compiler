@@ -1,36 +1,36 @@
-# b2e0061 IR Candidate Review Notes / 评审记录
+# b2e0061 IR Candidate Review Notes / 人工评审说明
 
-Status: 仅用于 review，不是 golden sample，也不是 runtime contract。
+Status: 仅用于 human review，不是 golden sample，也不是 runtime contract。
 
-## 已确认的 Candidate 决定
+Review input: 本文件吸收 `human-review-result.md` 中的人工评审结论；`human-review-result.md` 保留原文，不在本轮重写。
 
-- SchemaIR 范围是 b2e0061 交易消息，不包含可复用的 BOCB2E `head` / 完整 envelope 模型。
-- 当 `标记1-4` 层级清晰时，DocIR 填入推导出的完整 path。
-- SchemaIR 包含 XML 容器节点，便于 workbook 缩进和父子关系 review。
-- `sourceText` 使用字段行级 Markdown 证据。
-- XML 文本值采用保守类型策略：账号、联行号、币种、枚举和流水号即使原文写数码/数字，也保留为 `string`。
-- 保留 `confidence`，但主要 review 信号由 `uncertain`、`uncertainReason` 和 `reviewNote` 承载。
+## 必须确认
 
-## 需要人工确认的问题
+1. `Root.bocb2e.@version` 的配置口径。SchemaIR 顶层 `version` 暂保留推测值 `120`；但 raw-doc 示例出现 `version="100"`，因此 envelope 字段将 `uncertain=true`、`evidence.kind=DERIVED`。
+2. `Root.bocb2e.@locale` 与观察到的 `Root.bocb2e.@lang` 是否需要同时支持。协议说明使用 `locale`，示例使用 `lang="chs"`。
+3. 请求报文 `<b2e0061-rq>` 原文只写“不超过1000笔”。当前 candidate 保留 `occurs: "0..1000"`、`multiple: true`，同时将 `required=true` 标为待确认；需要确认请求最小出现次数是否应为 `1`。
+4. `ceitinfo` 是否进入配置人员可编辑范围。字段存在于请求表，但原文说明“该标签由前置机自动添加，企业无需上送”。
+5. 多个字段同时存在前置机约束和接口平台约束，后续 Validator 应采用更严格约束、更宽松约束，还是同时展示两组约束，仍需明确。
+6. 响应状态字段正式 tag。b2e0061 响应表使用 `rspmsg`，通用示例出现 `errmsg`；当前 SchemaIR 使用 `rspmsg` 并保留 review note。
 
-1. `version` is set to `120` from the BOCB2E protocol description, but raw examples also use `version="100"`. Confirm whether SchemaIR top-level `version` should mean protocol version, candidate default, or per-sample observed value.
-2. Request payload `<b2e0061-rq>` says `不超过1000笔`; this candidate maps it to `occurs: "0..1000"` and `multiple: true`, with `uncertain=true`. Confirm whether minimum should be `1` for actual requests.
-3. Response payload `<b2e0061-rs>` explicitly says `(0..1000)` and is mapped to `0..1000`.
-4. `ceitinfo` is included because it appears in the request table, but the raw doc says it is automatically added by the front-end and enterprises do not upload it. Confirm whether it remains in SchemaIR with config guidance or is excluded from user-configurable workbook rows.
-5. Several fields have different front-end and platform constraints. The candidate preserves both in `description` / `conditionText`; confirm whether validator should later prefer stricter, looser, or dual constraints.
-6. `fribkn` platform text first says nullable 5 digits, while the front-end format allows nullable 5 or 12 digits. Candidate uses `0,5,12` in `length.raw` and `reviewNote`.
-7. `fractn` and `toactn` are treated as required containers because their children contain required fields, but the raw doc does not explicitly state container requiredness.
-8. `tobknm` is mapped as `required=false` with `conditionText` because it is required when `toibkn` is empty.
-9. `trftime` raw text contains `HH1000（00000-230000）默认为000000`, which appears inconsistent with `HHMMSS`. Candidate keeps `dataType: "string"`, `format: "HHMMSS"`, and marks the row uncertain.
-10. Response `rspmsg` is used from the b2e0061 table, while the common response example uses `<errmsg>OK</errmsg>`. Confirm whether `rspmsg` is the correct formal tag for SchemaIR.
-11. Response fields `rspcod`, `rspmsg`, `insid`, and `obssid` have no dedicated length/format constraints in the b2e0061 response table. Candidate keeps length values null and marks lower confidence where needed.
-12. Duplicate tag names such as `status`, `rspcod`, `rspmsg`, and `actacn` are resolved by full `path`; confirm this is enough for workbook reviewers.
-13. Historical export JSON files were not used to add fields. Confirm whether P0-T2 expected SchemaIR may compare against those exports for review only.
+## 建议关注
 
-## Candidate 质量检查
+1. `fractn`、`toactn`、响应内 `status` 等容器字段的必填性来自子字段或消息结构推导，不是字段行直接给出的显式约束。
+2. `fribkn`、付款账号 `actacn`、`trnamt`、`comacn` 等字段存在前置机和平台约束不一致，已降低 confidence 或标记 `uncertain=true`。
+3. `trftime` 已按用户修正后的 raw-doc 使用 `HH0000（000000-230000）`，但仍需要确认是否只允许整点时间。
+4. `status`、`rspcod`、`rspmsg`、`actacn` 等重复 tag name 需要依赖完整 `path` 区分；Workbook review 时应优先展示 path。
+5. Workbook 不新增独立 `ENVELOPE` sheet；`ASSEMBLY` 与 `PARSE` sheet 都会先展示 envelope/head 字段，再展示对应方向交易字段。这种重复是有意设计，便于单方向 review。
 
-- 请求和响应方向均已覆盖。
-- 每个 SchemaIR 字段都有行级 `sourceText`。
-- 纯关闭 tag 行未进入 SchemaIR 字段。
-- 未引入目标系统 import ID、parent ID、approval status 等历史导出专有字段。
-- 条件以文本保留，P0-T1 不转换为正式 DSL。
+## 低风险说明
+
+1. 本 candidate 使用 `samples/candidates/b2eboc-b2e0061/raw-doc.md` 作为受控样例 source。若源文档本身错误，应先修正 raw-doc，再进入 DocIR / SchemaIR 转换。
+2. DocIR 允许写推导出的完整 path，但不确定项必须通过 review 信息标记；SchemaIR 字段通过 `confidence`、`uncertain` 和 `evidence` 表达推导风险。
+3. XML 文本值采用保守类型策略：账号、联行号、币种、枚举和流水号即使原文写数码/数字，也优先保留为 `string`。
+4. 条件规则仍以文本保留，P0-T2 不把条件转换为正式 DSL。
+5. 每次 DocIR / SchemaIR draft 生成都应产出类似本文件的 `review-notes.md`，用于 human review，而不是只给机器可读字段。
+
+## 历史导出 JSON 对照
+
+1. 历史导出 JSON 只能作为人工 review 对照材料，用来发现遗漏、命名差异或配置展示问题。
+2. 历史导出 JSON 不参与字段补全，不进入 expected SchemaIR，不作为回归输入，也不作为字段 `sourceText` / `evidence` 来源。
+3. 如果未来 review 中发现历史导出 JSON 与 raw-doc 冲突，应回到 raw-doc 或受控样例 source 修正，不在 SchemaIR 中静默吸收历史导出字段。
