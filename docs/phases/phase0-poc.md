@@ -16,7 +16,7 @@ Skill、Agent 或 Dify workflow 可以作为 LLM 草稿生成组件，但不能�
 
 当前 Phase0 样例输入已落地：`docs/reference/samples/b2eboc/b2e0061.md`。该 raw doc 可用于后续构造 golden sample，但在 expected DocIR、expected SchemaIR、Validator 结果和 workbook assertions 确认前，仍不是完整 golden sample。
 
-当前执行状态：Phase0a bootstrap 已完成 Python CLI、`ingest`、workspace artifact 协议和 `check`。完整 Phase0 仍受 IR 未确认阻塞；下一步应先基于 `b2e0061.md` 产出 candidate DocIR / SchemaIR 并人工 review，而不是直接实现 Validator、Workbook Generator 或 golden regression。
+当前执行计划见 `docs/planning/phase0-poc-plan.md`。已完成的 Python CLI、`ingest`、workspace artifact 协议和 `check` 作为 Phase0 bootstrap 工作记录；Phase0 仍受 IR 未确认阻塞，下一步应先基于 `b2e0061.md` 产出 candidate DocIR / SchemaIR 并人工 review。
 
 ## 2. In Scope
 
