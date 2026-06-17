@@ -17,10 +17,11 @@ Review Golden.
 | `raw-doc.md` | 本样例的受控 raw document 来源。 |
 | `docir.expected.md` | 从 raw document 生成的 expected DocIR 结构。 |
 | `schemair.expected.json` | 从 expected DocIR 生成的 expected SchemaIR。 |
+| `schemair-validation.expected.json` | expected SchemaIR Validator result，状态为 `passed_with_warnings`，无阻断错误。 |
 | `review-notes.expected.md` | expected 人工 review notes，包含未解决的确认点。 |
 
 ## 边界
 
 - 历史导出 JSON 只能作为人工 review 对照材料。
 - 历史导出 JSON 不得用于补字段、进入 expected SchemaIR，或作为回归输入。
-- `schemair-validation.expected.json` 和 `workbook-assertions.expected.json` 有意延后到 Validator 与 Workbook assertion 边界实现时再补齐。
+- `workbook-assertions.expected.json` 有意延后到 Workbook Generator 与 Workbook assertion 边界实现时再补齐。

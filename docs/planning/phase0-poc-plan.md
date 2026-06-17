@@ -25,23 +25,25 @@ Phase0a 不再作为独立 active phase。已完成的 CLI、`ingest`、workspac
 | P0-T0：Bootstrap | Done | 无 | 无 | CLI 可导入 raw doc，workspace artifact 协议和 `check --profile raw|phase0a` 已可用。 |
 | P0-T1：`b2e0061` IR candidate / review | Done | P0-T0 | 无 | 已产出并按 human review 更新 candidate DocIR / SchemaIR，正式 IR 设计已沉淀，review-only 边界清晰。 |
 | P0-T2：Review Golden sample boundary | Done | P0-T1 | 无 | 已形成 b2e0061 Review Golden sample，包含 expected DocIR、expected SchemaIR 和 expected review notes。 |
-| P0-T3：Trusted chain | Next | P0-T2 | Validator result 和 workbook assertions 尚未实现 | 实现 SchemaIR Validator、Workbook Generator、expected Validator result、workbook assertions 和 golden regression。 |
+| P0-T3：Trusted chain | In Progress | P0-T2 | Workbook Generator 和 workbook assertions 尚未实现 | 实现 SchemaIR Validator、Workbook Generator、expected Validator result、workbook assertions 和 golden regression。 |
 | P0-T4：Draft generators | Blocked | P0-T3 | trusted chain 未完成 | 接入 stub / OpenAI-compatible draft generator，LLM 只生成 draft。 |
 
 状态说明：
 
 - `Done`：完成标志和验证均已满足。
+- `In Progress`：已有可验证子产物，但任务完成标志尚未全部满足。
 - `Next`：下一步应优先执行。
 - `Blocked`：存在明确前置条件，不能直接实施。
 
 ## 3. 当前阻塞点
 
-当前可以进入 trusted chain，但 Phase0-PoC 尚未完成，因为 Validator、Workbook Generator 和结构化回归断言仍未实现：
+当前正在进入 trusted chain，但 Phase0-PoC 尚未完成，因为 Workbook Generator 和结构化回归断言仍未实现：
 
 - `samples/golden/b2eboc-b2e0061/docir.expected.md` 已冻结 expected DocIR。
 - `samples/golden/b2eboc-b2e0061/schemair.expected.json` 已冻结 expected SchemaIR。
 - `samples/golden/b2eboc-b2e0061/review-notes.expected.md` 已冻结 expected review output，未确认业务问题是样例的一部分。
-- `schemair-validation.expected.json` 和 `workbook-assertions.expected.json` 仍需随 trusted chain 实现补齐。
+- `samples/golden/b2eboc-b2e0061/schemair-validation.expected.json` 已冻结 expected Validator result。
+- `workbook-assertions.expected.json` 仍需随 Workbook Generator 和 workbook assertion 边界实现补齐。
 
 在 trusted chain 完成前，不应声称 Phase0 已具备完整 Validator、Workbook Generator 或 golden regression。
 

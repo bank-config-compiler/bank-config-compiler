@@ -23,7 +23,6 @@ Phase0 先采用 Review Golden sample：冻结 expected DocIR、expected SchemaI
 
 Trusted chain 阶段再补充：
 
-- Validator 结果。
 - Schema Workbook expected assertions。
 
 样例字段规模应接近真实业务，初步目标为 20 个以上字段。
@@ -52,6 +51,7 @@ samples/golden/b2eboc-b2e0061/
 ├── raw-doc.md
 ├── docir.expected.md
 ├── schemair.expected.json
+├── schemair-validation.expected.json
 ├── review-notes.expected.md
 └── README.md
 ```
@@ -60,7 +60,6 @@ Trusted chain 阶段可继续添加：
 
 ```text
 samples/golden/b2eboc-b2e0061/
-├── schemair-validation.expected.json
 ├── workbook-assertions.expected.json
 └── schema-workbook.expected.xlsx
 ```
@@ -83,6 +82,5 @@ Workbook 回归至少应断言：
 
 - Golden sample 是否放在 `samples/`，还是 `src/test/resources/`。
 - LLM 生成输出与 expected 文件如何比对。
-- Validator 结果是否保存 warning、error 和 coverage 信息。
 - Workbook 样式断言的最小集合。
 - `schema-workbook.expected.xlsx` 是否进入版本库，还是只保存结构化 assertions。

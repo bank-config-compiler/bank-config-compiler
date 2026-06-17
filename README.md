@@ -54,19 +54,18 @@ Skill、Agent 或 Dify-style workflow 可以作为辅助组件，但不是完整
 - Phase0 当前 reference raw doc 已提供：`docs/reference/samples/b2eboc/b2e0061.md`。
 - 正式 DocIR / SchemaIR 设计基线已沉淀到 `docs/design/intermediate-representations.md`、`docs/design/ir-field-reference.md` 和 `docs/adr/ADR-0005-schemair-envelope-and-evidence.md`。
 - `samples/golden/b2eboc-b2e0061/` 已提供 b2e0061 Review Golden sample，冻结 expected DocIR、expected SchemaIR 和 expected review notes。
+- SchemaIR Validator v1 已定义 `schemair-validation-result/v1` 输出契约，并为 b2e0061 固化 expected Validator result。
 
 尚未完成：
 
 - DocIR / SchemaIR 生成。
-- SchemaIR Validator。
-- Workbook Generator、Schema Workbook 和 golden regression。
-- 基于 `b2e0061.md` 的 expected Validator result / workbook assertions。
+- Workbook Generator、Schema Workbook 和 workbook assertions。
+- 完整 trusted chain golden regression。
 
-后续 Phase0-PoC 已完成 Review Golden sample 边界。下一步可以基于 `samples/golden/b2eboc-b2e0061/schemair.expected.json` 实现 Validator、Workbook Generator 和结构化回归断言。
+后续 Phase0-PoC 已完成 Review Golden sample 边界和 Validator expected result。下一步可以基于 `samples/golden/b2eboc-b2e0061/schemair.expected.json` 实现 Workbook Generator 和结构化回归断言。
 
 仍需确认：
 
-- Validator result 的 warning、error 和 coverage 输出格式。
 - Schema Workbook 的 sheet、列、样式和结构化断言。
 - Golden sample 回归命令。
 - 技术栈和无 UI 验证形态。
