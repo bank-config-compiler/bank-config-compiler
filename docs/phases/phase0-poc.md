@@ -154,7 +154,6 @@ Schema Workbook 不直接落库、不直接导入目标系统。它应是配置�
 
 ## 6. 待确认问题
 
-- Validator result 的 warning、error 和 coverage 输出格式。
 - Schema Workbook 样式、sheet 和列的最小验收标准。
 - 无 UI 端到端验证形态。
 - Golden sample 回归命令。

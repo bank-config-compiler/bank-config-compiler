@@ -1,0 +1,506 @@
+{
+  "contractVersion": "schemair-validation-result/v1",
+  "status": "passed_with_warnings",
+  "summary": {
+    "interfaceCode": "b2e0061",
+    "messageFormat": "XML",
+    "messageCount": 2,
+    "fieldCount": 50,
+    "errorCount": 0,
+    "warningCount": 34,
+    "infoCount": 35
+  },
+  "coverage": {
+    "envelopeFieldCount": 13,
+    "messageFieldCount": 37,
+    "fieldsByFunctionType": {
+      "ASSEMBLY": 27,
+      "PARSE": 10
+    }
+  },
+  "issues": [
+    {
+      "severity": "INFO",
+      "code": "CONDITIONAL_FIELD",
+      "path": "Root.bocb2e",
+      "message": "Field has conditionText.",
+      "functionType": null
+    },
+    {
+      "severity": "WARNING",
+      "code": "UNCERTAIN_FIELD",
+      "path": "Root.bocb2e.@version",
+      "message": "Field is marked uncertain.",
+      "functionType": null
+    },
+    {
+      "severity": "WARNING",
+      "code": "LOW_CONFIDENCE",
+      "path": "Root.bocb2e.@version",
+      "message": "Field confidence is below 0.9.",
+      "functionType": null
+    },
+    {
+      "severity": "WARNING",
+      "code": "NON_DIRECT_EVIDENCE",
+      "path": "Root.bocb2e.@version",
+      "message": "Field evidence is not DIRECT.",
+      "functionType": null
+    },
+    {
+      "severity": "INFO",
+      "code": "CONDITIONAL_FIELD",
+      "path": "Root.bocb2e.@version",
+      "message": "Field has conditionText.",
+      "functionType": null
+    },
+    {
+      "severity": "INFO",
+      "code": "CONDITIONAL_FIELD",
+      "path": "Root.bocb2e.@security",
+      "message": "Field has conditionText.",
+      "functionType": null
+    },
+    {
+      "severity": "INFO",
+      "code": "CONDITIONAL_FIELD",
+      "path": "Root.bocb2e.@locale",
+      "message": "Field has conditionText.",
+      "functionType": null
+    },
+    {
+      "severity": "WARNING",
+      "code": "UNCERTAIN_FIELD",
+      "path": "Root.bocb2e.@lang",
+      "message": "Field is marked uncertain.",
+      "functionType": null
+    },
+    {
+      "severity": "WARNING",
+      "code": "LOW_CONFIDENCE",
+      "path": "Root.bocb2e.@lang",
+      "message": "Field confidence is below 0.9.",
+      "functionType": null
+    },
+    {
+      "severity": "INFO",
+      "code": "CONDITIONAL_FIELD",
+      "path": "Root.bocb2e.@lang",
+      "message": "Field has conditionText.",
+      "functionType": null
+    },
+    {
+      "severity": "INFO",
+      "code": "CONDITIONAL_FIELD",
+      "path": "Root.bocb2e.head.termid",
+      "message": "Field has conditionText.",
+      "functionType": null
+    },
+    {
+      "severity": "INFO",
+      "code": "CONDITIONAL_FIELD",
+      "path": "Root.bocb2e.head.trnid",
+      "message": "Field has conditionText.",
+      "functionType": null
+    },
+    {
+      "severity": "INFO",
+      "code": "CONDITIONAL_FIELD",
+      "path": "Root.bocb2e.head.custid",
+      "message": "Field has conditionText.",
+      "functionType": null
+    },
+    {
+      "severity": "INFO",
+      "code": "CONDITIONAL_FIELD",
+      "path": "Root.bocb2e.head.cusopr",
+      "message": "Field has conditionText.",
+      "functionType": null
+    },
+    {
+      "severity": "INFO",
+      "code": "CONDITIONAL_FIELD",
+      "path": "Root.bocb2e.head.trncod",
+      "message": "Field has conditionText.",
+      "functionType": null
+    },
+    {
+      "severity": "WARNING",
+      "code": "UNCERTAIN_FIELD",
+      "path": "Root.bocb2e.head.token",
+      "message": "Field is marked uncertain.",
+      "functionType": null
+    },
+    {
+      "severity": "WARNING",
+      "code": "LOW_CONFIDENCE",
+      "path": "Root.bocb2e.head.token",
+      "message": "Field confidence is below 0.9.",
+      "functionType": null
+    },
+    {
+      "severity": "INFO",
+      "code": "CONDITIONAL_FIELD",
+      "path": "Root.bocb2e.head.token",
+      "message": "Field has conditionText.",
+      "functionType": null
+    },
+    {
+      "severity": "INFO",
+      "code": "CONDITIONAL_FIELD",
+      "path": "Root.bocb2e.trans",
+      "message": "Field has conditionText.",
+      "functionType": null
+    },
+    {
+      "severity": "INFO",
+      "code": "CONDITIONAL_FIELD",
+      "path": "Root.bocb2e.trans.trn-b2e0061-rq.ceitinfo",
+      "message": "Field has conditionText.",
+      "functionType": "ASSEMBLY"
+    },
+    {
+      "severity": "INFO",
+      "code": "CONDITIONAL_FIELD",
+      "path": "Root.bocb2e.trans.trn-b2e0061-rq.transtype",
+      "message": "Field has conditionText.",
+      "functionType": "ASSEMBLY"
+    },
+    {
+      "severity": "WARNING",
+      "code": "UNCERTAIN_FIELD",
+      "path": "Root.bocb2e.trans.trn-b2e0061-rq.b2e0061-rq",
+      "message": "Field is marked uncertain.",
+      "functionType": "ASSEMBLY"
+    },
+    {
+      "severity": "WARNING",
+      "code": "LOW_CONFIDENCE",
+      "path": "Root.bocb2e.trans.trn-b2e0061-rq.b2e0061-rq",
+      "message": "Field confidence is below 0.9.",
+      "functionType": "ASSEMBLY"
+    },
+    {
+      "severity": "INFO",
+      "code": "CONDITIONAL_FIELD",
+      "path": "Root.bocb2e.trans.trn-b2e0061-rq.b2e0061-rq.insid",
+      "message": "Field has conditionText.",
+      "functionType": "ASSEMBLY"
+    },
+    {
+      "severity": "INFO",
+      "code": "CONDITIONAL_FIELD",
+      "path": "Root.bocb2e.trans.trn-b2e0061-rq.b2e0061-rq.obssid",
+      "message": "Field has conditionText.",
+      "functionType": "ASSEMBLY"
+    },
+    {
+      "severity": "WARNING",
+      "code": "UNCERTAIN_FIELD",
+      "path": "Root.bocb2e.trans.trn-b2e0061-rq.b2e0061-rq.fractn",
+      "message": "Field is marked uncertain.",
+      "functionType": "ASSEMBLY"
+    },
+    {
+      "severity": "WARNING",
+      "code": "LOW_CONFIDENCE",
+      "path": "Root.bocb2e.trans.trn-b2e0061-rq.b2e0061-rq.fractn",
+      "message": "Field confidence is below 0.9.",
+      "functionType": "ASSEMBLY"
+    },
+    {
+      "severity": "WARNING",
+      "code": "UNCERTAIN_FIELD",
+      "path": "Root.bocb2e.trans.trn-b2e0061-rq.b2e0061-rq.fractn.fribkn",
+      "message": "Field is marked uncertain.",
+      "functionType": "ASSEMBLY"
+    },
+    {
+      "severity": "WARNING",
+      "code": "LOW_CONFIDENCE",
+      "path": "Root.bocb2e.trans.trn-b2e0061-rq.b2e0061-rq.fractn.fribkn",
+      "message": "Field confidence is below 0.9.",
+      "functionType": "ASSEMBLY"
+    },
+    {
+      "severity": "INFO",
+      "code": "CONDITIONAL_FIELD",
+      "path": "Root.bocb2e.trans.trn-b2e0061-rq.b2e0061-rq.fractn.fribkn",
+      "message": "Field has conditionText.",
+      "functionType": "ASSEMBLY"
+    },
+    {
+      "severity": "WARNING",
+      "code": "UNCERTAIN_FIELD",
+      "path": "Root.bocb2e.trans.trn-b2e0061-rq.b2e0061-rq.fractn.actacn",
+      "message": "Field is marked uncertain.",
+      "functionType": "ASSEMBLY"
+    },
+    {
+      "severity": "WARNING",
+      "code": "LOW_CONFIDENCE",
+      "path": "Root.bocb2e.trans.trn-b2e0061-rq.b2e0061-rq.fractn.actacn",
+      "message": "Field confidence is below 0.9.",
+      "functionType": "ASSEMBLY"
+    },
+    {
+      "severity": "INFO",
+      "code": "CONDITIONAL_FIELD",
+      "path": "Root.bocb2e.trans.trn-b2e0061-rq.b2e0061-rq.fractn.actacn",
+      "message": "Field has conditionText.",
+      "functionType": "ASSEMBLY"
+    },
+    {
+      "severity": "INFO",
+      "code": "CONDITIONAL_FIELD",
+      "path": "Root.bocb2e.trans.trn-b2e0061-rq.b2e0061-rq.fractn.actnam",
+      "message": "Field has conditionText.",
+      "functionType": "ASSEMBLY"
+    },
+    {
+      "severity": "WARNING",
+      "code": "UNCERTAIN_FIELD",
+      "path": "Root.bocb2e.trans.trn-b2e0061-rq.b2e0061-rq.toactn",
+      "message": "Field is marked uncertain.",
+      "functionType": "ASSEMBLY"
+    },
+    {
+      "severity": "WARNING",
+      "code": "LOW_CONFIDENCE",
+      "path": "Root.bocb2e.trans.trn-b2e0061-rq.b2e0061-rq.toactn",
+      "message": "Field confidence is below 0.9.",
+      "functionType": "ASSEMBLY"
+    },
+    {
+      "severity": "INFO",
+      "code": "CONDITIONAL_FIELD",
+      "path": "Root.bocb2e.trans.trn-b2e0061-rq.b2e0061-rq.toactn.toibkn",
+      "message": "Field has conditionText.",
+      "functionType": "ASSEMBLY"
+    },
+    {
+      "severity": "INFO",
+      "code": "CONDITIONAL_FIELD",
+      "path": "Root.bocb2e.trans.trn-b2e0061-rq.b2e0061-rq.toactn.acttyp",
+      "message": "Field has conditionText.",
+      "functionType": "ASSEMBLY"
+    },
+    {
+      "severity": "INFO",
+      "code": "CONDITIONAL_FIELD",
+      "path": "Root.bocb2e.trans.trn-b2e0061-rq.b2e0061-rq.toactn.actacn",
+      "message": "Field has conditionText.",
+      "functionType": "ASSEMBLY"
+    },
+    {
+      "severity": "INFO",
+      "code": "CONDITIONAL_FIELD",
+      "path": "Root.bocb2e.trans.trn-b2e0061-rq.b2e0061-rq.toactn.toname",
+      "message": "Field has conditionText.",
+      "functionType": "ASSEMBLY"
+    },
+    {
+      "severity": "INFO",
+      "code": "CONDITIONAL_FIELD",
+      "path": "Root.bocb2e.trans.trn-b2e0061-rq.b2e0061-rq.toactn.tobknm",
+      "message": "Field has conditionText.",
+      "functionType": "ASSEMBLY"
+    },
+    {
+      "severity": "INFO",
+      "code": "CONDITIONAL_FIELD",
+      "path": "Root.bocb2e.trans.trn-b2e0061-rq.b2e0061-rq.toactn.toaddr",
+      "message": "Field has conditionText.",
+      "functionType": "ASSEMBLY"
+    },
+    {
+      "severity": "INFO",
+      "code": "CONDITIONAL_FIELD",
+      "path": "Root.bocb2e.trans.trn-b2e0061-rq.b2e0061-rq.toactn.email",
+      "message": "Field has conditionText.",
+      "functionType": "ASSEMBLY"
+    },
+    {
+      "severity": "WARNING",
+      "code": "UNCERTAIN_FIELD",
+      "path": "Root.bocb2e.trans.trn-b2e0061-rq.b2e0061-rq.trnamt",
+      "message": "Field is marked uncertain.",
+      "functionType": "ASSEMBLY"
+    },
+    {
+      "severity": "WARNING",
+      "code": "LOW_CONFIDENCE",
+      "path": "Root.bocb2e.trans.trn-b2e0061-rq.b2e0061-rq.trnamt",
+      "message": "Field confidence is below 0.9.",
+      "functionType": "ASSEMBLY"
+    },
+    {
+      "severity": "INFO",
+      "code": "CONDITIONAL_FIELD",
+      "path": "Root.bocb2e.trans.trn-b2e0061-rq.b2e0061-rq.trnamt",
+      "message": "Field has conditionText.",
+      "functionType": "ASSEMBLY"
+    },
+    {
+      "severity": "INFO",
+      "code": "CONDITIONAL_FIELD",
+      "path": "Root.bocb2e.trans.trn-b2e0061-rq.b2e0061-rq.trncur",
+      "message": "Field has conditionText.",
+      "functionType": "ASSEMBLY"
+    },
+    {
+      "severity": "INFO",
+      "code": "CONDITIONAL_FIELD",
+      "path": "Root.bocb2e.trans.trn-b2e0061-rq.b2e0061-rq.priolv",
+      "message": "Field has conditionText.",
+      "functionType": "ASSEMBLY"
+    },
+    {
+      "severity": "INFO",
+      "code": "CONDITIONAL_FIELD",
+      "path": "Root.bocb2e.trans.trn-b2e0061-rq.b2e0061-rq.cuspriolv",
+      "message": "Field has conditionText.",
+      "functionType": "ASSEMBLY"
+    },
+    {
+      "severity": "INFO",
+      "code": "CONDITIONAL_FIELD",
+      "path": "Root.bocb2e.trans.trn-b2e0061-rq.b2e0061-rq.furinfo",
+      "message": "Field has conditionText.",
+      "functionType": "ASSEMBLY"
+    },
+    {
+      "severity": "INFO",
+      "code": "CONDITIONAL_FIELD",
+      "path": "Root.bocb2e.trans.trn-b2e0061-rq.b2e0061-rq.trfdate",
+      "message": "Field has conditionText.",
+      "functionType": "ASSEMBLY"
+    },
+    {
+      "severity": "WARNING",
+      "code": "UNCERTAIN_FIELD",
+      "path": "Root.bocb2e.trans.trn-b2e0061-rq.b2e0061-rq.trftime",
+      "message": "Field is marked uncertain.",
+      "functionType": "ASSEMBLY"
+    },
+    {
+      "severity": "WARNING",
+      "code": "LOW_CONFIDENCE",
+      "path": "Root.bocb2e.trans.trn-b2e0061-rq.b2e0061-rq.trftime",
+      "message": "Field confidence is below 0.9.",
+      "functionType": "ASSEMBLY"
+    },
+    {
+      "severity": "INFO",
+      "code": "CONDITIONAL_FIELD",
+      "path": "Root.bocb2e.trans.trn-b2e0061-rq.b2e0061-rq.trftime",
+      "message": "Field has conditionText.",
+      "functionType": "ASSEMBLY"
+    },
+    {
+      "severity": "WARNING",
+      "code": "UNCERTAIN_FIELD",
+      "path": "Root.bocb2e.trans.trn-b2e0061-rq.b2e0061-rq.comacn",
+      "message": "Field is marked uncertain.",
+      "functionType": "ASSEMBLY"
+    },
+    {
+      "severity": "WARNING",
+      "code": "LOW_CONFIDENCE",
+      "path": "Root.bocb2e.trans.trn-b2e0061-rq.b2e0061-rq.comacn",
+      "message": "Field confidence is below 0.9.",
+      "functionType": "ASSEMBLY"
+    },
+    {
+      "severity": "INFO",
+      "code": "CONDITIONAL_FIELD",
+      "path": "Root.bocb2e.trans.trn-b2e0061-rq.b2e0061-rq.comacn",
+      "message": "Field has conditionText.",
+      "functionType": "ASSEMBLY"
+    },
+    {
+      "severity": "INFO",
+      "code": "CONDITIONAL_FIELD",
+      "path": "Root.bocb2e.trans.trn-b2e0061-rq.b2e0061-rq.bocflag",
+      "message": "Field has conditionText.",
+      "functionType": "ASSEMBLY"
+    },
+    {
+      "severity": "WARNING",
+      "code": "UNCERTAIN_FIELD",
+      "path": "Root.bocb2e.trans.trn-b2e0061-rs.status.rspcod",
+      "message": "Field is marked uncertain.",
+      "functionType": "PARSE"
+    },
+    {
+      "severity": "WARNING",
+      "code": "LOW_CONFIDENCE",
+      "path": "Root.bocb2e.trans.trn-b2e0061-rs.status.rspcod",
+      "message": "Field confidence is below 0.9.",
+      "functionType": "PARSE"
+    },
+    {
+      "severity": "WARNING",
+      "code": "UNCERTAIN_FIELD",
+      "path": "Root.bocb2e.trans.trn-b2e0061-rs.status.rspmsg",
+      "message": "Field is marked uncertain.",
+      "functionType": "PARSE"
+    },
+    {
+      "severity": "WARNING",
+      "code": "LOW_CONFIDENCE",
+      "path": "Root.bocb2e.trans.trn-b2e0061-rs.status.rspmsg",
+      "message": "Field confidence is below 0.9.",
+      "functionType": "PARSE"
+    },
+    {
+      "severity": "WARNING",
+      "code": "UNCERTAIN_FIELD",
+      "path": "Root.bocb2e.trans.trn-b2e0061-rs.b2e0061-rs.status.rspcod",
+      "message": "Field is marked uncertain.",
+      "functionType": "PARSE"
+    },
+    {
+      "severity": "WARNING",
+      "code": "LOW_CONFIDENCE",
+      "path": "Root.bocb2e.trans.trn-b2e0061-rs.b2e0061-rs.status.rspcod",
+      "message": "Field confidence is below 0.9.",
+      "functionType": "PARSE"
+    },
+    {
+      "severity": "WARNING",
+      "code": "UNCERTAIN_FIELD",
+      "path": "Root.bocb2e.trans.trn-b2e0061-rs.b2e0061-rs.status.rspmsg",
+      "message": "Field is marked uncertain.",
+      "functionType": "PARSE"
+    },
+    {
+      "severity": "WARNING",
+      "code": "LOW_CONFIDENCE",
+      "path": "Root.bocb2e.trans.trn-b2e0061-rs.b2e0061-rs.status.rspmsg",
+      "message": "Field confidence is below 0.9.",
+      "functionType": "PARSE"
+    },
+    {
+      "severity": "WARNING",
+      "code": "UNCERTAIN_FIELD",
+      "path": "Root.bocb2e.trans.trn-b2e0061-rs.b2e0061-rs.insid",
+      "message": "Field is marked uncertain.",
+      "functionType": "PARSE"
+    },
+    {
+      "severity": "WARNING",
+      "code": "UNCERTAIN_FIELD",
+      "path": "Root.bocb2e.trans.trn-b2e0061-rs.b2e0061-rs.obssid",
+      "message": "Field is marked uncertain.",
+      "functionType": "PARSE"
+    },
+    {
+      "severity": "WARNING",
+      "code": "LOW_CONFIDENCE",
+      "path": "Root.bocb2e.trans.trn-b2e0061-rs.b2e0061-rs.obssid",
+      "message": "Field confidence is below 0.9.",
+      "functionType": "PARSE"
+    }
+  ]
+}
