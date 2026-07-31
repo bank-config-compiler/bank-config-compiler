@@ -29,7 +29,7 @@ Skill、Agent 或 Dify-style workflow 可以作为辅助组件，但不是完整
 
 当前 source of truth 位于 `docs/`：
 
-- `docs/requirements.md`：项目级需求、原则、交付形态和跨阶段约束。
+- `docs/01-requirements.md`：项目级需求、原则、交付形态和跨阶段约束。
 - `docs/phases/`：各阶段需求。
 - `docs/design/`：系统设计、IR 设计、Schema Workbook 策略和 golden sample 策略。
 - `docs/adr/`：已接受的架构决策。
@@ -37,22 +37,22 @@ Skill、Agent 或 Dify-style workflow 可以作为辅助组件，但不是完整
 
 建议阅读顺序：
 
-1. `docs/requirements.md`
+1. `docs/01-requirements.md`
 2. `docs/adr/README.md`
 3. `docs/design/README.md`
-4. `docs/phases/phase0-poc.md`
-5. `docs/phases/phase1-mvp.md`
+4. `docs/phases/00-phase0-poc.md`
+5. `docs/phases/01-phase1-mvp.md`
 
 ## 当前实现状态
 
-当前仓库已完成 Phase0 bootstrap 工作。Phase0 的 active task 状态只在 `docs/planning/phase0-poc-plan.md` 维护。
+当前仓库已完成 Phase0 bootstrap 工作。Phase0 的 active task 状态只在 `docs/planning/00-phase0-poc-plan.md` 维护。
 
 已完成：
 
 - CLI 支持从 `.md` / `.txt` 输入文件创建 workspace，并保存 `raw-doc.md`。
 - CLI 支持校验 workspace 的固定 artifact 名称、UTF-8 no BOM 编码和 JSON 可解析性。
 - Phase0 当前 reference raw doc 已提供：`docs/reference/samples/b2eboc/b2e0061.md`。
-- 正式 DocIR / SchemaIR 设计基线已沉淀到 `docs/design/intermediate-representations.md`、`docs/design/ir-field-reference.md` 和 `docs/adr/ADR-0005-schemair-envelope-and-evidence.md`。
+- 正式 DocIR / SchemaIR 设计基线已沉淀到 `docs/design/02-intermediate-representations.md`、`docs/design/03-ir-field-reference.md` 和 `docs/adr/ADR-0005-schemair-envelope-and-evidence.md`。
 - `samples/golden/b2eboc-b2e0061/` 已提供 b2e0061 Review Golden sample，冻结 expected DocIR、expected SchemaIR 和 expected review notes。
 - SchemaIR Validator v1 已定义 `schemair-validation-result/v1` 输出契约，并为 b2e0061 固化 expected Validator result。
 

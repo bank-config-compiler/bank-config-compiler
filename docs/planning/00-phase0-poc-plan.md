@@ -131,7 +131,7 @@ Review Golden sample 已包含：
 文档更新阶段：
 
 - `git diff --check`
-- 手工确认 `README.md`、`docs/phases/phase0-poc.md` 和本文档状态一致。
+- 手工确认 `README.md`、`docs/phases/00-phase0-poc.md` 和本文档状态一致。
 
 后续实现阶段：
 

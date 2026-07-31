@@ -8,7 +8,7 @@ Draft. Applies to P0-T2 expected DocIR / SchemaIR work.
 
 本文解释 DocIR 和 SchemaIR 字段含义，避免后续 agent 或实现者把候选字段误解为目标系统导入格式。
 
-正式字段结构以 `docs/design/intermediate-representations.md` 为准；本文用于解释 review 规则和字段使用方式。
+正式字段结构以 `docs/design/02-intermediate-representations.md` 为准；本文用于解释 review 规则和字段使用方式。
 
 ## 2. DocIR 字段
 

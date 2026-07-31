@@ -16,7 +16,7 @@ Skill、Agent 或 Dify workflow 可以作为 LLM 草稿生成组件，但不能�
 
 当前 Phase0 样例输入已落地：`docs/reference/samples/b2eboc/b2e0061.md`。正式 DocIR / SchemaIR 设计基线已落地到 `docs/design/` 和 `docs/adr/ADR-0005-schemair-envelope-and-evidence.md`。基于 human review 更新后的 Review Golden sample 已落地到 `samples/golden/b2eboc-b2e0061/`；其中 unresolved questions 是 expected review output 的一部分，不是 sample blocker。
 
-当前执行计划见 `docs/planning/phase0-poc-plan.md`。已完成的 Python CLI、`ingest`、workspace artifact 协议、`check`、P0-T1 candidate IR、formal IR review 设计和 P0-T2 Review Golden sample boundary 作为 Phase0 bootstrap / sample 工作记录；下一步应基于 expected SchemaIR 实现 Validator、Workbook Generator 和 golden regression。
+当前执行计划见 `docs/planning/00-phase0-poc-plan.md`。已完成的 Python CLI、`ingest`、workspace artifact 协议、`check`、P0-T1 candidate IR、formal IR review 设计和 P0-T2 Review Golden sample boundary 作为 Phase0 bootstrap / sample 工作记录；下一步应基于 expected SchemaIR 实现 Validator、Workbook Generator 和 golden regression。
 
 ## 2. In Scope
 

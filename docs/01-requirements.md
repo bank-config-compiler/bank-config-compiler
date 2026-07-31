@@ -16,10 +16,10 @@ Draft.
 
 | 阶段 | 定位 | 需求文档 |
 |---|---|---|
-| Phase0-PoC | 确认样例、格式、链路和技术边界，证明方向可行。 | `docs/phases/phase0-poc.md` |
-| Phase1-MVP | 交付可重复运行、可 Review、可回归的最小产品能力。 | `docs/phases/phase1-mvp.md` |
-| Phase2-Pilot | 在受控真实场景中试点，验证实施提效、稳定性和运维边界。 | `docs/phases/phase2-pilot.md` |
-| Phase3-Production | 暂不定义目标和需求。 | `docs/phases/phase3-production.md` |
+| Phase0-PoC | 确认样例、格式、链路和技术边界，证明方向可行。 | `docs/phases/00-phase0-poc.md` |
+| Phase1-MVP | 交付可重复运行、可 Review、可回归的最小产品能力。 | `docs/phases/01-phase1-mvp.md` |
+| Phase2-Pilot | 在受控真实场景中试点，验证实施提效、稳定性和运维边界。 | `docs/phases/02-phase2-pilot.md` |
+| Phase3-Production | 暂不定义目标和需求。 | `docs/phases/03-phase3-production.md` |
 
 具体阶段需求应记录在对应 phase 文档中。本文只记录项目级定位、通用原则、总体流程和跨阶段约束。
 
