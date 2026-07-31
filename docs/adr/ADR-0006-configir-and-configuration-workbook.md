@@ -2,11 +2,17 @@
 
 ## Status
 
-Accepted.
+Superseded by ADR-0007.
 
 ## Date
 
 2026-07-31
+
+## Superseded Scope
+
+ADR-0007 以独立的 InterfaceStandardIR 与 InterfaceTemplateIR 取代本 ADR 的单一 ConfigIR，并重新定义标准复用、模板字段子集和 Configuration Workbook 粒度。
+
+本 ADR 关于以下事项的决定继续有效：版本化自然语言规则包、LLM 只能生成 Draft、人工 Review 与 Validator 组成可信边界、不生成 Import JSON、Workbook 不是事实源且必须确定性生成。
 
 ## Context
 

@@ -1,158 +1,264 @@
-# 系统配置模型设计
+# 接口标准与接口模板模型设计
 
 ## Status
 
-Draft. Logical contract confirmed; machine wire schema is blocked until the target-system catalog is provided and `configuration-rules/v1` is reviewed.
+Draft. Logical contract confirmed; machine wire schemas remain blocked by the unavailable `configuration-rules/v1` catalog.
 
-## 1. 目的
+## 1. 目的与边界
 
-ConfigIR 是目标系统字段配置的结构化模型，回答“当前目标系统应如何配置这个银行 XML 报文字段”。
+目标系统配置分为两个有顺序的模型：
 
-ConfigIR 不是：
+- InterfaceStandardIR 定义报文字段格式和层级结构。
+- InterfaceTemplateIR 定义一份模板如何对已确认的标准字段进行取值和处理。
 
-- 银行报文结构模型；
-- 连接、认证、证书、部署或全量系统配置；
-- 目标系统 Import JSON；
-- Excel 中人工执行状态的副本。
+两者不包含连接、认证、证书、部署、目标系统 API、Import JSON 或全量系统配置。SchemaIR 继续保存银行原始事实，目标配置不得回写覆盖 SchemaIR。
 
-Final SchemaIR 与 Final ConfigIR 共同驱动 Configuration Workbook，但两者各自保存自己的事实，不互相覆盖。
+## 2. 生命周期与身份
 
-## 2. 生命周期
+### 2.1 Interface Standard
 
 ```mermaid
 stateDiagram-v2
-    [*] --> Draft: Final SchemaIR + 指定规则版本
-    Draft --> Draft: 修正未映射、引用、差异或业务语义
-    Draft --> Validated: ConfigIR Validator 通过
-    Validated --> Draft: 人工修改后重新校验
-    Validated --> Final: 人工 Review 确认
-    Final --> Draft: SchemaIR 或规则版本变化
+    [*] --> Draft: LLM 基于 Final SchemaIR 与规则版本生成
+    Draft --> Draft: 修改或补充 Review 结论
+    Draft --> Validated: Standard Validator 通过
+    Validated --> Draft: Review 修改导致校验失效
+    Validated --> Final: 人工确认
+    Final --> [*]
 ```
 
-规则：
+每个标准由 `standardId + version` 唯一标识，并属于一个 `interfaceCode + direction`。Final 版本不可原地覆盖；内容摘要用于防止模板错误绑定同名但不同内容的标准。
 
-- LLM 只能生成 ConfigIR Draft。
-- Draft 必须固定一个 `rulePackageVersion`。
-- Validator 通过后仍需人工判断 FIELD、FUNCTION、MAPPING 和组合表达式是否符合业务语义。
-- 任何内容修改都会使旧 validation result 失效。
-- SchemaIR 内容或规则版本变化时，已有 Final ConfigIR 不能静默沿用，必须重新生成或显式迁移并重新 Review。
+### 2.2 Interface Template
 
-## 3. 逻辑结构
+```mermaid
+stateDiagram-v2
+    [*] --> Draft: LLM 基于 Final Standard 与规则版本生成
+    Draft --> Draft: 修改字段配置或 omission 结论
+    Draft --> Validated: Template Validator 通过
+    Validated --> Draft: Review 修改导致校验失效
+    Validated --> Final: 人工确认
+    Final --> [*]
+```
 
-具体 JSON wire schema 在真实 catalog 确认后设计。本阶段确认以下逻辑结构：
+每份模板由 `templateId + version` 唯一标识，属于一个 `interfaceCode + direction`，并精确引用 `standardId + standardVersion + contentHash`。
+
+一个标准可以被多份同方向模板复用。新增模板直接消费已有 Final Standard；标准发布新版本不会自动迁移或重新解释旧模板。
+
+## 3. InterfaceStandardIR
+
+### 3.1 逻辑结构
 
 ```text
-ConfigIR
+InterfaceStandardIR
+├── standardId
 ├── interfaceCode
-├── schemaIrRef
+├── direction
+├── version
+├── schemaIrReference + schemaIrContentHash
 ├── rulePackageVersion
-├── directions
-│   ├── ASSEMBLY
-│   │   └── fieldConfigs[]
-│   └── PARSE
-│       └── fieldConfigs[]
+├── fields[]
+│   ├── fieldId
+│   ├── sequence
+│   ├── fieldName / fieldDescription
+│   ├── parentPath / fullPath
+│   ├── required
+│   ├── lengthLimit
+│   ├── illegalCharacters
+│   ├── xmlKeys[]
+│   ├── regex
+│   ├── dataType
+│   └── evidence / differences / review
 └── review
 ```
 
-每个 `fieldConfig` 必须唯一引用一个 SchemaIR `path`，并包含 Value Expression、字段处理策略、规则引用、可信信息、差异信息和人工 Review 结论。
+这些字段描述逻辑契约，不是已经冻结的 JSON wire schema。
 
-## 4. Value Expression
+### 3.2 Path 与层级
 
-ASSEMBLY 与 PARSE 使用相同表达模型。
+目标系统配置的 Path 是当前字段的父路径：
 
-| Mode | 含义 | 必需引用或值 |
-|---|---|---|
-| `FIXED_VALUE` | 使用明确固定值。 | 固定值；固定空值应使用 `EMPTY`。 |
-| `EMPTY` | 该表达式明确取空值。 | 无。它不等于 Empty Handling。 |
-| `FIELD` | 直接使用目标系统业务字段。 | `fields.md` 中存在的字段标识。 |
-| `FUNCTION` | 调用目标系统支持的 function。 | `functions.md` 中存在的 function 标识和参数。 |
-| `MAPPING` | 应用目标系统 mapping。 | `mappings.md` 中存在的 mapping 标识，以及 catalog 明确要求的参数。 |
-| `CONCATENATE` | 按顺序拼接子表达式。 | 一个或多个有序子表达式。 |
+| Field | Data Type | Parent Path | Full Path |
+|---|---|---|---|
+| `Document` | `Object` | `Root` | `Root.Document` |
+| `pain.001.001.02` | `Object` | `Root.Document` | `Root.Document.pain.001.001.02` |
+| `MsgId` | `String` | `Root.Document.pain.001.001.02.GrpHdr` | `Root.Document.pain.001.001.02.GrpHdr.MsgId` |
+| `PmtInf` | `Node` | `Root.Document.pain.001.001.02` | `Root.Document.pain.001.001.02.PmtInf` |
 
-`CONCATENATE` 的子表达式可以使用任意 Mode，包括继续嵌套 `CONCATENATE`。每个表达式节点都必须有稳定的 Expression ID；子节点保存 Parent Expression ID 和 Sequence，以便 Validator 与 Workbook 在不依赖自由文本的情况下还原同一棵树。
+`parentPath + fieldName` 用于解释层级；`fullPath` 用于唯一定位和审计。模板不得使用可能产生歧义的显示名称引用标准字段，而必须使用 stable `fieldId`。
 
-自然语言摘要只用于展示，不能替代结构化表达式。
+同一父节点下使用 `sequence` 保存 XML 输出顺序。sequence 必须是唯一、连续的正整数，不能依赖 JSON object 属性顺序或 Workbook 当前行号。
 
-## 5. 字段处理策略
+### 3.3 数据类型
 
-每个字段配置必须显式表达适用的策略：
-
-| 策略 | 含义 |
+| 类型 | XML 语义 |
 |---|---|
-| Configured Required | 目标系统实际配置的必填值。 |
-| Empty Handling | 表达源值为空时“报送空值”或“删除字段”等处理。 |
-| Overlength Handling | 超长时报错或截断。 |
-| Configured Length | 目标系统实际配置的长度限制。 |
-| Row Limit | 重复节点或多行数据的配置上限。 |
-| Chinese Character Length | 一个中文字符按多少长度计数。 |
-| Illegal Characters | 目标系统配置的非法字符列表。 |
-| Replacement Rules | 有序字符替换规则；执行顺序是配置语义的一部分。 |
+| `String` | 字符串叶子。 |
+| `Boolean` | 布尔叶子。 |
+| `Date` | 日期叶子；具体格式保留规则依据。 |
+| `Number` | 数值叶子。 |
+| `Node` | 可重复出现的无值容器节点。 |
+| `Object` | 不可重复的无值容器节点。 |
+| `List` | JSON-only；当前 XML Final Standard 禁止使用。 |
 
-策略未适用时必须使用明确的“不适用”表达，不能与“资料缺失”混为一谈。确切枚举和空值表示在 wire schema 设计时冻结。
+容器类型可根据 Final SchemaIR 的 children、value 和 occurs 确定。标量类型或 Date 格式信息不足时必须标记 `UNKNOWN`，不得依据相近字段名猜测。
 
-## 6. 证据与规则引用
+### 3.4 XML Keys
 
-ConfigIR 每个可追溯决定必须记录：
+XML attribute 在 SchemaIR 中仍是独立银行报文事实；目标系统接口标准不为它创建独立字段行，而把名称挂在所属 element 的 `xmlKeys` 中，例如：
 
-- `rulePackageVersion`；
-- 一个或多个稳定 Rule ID；
-- confidence；
-- uncertain；
-- uncertain reason；
-- 人工 Review 状态和结论。
+```text
+fieldId: document-field
+fieldName: Document
+xmlKeys: [@version, @locale]
+```
 
-Rule ID 必须来自当前规则版本，FIELD、FUNCTION、MAPPING 引用必须来自同版本 catalog。LLM 给出的自然语言解释不能替代规则引用。
+XML Keys 必须能追溯到 SchemaIR attribute。key 的值不属于接口标准，由绑定模板中的 XML Key Value Expression 定义。
 
-当前 catalog 尚未提供，因此不得创建任何占位业务字段、function、mapping 或伪 Rule ID。缺少这些资料的配置只能保持未确定状态。
+### 3.5 约束与差异
 
-## 7. SchemaIR 与 ConfigIR 差异
+Required、Length Limit、Illegal Characters、Regex 和 Data Type 是目标系统实际接口标准配置；SchemaIR 中的对应值仍保留为银行原始事实。
 
-SchemaIR 保存银行原始约束，ConfigIR 保存目标系统实际配置。以下情况允许不同，但必须显式处理：
+可能缺失的约束使用三态语义：
 
-- Bank Required 与 Configured Required 不同；
-- Bank Length 与 Configured Length 不同；
-- 银行允许重复次数与 Row Limit 不同；
-- 银行字符约束与目标系统非法字符、替换或截断策略不同。
+| 状态 | 含义 | 是否允许 Final |
+|---|---|---|
+| `VALUE` | 有明确配置值。 | 是。 |
+| `NO_CONSTRAINT` | 人工确认无该约束。 | 是。 |
+| `UNKNOWN` | 尚无法确定。 | 否。 |
 
-差异处理规则：
+SchemaIR 与 Standard 值不一致时必须记录：
 
-1. 保留 SchemaIR 原值和 ConfigIR 配置值。
-2. ConfigIR 记录 Difference Reason 和 Rule Reference。
-3. 差异进入 Configuration Workbook `Warnings`。
-4. 人工 Review 明确接受、拒绝或要求修正。
-5. 未确认差异阻止 Final ConfigIR。
+- SchemaIR source reference 和原值；
+- Standard 配置值；
+- Difference Reason；
+- Rule References；
+- confidence / uncertain reason；
+- 人工 Review 结论。
 
-## 8. Validator 边界
+## 4. InterfaceTemplateIR
 
-ConfigIR Validator 必须校验：
+### 4.1 逻辑结构
 
-- 顶层结构、方向枚举和字段配置唯一性；
-- SchemaIR path 引用存在且方向一致；
-- Value Expression Mode 和递归树合法，无孤儿、重复 Sequence 或循环；
-- FIXED_VALUE、FIELD、FUNCTION、MAPPING 各自所需值和引用完整；
-- Rule ID 属于指定规则版本；
-- FIELD、FUNCTION、MAPPING 引用存在于对应 catalog；
-- 字段策略枚举和值域合法，有序 replacement 的顺序明确；
-- SchemaIR/ConfigIR 差异包含原因、规则引用和 Review 结论；
-- uncertain、未映射、规则冲突或 PENDING Review 不得形成 Final。
+```text
+InterfaceTemplateIR
+├── templateId
+├── interfaceCode
+├── direction
+├── version
+├── standardRef
+│   ├── standardId
+│   ├── version
+│   └── contentHash
+├── rulePackageVersion
+├── fieldConfigs[]
+│   ├── standardFieldRef
+│   ├── valueExpression
+│   ├── xmlKeyExpressions{}
+│   ├── processingPolicies
+│   └── evidence / review
+├── omissions[]
+└── review
+```
 
-Validator 不负责：
+### 4.2 字段子集与 omission
 
-- 猜测缺失 catalog；
-- 选择最合适的业务字段；
-- 判断 function 参数的业务含义是否正确；
-- 判断 mapping 的业务对应关系是否正确；
-- 用常见实践覆盖自然语言规则。
+`fieldConfigs` 是标准字段集合的子集。同一 `standardFieldRef` 最多出现一次；缺失字段不是自动错误，也不生成空模板行。
 
-这些判断必须由人工 Review 完成。
+Template Validator 为每个未覆盖标准字段产生 `MISSING_TEMPLATE_FIELD` Warning 和 omission candidate。omission 至少包含：
 
-## 9. Final 条件
+- Standard Field Reference；
+- Omission Reason；
+- Review Disposition；
+- Review Note；
+- reviewer / reviewed-at 等审计信息的候选位置。
 
-ConfigIR 只有同时满足以下条件才能成为 Final：
+未确认 omission 阻止 Final Template。人工确认该业务场景确实不需要字段后，omission 允许进入 Final，并继续显示在 Workbook Warnings。
 
-- 引用的 Final SchemaIR 已通过校验且内容未变化；
-- 指定规则版本真实存在并已由业务负责人确认；
-- ConfigIR Validator 通过；
-- 所有 FIELD、FUNCTION、MAPPING 引用可解析；
-- 所有差异、规则冲突和不确定项已有人工结论；
-- 人工 Review 已确认整体配置。
+必须区分：
+
+- omission：没有模板行，不配置该字段；
+- `EMPTY`：存在模板行，字段明确取空值；
+- Empty Handling：存在源值为空时的处理策略。
+
+### 4.3 Value Expression
+
+| Mode | 语义 | 必要内容 |
+|---|---|---|
+| `FIXED_VALUE` | 使用明确固定值。 | 固定值。 |
+| `EMPTY` | 表达式明确取空值。 | 无。 |
+| `FIELD` | 使用 catalog 中的业务字段。 | Field reference。 |
+| `FUNCTION` | 调用 catalog 中的 function。 | Function reference 和结构化参数。 |
+| `MAPPING` | 使用 catalog 中的 mapping。 | Mapping reference。 |
+| `CONCATENATE` | 按顺序组合子表达式。 | 一个或多个有序子表达式，可递归。 |
+
+ASSEMBLY 和 PARSE 使用同一结构，但解释方向不同：ASSEMBLY 从系统数据形成报文字段；PARSE 从报文字段形成系统接收数据。
+
+### 4.4 XML Key Expressions
+
+若标准字段存在模板行，则标准定义的每个 XML Key 必须恰好具有一个独立 Value Expression。字段值表达式与 XML Key 表达式共享六种 Mode，但使用不同 Scope。
+
+```text
+standardFieldRef: document-field
+fieldValueExpression: ...
+xmlKeyExpressions:
+  @version: FIXED_VALUE("1.0")
+  @locale: FIELD(<catalog-field-ref>)
+```
+
+引用标准未定义的 key 或缺少已定义 key 均为 Validator error。若整个字段具有已确认 omission，其 keys 随字段一起省略。
+
+### 4.5 Processing Policies
+
+模板行保存转换和赋值阶段的处理策略：
+
+- Empty Handling；
+- Overlength Handling；
+- Row Limit；
+- Chinese Character Length；
+- Ordered Replacement Rules。
+
+Required、Length Limit、Illegal Characters、Regex 和目标 Data Type 属于 InterfaceStandardIR，不在模板中重复定义或覆盖。
+
+## 5. Validator 边界
+
+Standard Validator 必须校验：
+
+- identity、direction、SchemaIR 和规则版本引用；
+- fieldId、parent/full path、sequence 与层级；
+- Node/Object/标量类型和 XML-only 限制；
+- XML Keys 与 SchemaIR attribute 的对应关系；
+- 约束状态和 SchemaIR/Standard 差异记录；
+- 所有 Final 决定均已完成人工 Review。
+
+Template Validator 必须校验：
+
+- standard ID、version 和 content hash 精确匹配；
+- field reference 存在且不重复；
+- 表达式结构、递归顺序和 catalog 引用；
+- XML Key expressions 完整且无未知 key；
+- 每个缺失标准字段都有 omission Warning；
+- 每个 Final omission 已记录原因和接受结论；
+- uncertain、规则冲突或未确认配置不能成为 Final。
+
+Validator 不能判断 function、mapping 或 omission 是否符合业务语义；这类决定必须由人工 Review。
+
+## 6. Final 条件
+
+Final InterfaceStandardIR 必须满足：
+
+- Standard Validator 通过且结果与当前内容匹配；
+- 不含 `UNKNOWN` 约束；
+- 差异和推导均有规则依据与人工结论；
+- 标准身份和版本已冻结。
+
+Final InterfaceTemplateIR 必须满足：
+
+- Template Validator 通过且结果与当前内容匹配；
+- 绑定的 Final Standard identity/version/hash 精确匹配；
+- 所有 field config 和 XML Key expression 引用有效；
+- 每个未覆盖标准字段都有已确认 omission；
+- function、mapping 和其他业务语义已人工确认；
+- 模板身份和版本已冻结。
+
+标准、模板或规则版本变化后，旧校验结果失效。不得通过原地覆盖 Final artifact 绕过迁移和重新 Review。

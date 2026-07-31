@@ -6,7 +6,7 @@ Draft. Applies to P0-T2 expected DocIR / SchemaIR work.
 
 ## 1. 目的
 
-本文解释 DocIR 和 SchemaIR 字段含义，避免后续 agent 或实现者把候选字段误解为目标系统导入格式。ConfigIR 的字段与取值表达式见 `docs/design/04-system-configuration-model.md`。
+本文解释 DocIR 和 SchemaIR 字段含义，避免后续 agent 或实现者把候选字段误解为目标系统导入格式。InterfaceStandardIR / InterfaceTemplateIR 的字段、版本绑定与取值表达式见 `docs/design/04-system-configuration-model.md`。
 
 正式字段结构以 `docs/design/02-intermediate-representations.md` 为准；本文用于解释 review 规则和字段使用方式。
 
@@ -77,7 +77,7 @@ DocIR 主表不展示完整 `Path`，避免人工 review 时被长路径淹没�
 | `uncertainReason` | string/null | 不确定原因。 |
 | `reviewNote` | string/null | 面向 human reviewer 的补充说明。 |
 
-目标系统取值和处理指导不属于 SchemaIR 字段，统一由 ConfigIR 表达。
+目标系统接口标准和模板配置不属于 SchemaIR 字段，分别由 InterfaceStandardIR 与 InterfaceTemplateIR 表达。
 
 ## 5. evidence.kind
 
@@ -107,7 +107,7 @@ DocIR 主表不展示完整 `Path`，避免人工 review 时被长路径淹没�
 
 ## 8. review-notes.md 结构
 
-每次 DocIR / SchemaIR / ConfigIR Draft 都应生成 `review-notes.md`。DocIR / SchemaIR Review notes 按以下顺序组织：
+每次 IR Draft 都应生成 `review-notes.md`。DocIR / SchemaIR Review notes 按以下顺序组织：
 
 1. `必须确认`：影响字段是否存在、path、required、occurs、类型、版本和配置正确性的事项。
 2. `建议关注`：推导字段、长度冲突、平台/前置机约束差异。

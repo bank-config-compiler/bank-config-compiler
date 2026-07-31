@@ -20,7 +20,7 @@ Active.
 正式文档按以下优先级解释：
 
 1. [`01-requirements.md`](01-requirements.md) 定义项目级产品契约、范围和成功标准。
-2. [`../configuration-rules/`](../configuration-rules/README.md) 保存 ConfigIR 可引用的正式、版本化目标系统规则资产。
+2. [`../configuration-rules/`](../configuration-rules/README.md) 保存 InterfaceStandardIR / InterfaceTemplateIR 可引用的正式、版本化目标系统规则资产。
 3. [`adr/`](adr/README.md) 记录已经接受且约束后续实现的工程决策。
 4. [`design/`](design/README.md) 细化系统、数据模型和交付物设计。
 5. [`phases/`](phases/00-phase0-poc.md) 定义各阶段目标和验收边界。
@@ -36,7 +36,7 @@ Active.
 |---|---|
 | 了解项目定位、范围和验收标准 | `01-requirements.md` |
 | 理解已接受的关键决策 | `adr/README.md` |
-| 理解三层 IR、系统边界和 Configuration Workbook | `design/README.md` |
+| 理解四层 IR、系统边界和 Configuration Workbook | `design/README.md` |
 | 查看阶段目标和进入条件 | `phases/00-phase0-poc.md`，再按阶段编号继续 |
 | 查看 Phase0 当前任务、blocker 和验证路径 | `planning/00-phase0-poc-plan.md` |
 | 查看正式目标系统规则资产 | `../configuration-rules/README.md` |

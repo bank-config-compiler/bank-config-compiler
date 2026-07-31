@@ -6,124 +6,126 @@ Draft.
 
 ## 1. 阶段目标
 
-Phase1-MVP 目标是将 Phase0-PoC 链路产品化为最小可用能力。
+Phase1-MVP 将 Phase0-PoC 链路产品化为最小可用的轻量 Review Tool。
 
-本阶段应提供可用的 Review 入口，支持 DocIR、SchemaIR、ConfigIR 的人工 Review、重新校验和确认，以及 Configuration Workbook 预览和下载，并建立基本测试、日志、错误处理和回归机制。
-
-交付形态应是轻量 Review Tool，而不是完整生产系统。它可以是本地 Web UI、轻量服务或等价工具，但必须承载三层 IR Review、双 Validator、Workbook Generator、Configuration Workbook 预览下载和 golden sample regression。
+本阶段支持 DocIR、SchemaIR、InterfaceStandardIR 和 InterfaceTemplateIR 的人工 Review、重新校验与确认，以及按方向模板生成的 Configuration Workbook 预览和下载。它不是完整生产系统，也不直接写入目标系统。
 
 ## 2. In Scope
 
-- 创建解析任务，保存任务名称、接口编码、报文格式和原始输入。
-- UI 中查看 Raw Docs 和 DocIR Draft。
-- 编辑、保存并确认 Final DocIR。
-- 基于 Final DocIR 生成 SchemaIR Draft JSON。
-- Validator 校验 SchemaIR Draft 并返回字段级错误列表。
-- UI 中以表格形式展示 SchemaIR。
-- 修改关键字段并重新校验。
-- 确认 Final SchemaIR。
-- 基于 Final SchemaIR 与指定规则版本生成 ConfigIR Draft。
-- UI 中查看规则依据、差异、Value Expression 和 ConfigIR Validator 结果。
-- 修改 ConfigIR 后重新校验，并确认 Final ConfigIR。
-- Workbook Generator 基于双 Final 模型、两份校验结果和指定规则版本生成 Configuration Workbook。
-- 预览和下载 Configuration Workbook。
-- 保存任务状态与关键中间产物。
-- 对 Validator 和 Workbook Generator 的关键转换逻辑提供基本单元测试。
-- 提供真实脱敏 golden sample 和一键回归路径。
+- 创建解析任务并保存接口编码、XML 格式和原始输入。
+- Review、编辑并确认 Final DocIR。
+- 生成、校验、Review 并确认 Final SchemaIR。
+- 生成、校验、Review 并确认 ASSEMBLY/PARSE 的 Final Interface Standard。
+- 基于已有 Final Standard 创建和 Review 多份同方向 Interface Template。
+- 精确展示模板绑定的 Standard ID/version/content hash。
+- 编辑字段值和 XML Key 的六种 Value Expression。
+- Review 模板未覆盖标准字段的 omissions。
+- 基于三份 Final 模型和匹配校验结果生成 Configuration Workbook。
+- 预览和下载工作簿。
+- 保存任务状态、规则版本、审计结论和关键中间产物。
+- Validator、Generator 和 golden regression 的基本测试与日志。
 
 ## 3. Out of Scope
 
 - 真实导入银企直连生产配置库。
-- 目标系统 Import JSON 生成或兼容性验证。
-- 目标系统 API 写入、自动导入和 Excel 反向导入。
-- JSON 银行报文。
+- Import JSON、目标系统 API 写入、自动导入和 Excel 反向导入。
+- JSON 银行报文和 List 类型。
 - Skill、纯 Agent 或单纯 Prompt workflow 作为完整交付物。
-- 生产权限体系、登录认证、审批流、多用户协同。
-- `.docx` 解析。
-- PDF、OCR、bbox、高亮和原文区域定位。
-- 复杂 RAG、多 Agent 编排、自动微调、自动规则学习。
-- condition DSL 或复杂条件配置生成。
+- 生产权限体系、审批流和多用户协同。
+- `.docx`、PDF、OCR、bbox 和原文区域定位。
+- 复杂 RAG、多 Agent 编排、自动微调和自动规则学习。
+- 同字段多行 condition 配置。
 - 通用多银行、多报文标准、全格式自动解析平台。
 
 ## 4. 功能需求
 
 ### 4.1 任务创建与文档输入
 
-系统应支持创建解析任务。任务至少包含：
-
-- 任务名称。
-- 接口编码。
-- 报文格式：当前固定为 `XML`。
-- 原始文档文本或上传的 `.md` / `.txt` 文件。
-
-系统应保存原始输入，便于后续查看和追溯。
+任务至少包含名称、interfaceCode、固定 `XML` 报文格式和 `.md`/`.txt` 或粘贴原文。系统保存原始输入以便追溯。
 
 ### 4.2 DocIR Review
 
-用户应能：
-
-- 查看 Raw Docs 和 DocIR Draft。
-- 编辑 DocIR。
-- 保存 DocIR 草稿。
-- 确认 Final DocIR。
-
-Final DocIR 必须保留字段表、章节、条件说明、报文示例和 `ASSEMBLY` / `PARSE` 方向信息。
+用户可以查看 Raw Docs 和 DocIR Draft、编辑并保存草稿、确认 Final DocIR。Final DocIR 保留字段表、章节、条件说明、XML 示例和 ASSEMBLY/PARSE 方向。
 
 ### 4.3 SchemaIR Review
 
-用户应能：
+用户可以：
 
-- 查看 SchemaIR 表格。
-- 查看 Validator 错误列表。
-- 修改 `path`、`fieldName`、`nodeKind`、`dataType`、`required`、`multiple`、`hasChildren`、`description`、`conditionText`、`uncertain`、`reviewNote` 等关键字段。
-- 重新校验 SchemaIR。
+- 以表格查看 SchemaIR 和字段级 Validator issue；
+- 修改 path、fieldName、nodeKind、dataType、required、multiple、description、condition、uncertain 和 review note；
+- 修改后重新校验；
 - 确认 Final SchemaIR。
 
-SchemaIR Draft 应覆盖样例 DocIR 中可识别字段，并保留 `sourceText`。
+### 4.4 Interface Standard Review
 
-### 4.4 ConfigIR Review
+用户可以按 interfaceCode 和 direction：
 
-用户应能：
+- 查看 Standard Draft 与 SchemaIR 来源；
+- 编辑 field name/description、parentPath/fullPath、sequence；
+- 编辑 required、length、illegal characters、regex、XML Keys 和 data type；
+- 区分 VALUE、NO_CONSTRAINT 与 UNKNOWN；
+- Review SchemaIR/Standard 差异、Rule ID 和不确定项；
+- 修改后重新运行 Standard Validator；
+- 确认不可变版本的 Final Standard。
 
-- 按 ASSEMBLY / PARSE 和 SchemaIR path 查看系统字段配置。
-- 查看并编辑六种 Value Mode 和递归 Value Expression。
-- 查看规则版本、Rule ID、catalog 引用、confidence 和不确定原因。
-- 对 SchemaIR/ConfigIR required、length 等差异作出人工结论。
-- 查看 ConfigIR Validator 错误，修改后重新校验。
-- 确认 Final ConfigIR。
+标准发布新版本时，UI 必须展示受影响模板，不得静默迁移。
 
-### 4.5 Configuration Workbook 预览与下载
+### 4.5 Interface Template Review
 
-系统应由 Workbook Generator 基于 Final SchemaIR、Final ConfigIR、两份通过校验结果和指定规则版本生成 Configuration Workbook。
+用户可以基于选定的 Final Standard：
 
-用户应能：
+- 创建和识别多份同方向模板；
+- 查看 Standard ID/version/content hash 绑定；
+- 查看和编辑字段值 Value Expression；
+- 为每个 XML Key 编辑独立 Value Expression；
+- 编辑 Empty/Overlength Handling、Row Limit、Chinese Character Length 和 Replacement Rules；
+- 查看 Rule ID、catalog 引用、confidence 和不确定原因；
+- 查看未覆盖标准字段及 `MISSING_TEMPLATE_FIELD` Warnings；
+- 为每个 omission 填写原因并接受或拒绝；
+- 修改后重新运行 Template Validator；
+- 确认 Final Template。
 
-- 预览 Configuration Workbook 的七个 sheet、字段配置、Value Expressions、Warnings 和 Rule References。
-- 下载 Configuration Workbook。
+UI 必须明确区分 omission、EMPTY 和 Empty Handling。同一标准字段多行 condition 不属于本阶段。
 
-Configuration Workbook 不直接落库、不直接导入目标系统，也不反向更新 ConfigIR。
+### 4.6 Configuration Workbook
+
+用户选择一个 Final Template 和 Standard Action 后，系统基于 Final SchemaIR、绑定的 Final Standard、Final Template 和三份匹配校验结果生成工作簿。
+
+用户可以预览并下载：
+
+- Overview；
+- Interface Standard；
+- Interface Template；
+- Value Expressions；
+- Warnings；
+- Rule References；
+- Legend。
+
+Value Expressions 必须能展开字段值和 XML Key 的递归表达式。已确认 omissions 继续显示在 Warnings，不在 Template Sheet 生成空行。
+
+工作簿不直接落库、不直接导入目标系统，也不反向更新任何 IR。
 
 ## 5. 通过条件
 
-- 能输入一份真实脱敏 `.md` 或 `.txt` 银行接口样例。
-- 系统能生成可读、可编辑的 DocIR Draft。
-- Final DocIR 保留字段表、章节、条件说明和报文示例。
-- SchemaIR Draft 覆盖样例 DocIR 中可识别字段，并保留 `sourceText`。
-- Validator 能拦截明显错误并展示字段级错误信息。
-- 用户能修正并确认 Final SchemaIR。
-- 用户能 Review、重新校验并确认 Final ConfigIR。
-- 未映射、规则冲突和 SchemaIR/ConfigIR 差异不会被静默忽略。
-- Workbook Generator 能从双 Final 模型和指定规则版本稳定生成 Configuration Workbook。
-- Configuration Workbook 能指导配置人员人工配置并记录执行/验证状态。
-- UI 能预览和下载 Configuration Workbook。
-- Golden sample 回归和关键转换测试通过。
+- 能输入一份真实脱敏 XML 银行接口样例。
+- 四类 Draft 均可读、可 Review 且不能绕过可信边界形成 Final。
+- 三个 Validator 返回字段级、可定位错误。
+- 用户能确认 Final SchemaIR、Final Standard 和 Final Template。
+- Template 只能绑定精确 Final Standard 版本。
+- 一个 Standard 可被多份同方向 Template 复用。
+- 模板字段子集、omission Review、EMPTY 和 XML Key expressions 行为清晰可验证。
+- 差异、规则冲突、omissions 和不确定项不会被静默忽略。
+- Workbook Generator 能稳定生成一个方向标准加一份模板的工作簿。
+- UI 能预览和下载工作簿。
+- Golden regression 和关键转换测试通过。
 
 ## 6. 待确认问题
 
 - Review Workbench 的最小页面结构。
-- DocIR 编辑方式。
-- SchemaIR 表格编辑能力边界。
-- ConfigIR 递归表达式编辑方式。
+- DocIR 与 SchemaIR 的具体编辑控件。
+- Standard/Template artifact version 的 UI 展示与选择方式。
+- 递归表达式编辑方式。
+- Omission 批量 Review 与审计展示方式。
 - Validator 错误格式。
-- 规则版本升级对已有 ConfigIR 的迁移与重新 Review 方式。
+- 规则和标准版本升级的影响分析方式。
 - 本地开发、依赖安装、模型配置和样例运行说明。

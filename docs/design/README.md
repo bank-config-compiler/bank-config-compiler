@@ -6,18 +6,18 @@ Active.
 
 ## Purpose
 
-`docs/design/` 记录系统设计、模块边界、三层中间表示、Configuration Workbook 生成边界和验证资产策略。
+`docs/design/` 记录系统设计、模块边界、四层中间表示、Configuration Workbook 生成边界和验证资产策略。
 
 本目录不记录历史讨论流水账，也不替代需求文档。需求范围以 `docs/01-requirements.md` 和 `docs/phases/` 为准；关键技术决策以 `docs/adr/` 为准。
 
 ## Documents
 
 - `01-system-overview.md`：总体链路、模块职责、可信边界和候选 workspace 结构。
-- `02-intermediate-representations.md`：DocIR / SchemaIR / ConfigIR 的职责边界和衔接。
+- `02-intermediate-representations.md`：DocIR / SchemaIR / InterfaceStandardIR / InterfaceTemplateIR 的职责边界和衔接。
 - `03-ir-field-reference.md`：DocIR / SchemaIR 字段含义、Review 规则和 confidence 阈值。
-- `04-system-configuration-model.md`：ConfigIR 生命周期、取值表达式、字段处理策略、规则依据和 Validator 边界。
+- `04-system-configuration-model.md`：Interface Standard / Template 生命周期、版本绑定、取值表达式、omission 和 Validator 边界。
 - `05-configuration-workbook.md`：Configuration Workbook 的 sheet、列、状态流转和结构化回归策略。
-- `06-golden-sample.md`：golden sample 的作用、最低覆盖内容、ConfigIR blocker 和参考目录结构。
+- `06-golden-sample.md`：golden sample 的作用、最低覆盖内容、目标配置 blocker 和参考目录结构。
 
 已 superseded 的历史设计统一存放在 `docs/archive/`，不再列入当前 design 文档。
 

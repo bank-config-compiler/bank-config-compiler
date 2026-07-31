@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted. Partially superseded by `ADR-0006-configir-and-configuration-workbook.md`.
+Accepted. Its fact-source and Workbook input boundary was superseded first by ADR-0006 and then by ADR-0007; the decision not to generate Import JSON remains active.
 
 ## Date
 
