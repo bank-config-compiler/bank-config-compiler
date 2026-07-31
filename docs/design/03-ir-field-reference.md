@@ -6,7 +6,7 @@ Draft. Applies to P0-T2 expected DocIR / SchemaIR work.
 
 ## 1. 目的
 
-本文解释 DocIR 和 SchemaIR 字段含义，避免后续 agent 或实现者把候选字段误解为目标系统导入格式。
+本文解释 DocIR 和 SchemaIR 字段含义，避免后续 agent 或实现者把候选字段误解为目标系统导入格式。ConfigIR 的字段与取值表达式见 `docs/design/04-system-configuration-model.md`。
 
 正式字段结构以 `docs/design/02-intermediate-representations.md` 为准；本文用于解释 review 规则和字段使用方式。
 
@@ -45,7 +45,7 @@ DocIR 主表不展示完整 `Path`，避免人工 review 时被长路径淹没�
 |---|---|---|
 | `interfaceCode` | string | 接口编码，例如 `b2e0061`。 |
 | `interfaceName` | string | 接口名称。 |
-| `messageFormat` | string | 报文格式，当前候选为 `XML` 或 `JSON`。 |
+| `messageFormat` | string | 银行报文格式，当前只允许 `XML`。JSON 序列化不表示支持 JSON 银行报文。 |
 | `version` | string/null | 便于展示的候选协议版本。不确定性由 `envelope.fields` 中的 attribute 字段承载。 |
 | `sourceDocument` | string | SchemaIR 来源文档路径。 |
 | `envelope` | object | 可复用 BOCB2E envelope/head/trans 模型。 |
@@ -60,7 +60,7 @@ DocIR 主表不展示完整 `Path`，避免人工 review 时被长路径淹没�
 | `displayName` | string/null | 面向配置人员的中文名称或说明。 |
 | `parentPath` | string/null | 父节点路径。root 字段可为 `null`。 |
 | `level` | number | 路径层级，用于 workbook 缩进和排序。 |
-| `nodeKind` | string | `XML_ELEMENT`、`XML_ATTRIBUTE`、`JSON_OBJECT`、`JSON_ARRAY` 或 `SCALAR`。 |
+| `nodeKind` | string | `XML_ELEMENT`、`XML_ATTRIBUTE` 或 `SCALAR`。 |
 | `dataType` | string | 标准化类型，例如 `string`、`decimal`、`date`、`object`。 |
 | `format` | string/null | 格式提示，例如 `YYYYMMDD`、`HHMMSS`、`email`。 |
 | `length` | object | `min`、`max`、`raw`。冲突或非数值格式可只保留 `raw`。 |
@@ -76,7 +76,8 @@ DocIR 主表不展示完整 `Path`，避免人工 review 时被长路径淹没�
 | `uncertain` | boolean | 是否需要人工确认。 |
 | `uncertainReason` | string/null | 不确定原因。 |
 | `reviewNote` | string/null | 面向 human reviewer 的补充说明。 |
-| `configGuidance` | string/null | 面向配置人员的指导，不作为 raw doc 事实。 |
+
+目标系统取值和处理指导不属于 SchemaIR 字段，统一由 ConfigIR 表达。
 
 ## 5. evidence.kind
 
@@ -106,7 +107,7 @@ DocIR 主表不展示完整 `Path`，避免人工 review 时被长路径淹没�
 
 ## 8. review-notes.md 结构
 
-每次 DocIR / SchemaIR draft 都应生成 `review-notes.md`，并按以下顺序组织：
+每次 DocIR / SchemaIR / ConfigIR Draft 都应生成 `review-notes.md`。DocIR / SchemaIR Review notes 按以下顺序组织：
 
 1. `必须确认`：影响字段是否存在、path、required、occurs、类型、版本和配置正确性的事项。
 2. `建议关注`：推导字段、长度冲突、平台/前置机约束差异。

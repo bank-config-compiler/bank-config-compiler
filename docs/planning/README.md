@@ -12,4 +12,4 @@ Active.
 
 ## Documents
 
-- `00-phase0-poc-plan.md`：Phase0-PoC 唯一 active planning 文档，记录 task 状态、IR blocker、下一步任务和验证路径。
+- `00-phase0-poc-plan.md`：Phase0-PoC 唯一 active planning 文档，记录已完成 SchemaIR Validator、catalog blocker、ConfigIR / Workbook 后续任务和验证路径。

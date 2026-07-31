@@ -6,7 +6,7 @@ Draft.
 
 ## 1. 目的
 
-Golden sample 是后续回归、Prompt 调整、Validator 修改、Workbook Generator 修改和验收判断的核心证据。
+Golden sample 是后续回归、Prompt 调整、SchemaIR / ConfigIR Validator 修改、Workbook Generator 修改和验收判断的核心证据。
 
 Golden sample 不只是演示样例。它必须证明系统对真实或接近真实银行接口文档有帮助，并能让团队判断输出变化是可接受调整还是退化。
 
@@ -23,7 +23,11 @@ Phase0 先采用 Review Golden sample：冻结 expected DocIR、expected SchemaI
 
 Trusted chain 阶段再补充：
 
-- Schema Workbook expected assertions。
+- 经人工确认的 expected ConfigIR。
+- ConfigIR validation expected result。
+- Configuration Workbook expected assertions。
+
+ConfigIR golden 覆盖必须至少包含 `FIELD`、`FIXED_VALUE`、`EMPTY`、`FUNCTION`、`MAPPING` 和递归 `CONCATENATE`，并同时覆盖 ASSEMBLY 与 PARSE。具体 FIELD、FUNCTION、MAPPING 标识和 Rule ID 只能来自已确认的 `configuration-rules/v1`，不能使用占位业务标识。
 
 样例字段规模应接近真实业务，初步目标为 20 个以上字段。
 
@@ -33,7 +37,7 @@ Trusted chain 阶段再补充：
 
 它可以用于：
 
-- 当前 SchemaIR / Schema Workbook 设计依据。
+- 当前 SchemaIR / Configuration Workbook 讨论的参考输入。
 - CLI ingest smoke test 的输入。
 - 已构造 b2e0061 Review Golden sample 的 raw doc 来源。
 
@@ -42,7 +46,7 @@ Trusted chain 阶段再补充：
 - 直接作为 MVP 验收。
 - 在缺少 expected DocIR / SchemaIR / review notes 时作为回归基准。
 - 将历史导出 JSON 重新定义为目标产物或 Workbook Generator 输入。
-- 证明 Schema Workbook 指导人工配置能力。
+- 在缺少真实规则 catalog 和 Final ConfigIR 时证明 Configuration Workbook 指导人工配置能力。
 
 ## 4. Review Golden 目录结构
 
@@ -60,27 +64,31 @@ Trusted chain 阶段可继续添加：
 
 ```text
 samples/golden/b2eboc-b2e0061/
+├── configir.expected.json
+├── configir-validation.expected.json
 ├── workbook-assertions.expected.json
-└── schema-workbook.expected.xlsx
+└── configuration-workbook.expected.xlsx
 ```
 
-`schema-workbook.expected.xlsx` 可作为人工查看用的参考输出。自动回归不应比较整个 xlsx 二进制，而应读取 workbook 后按 `workbook-assertions.expected.json` 做结构化断言。
+这些文件当前尚不存在，并受 `configuration-rules/v1` catalog blocker 约束。`configuration-workbook.expected.xlsx` 可作为人工查看用的参考输出；自动回归不应比较整个 xlsx 二进制，而应读取 workbook 后按 `workbook-assertions.expected.json` 做结构化断言。
 
 ## 5. Workbook expected assertions
 
 Workbook 回归至少应断言：
 
-- Sheet 名称包含 `Overview`、`ASSEMBLY`、`PARSE`、`Warnings`、`Legend`。
+- Sheet 名称按顺序包含 `Overview`、`ASSEMBLY`、`PARSE`、`Value Expressions`、`Warnings`、`Rule References`、`Legend`。
 - 字段 sheet 表头与设计列一致。
 - `ASSEMBLY` 包含关键请求字段，例如 `acttyp`。
 - `PARSE` 包含关键响应字段，例如 `rspcod`、`rspmsg`、`insid`、`obssid`。
 - `messageFormat` 能在 `Overview` 中展示。
-- `uncertain=true`、条件字段和 validator warning 能进入 `Warnings` 或被高亮。
-- workbook 能由 `schemair.expected.json` 确定性重新生成。
+- 六种 Value Mode 均有覆盖，递归 `CONCATENATE` 可以在 `Value Expressions` 中还原。
+- 未映射、规则冲突、SchemaIR/ConfigIR 差异、`uncertain=true` 和 Validator warning 进入 `Warnings`。
+- workbook 能由 Final SchemaIR、Final ConfigIR、两份校验结果和指定规则版本确定性重新生成。
 
 ## 6. 待确认点
 
 - Golden sample 是否放在 `samples/`，还是 `src/test/resources/`。
 - LLM 生成输出与 expected 文件如何比对。
 - Workbook 样式断言的最小集合。
-- `schema-workbook.expected.xlsx` 是否进入版本库，还是只保存结构化 assertions。
+- `configuration-workbook.expected.xlsx` 是否进入版本库，还是只保存结构化 assertions。
+- 真实 catalog 确认后如何选择能够覆盖六种 Value Mode 的业务字段。

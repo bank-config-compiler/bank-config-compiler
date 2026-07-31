@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted.
+Accepted. Delivery model retained; ConfigIR and Configuration Workbook boundaries are updated by `ADR-0006-configir-and-configuration-workbook.md`.
 
 ## Context
 

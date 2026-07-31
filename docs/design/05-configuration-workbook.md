@@ -1,108 +1,206 @@
-# Schema Workbook 设计
+# Configuration Workbook 设计
 
 ## Status
 
-Draft.
+Draft. Product contract confirmed; generation remains blocked by the unavailable `configuration-rules/v1` catalog and Final ConfigIR fixture.
 
-## 1. 目的
+## 1. 目的与边界
 
-Schema Workbook 是面向配置人员的人工配置交付物。它不是系统内部事实源，也不应被反向解析为可信输入。
+Configuration Workbook 是供配置人员使用的配置规格和执行清单。每个银行接口生成一个 `.xlsx`。
 
-Workbook Generator 必须基于通过校验的 `Final SchemaIR` 确定性生成 workbook。生成过程只做格式化、排序、分 sheet、提示和配置指导，不补业务字段，不对接目标系统导入格式。
+它由以下输入确定性生成：
 
-## 2. Workbook 结构
+- Final SchemaIR；
+- Final ConfigIR；
+- 与两份 Final 内容匹配的通过校验结果；
+- 指定的 configuration-rules 版本；
+- 生成时间等非业务任务上下文。
 
-每个接口生成一个 `.xlsx` 文件。
+工作簿不是事实源，不是目标系统可导入文件，也不反向更新 ConfigIR。Workbook Generator 不得临时补字段、选择 Value Mode、猜测 Rule ID 或对接目标系统。
 
-固定 sheet：
+## 2. 固定 Sheet
 
 | Sheet | 用途 |
 |---|---|
-| `Overview` | 接口编码、接口名称、报文格式、来源文档、生成时间、校验摘要。 |
-| `ASSEMBLY` | 组装请求报文字段清单。 |
-| `PARSE` | 处理响应报文字段清单。 |
-| `Warnings` | 不确定字段、条件必填、字段冲突、缺失来源、人工确认项。 |
-| `Legend` | 列含义、枚举值、颜色说明。 |
+| `Overview` | 接口、报文格式、输入模型版本、规则版本、生成信息和校验摘要。 |
+| `ASSEMBLY` | 请求报文每个 XML node/attribute 的结构、系统配置和执行清单。 |
+| `PARSE` | 响应报文每个 XML node/attribute 的结构、系统配置和执行清单。 |
+| `Value Expressions` | 将所有取值表达式按树展开，完整保存递归 `CONCATENATE`。 |
+| `Warnings` | 未映射、规则冲突、差异、不确定项和 Validator issue。 |
+| `Rule References` | 本工作簿实际使用的规则版本、Rule ID、标题和来源位置。 |
+| `Legend` | 列、枚举、状态、颜色和空值约定。 |
 
-如果某个接口暂时只有一个方向，仍应保留固定 sheet；缺失方向的字段 sheet 可以为空，并在 `Overview` 标记。
+即使某个接口只有一个方向，也保留全部固定 sheet，并在 `Overview` 标记缺失方向。
 
-不新增独立 `ENVELOPE` sheet。`ASSEMBLY` 和 `PARSE` sheet 都应先展示 `SchemaIR.envelope.fields` 中的 BOCB2E envelope/head/trans 字段，再展示对应方向的交易消息字段。重复展示 envelope/head 是有意设计，用于让配置人员在单个方向 sheet 内完整 review 报文结构。
+不新增 `ENVELOPE` sheet。`ASSEMBLY` 与 `PARSE` 都先展示 SchemaIR envelope/head/trans，再展示当前方向交易消息，使配置人员在一个方向内看到完整 XML 结构。
 
-## 3. 字段 sheet 列
+## 3. 方向 Sheet
 
-`ASSEMBLY` 和 `PARSE` sheet 使用相同列：
+`ASSEMBLY` 和 `PARSE` 每个 SchemaIR XML element/attribute 一行，使用同一组列。
 
-| 列名 | 来源 | 说明 |
+### 3.1 报文结构
+
+| 列 | 来源 | 含义 |
 |---|---|---|
-| `No` | generator | 当前 sheet 内序号。 |
-| `Level` | SchemaIR | 字段层级。 |
-| `Path` | SchemaIR | 完整字段路径。 |
-| `Parent Path` | SchemaIR | 父级路径。 |
-| `Field Name` | SchemaIR | 字段名。 |
-| `Node Kind` | SchemaIR | `XML_ELEMENT`、`XML_ATTRIBUTE`、`JSON_OBJECT`、`JSON_ARRAY` 或 `SCALAR`。 |
-| `Data Type` | SchemaIR | 标准化数据类型。 |
-| `Required` | SchemaIR | 普通必填标记。 |
-| `Length Raw` | SchemaIR | 原文长度描述。 |
-| `Length Min` | SchemaIR | 解析后的最小长度。 |
-| `Length Max` | SchemaIR | 解析后的最大长度。 |
-| `Occurs` | SchemaIR | 原文出现次数。 |
-| `Multiple` | SchemaIR | 是否重复节点。 |
+| `Path` | SchemaIR | 完整唯一路径。 |
+| `Field Name` | SchemaIR | element 或 attribute 名称。 |
+| `Node Kind` | SchemaIR | `XML_ELEMENT`、`XML_ATTRIBUTE` 或适用的 scalar 表示。 |
+| `Data Type` | SchemaIR | 银行报文字段的标准化类型。 |
+| `Bank Required` | SchemaIR | 银行原始必填约束。 |
+| `Bank Length` | SchemaIR | 银行原始长度，保留原文与解析值。 |
+| `Occurs` | SchemaIR | 银行原始或经 Review 确认的出现次数。 |
 | `Description` | SchemaIR | 字段说明。 |
-| `Condition` | SchemaIR | 条件必填或条件约束。 |
-| `Source Text` | SchemaIR | 字段来源文本。 |
-| `Uncertain` | SchemaIR | 是否不确定。 |
-| `Review Note` | SchemaIR | 人工 Review 备注。 |
-| `Config Guidance` | SchemaIR / generator | 配置建议。 |
+| `Condition` | SchemaIR | 条件必填、枚举或其他银行约束。 |
 
-字段排序规则：
+### 3.2 系统配置
 
-1. 先输出 envelope/head/trans 字段。
-2. 再输出当前方向的交易 wrapper、payload、业务字段或响应字段。
-3. 同一字段集合内按 `Path` 层级和原文顺序稳定排序。
+| 列 | 来源 | 含义 |
+|---|---|---|
+| `Value Mode` | ConfigIR | 六种取值模式之一。 |
+| `Value Summary` | Generator | Value Expression 的确定性可读摘要。 |
+| `Configured Required` | ConfigIR | 目标系统实际必填配置。 |
+| `Empty Handling` | ConfigIR | 源值为空时的处理策略。 |
+| `Overlength Handling` | ConfigIR | 超长时报错或截断。 |
+| `Configured Length` | ConfigIR | 目标系统配置长度。 |
+| `Row Limit` | ConfigIR | 重复节点或多行配置上限。 |
+| `Chinese Character Length` | ConfigIR | 中文字符长度权重。 |
+| `Illegal Characters` | ConfigIR | 非法字符列表。 |
+| `Replacement Rules` | ConfigIR | 按执行顺序显示的替换规则。 |
 
-字段来源规则：
+`EMPTY` Value Mode 与 `Empty Handling` 是两个不同概念：前者表示表达式明确取空值，后者表示源值为空时如何处理。
 
-- `Source Text` 必须来自 SchemaIR 字段，不允许由 generator 补写。
-- `Evidence Kind` 后续可以作为列加入 workbook；Phase0 最小 workbook 可先把 evidence 信息合并到 `Review Note` 或 `Warnings`。
-- `uncertain=true`、`confidence < 0.9` 或 `evidence.kind != "DIRECT"` 的字段必须进入 `Warnings`。
+### 3.3 可信信息
 
-## 4. 格式规则
+| 列 | 来源 | 含义 |
+|---|---|---|
+| `Rule Reference` | ConfigIR | 稳定 Rule ID，可有多个。 |
+| `Difference Reason` | ConfigIR | SchemaIR 与 ConfigIR 约束不一致的原因。 |
+| `Confidence` | ConfigIR | 配置决定的置信度。 |
+| `Uncertain` | ConfigIR | 是否仍有不确定性。 |
+| `Validator Issue` | validation results | 与该 path 相关的错误或警告摘要。 |
 
-- 冻结表头。
-- 启用筛选。
-- 按 `Level` 对 `Field Name` 做视觉缩进。
-- 必填字段高亮。
-- `Condition` 非空字段使用条件标记高亮。
-- `Uncertain=true` 字段使用人工确认高亮。
-- `Warnings` sheet 必须列出不确定字段和 Validator warning。
-- `Source Text` 可以换行，但不得省略。
-- 不依赖公式表达关键语义，避免人工修改破坏事实。
+### 3.4 执行清单
 
-## 5. Warnings sheet
+| 列 | 填写方 | 含义 |
+|---|---|---|
+| `Execution Status` | 配置人员 | 当前配置执行状态。 |
+| `Verification Status` | 配置/复核人员 | 配置完成后的验证状态。 |
+| `Operator Note` | 配置/复核人员 | 阻塞原因、验证说明或返工记录。 |
 
-`Warnings` sheet 至少包含：
+执行状态和备注只存在于交付工作簿，不回流 Final ConfigIR。
 
-| 列名 | 说明 |
+## 4. Value Expressions
+
+主 sheet 只显示 Value Mode 和可读摘要。`Value Expressions` 必须将表达式逐节点展开：
+
+| 列 | 含义 |
+|---|---|
+| `Expression ID` | 当前表达式节点的稳定 ID。 |
+| `Parent Expression ID` | 父节点 ID；根表达式为空。 |
+| `Sequence` | 同一父节点下的执行顺序。 |
+| `Mode` | `FIXED_VALUE`、`EMPTY`、`FIELD`、`FUNCTION`、`MAPPING` 或 `CONCATENATE`。 |
+| `FIELD Reference` | FIELD catalog 引用。 |
+| `Fixed Value` | FIXED_VALUE 的值。 |
+| `Function Reference` | FUNCTION catalog 引用。 |
+| `Function Parameters` | 结构化参数的确定性展示。 |
+| `Mapping Reference` | MAPPING catalog 引用。 |
+| `Rule Reference` | 支持该表达式节点的 Rule ID。 |
+
+每行还应能关联方向和 SchemaIR Path。`CONCATENATE` 子节点按 Parent Expression ID 与 Sequence 还原；禁止把递归结构压成无法校验的自由文本。
+
+## 5. Warnings
+
+`Warnings` 至少包含：
+
+| 列 | 含义 |
 |---|---|
 | `Severity` | `ERROR`、`WARNING` 或 `INFO`。 |
 | `Function Type` | `ASSEMBLY` 或 `PARSE`。 |
-| `Path` | 相关字段路径。 |
-| `Message` | 问题说明。 |
-| `Source` | `Validator`、`Generator` 或 `Review`。 |
+| `Path` | 相关 SchemaIR path。 |
+| `Category` | `UNMAPPED`、`RULE_CONFLICT`、`SCHEMA_CONFIG_DIFFERENCE`、`UNCERTAIN`、`VALIDATOR` 等稳定类别。 |
+| `Message` | 可执行的问题说明。 |
+| `Rule Reference` | 相关 Rule ID。 |
+| `Source` | SchemaIR Validator、ConfigIR Validator、ConfigIR Review 或 Generator。 |
 
-Validator `ERROR` 存在时，不应生成最终交付 workbook；可以生成 debug workbook，但必须明确标记为不可交付。
+以下内容不得静默忽略，必须进入 Warnings：
 
-## 6. 回归策略
+- 未映射字段；
+- 不存在或冲突的 FIELD、FUNCTION、MAPPING 引用；
+- SchemaIR 与 ConfigIR 的 required、length 等差异；
+- uncertain 或 confidence 低于 Review 阈值的配置；
+- Validator warning；
+- 缺少规则依据或人工 Review 结论的项。
 
-自动化测试不应比较 `.xlsx` 二进制整体。
+存在 Validator `ERROR` 或未形成 Final ConfigIR 时，不得生成可交付工作簿。若为排障生成 debug workbook，`Overview` 必须明确标记为不可交付。
 
-应读取 workbook 后断言：
+## 6. Rule References
 
-- sheet 名称。
-- 字段 sheet 表头。
-- 关键字段行。
-- warning 行。
-- 冻结窗格和筛选是否存在。
-- 必填、条件、不确定字段的基础样式是否存在。
+`Rule References` 只列出当前工作簿实际引用的规则，至少包含：
 
-`schema-workbook.expected.xlsx` 可作为人工查看用参考输出；机器回归以结构化 assertions 为准。
+- Rule Package Version；
+- Rule ID；
+- Rule Title；
+- Source File；
+- Source Section；
+- Used By Direction；
+- Used By Path。
+
+规则文本以不可变规则包为准，工作簿中的摘要不得成为新的规则来源。
+
+## 7. 状态流转
+
+### 7.1 Execution Status
+
+```mermaid
+stateDiagram-v2
+    [*] --> NOT_STARTED
+    NOT_STARTED --> IN_PROGRESS
+    IN_PROGRESS --> CONFIGURED
+    IN_PROGRESS --> BLOCKED
+    BLOCKED --> IN_PROGRESS
+    CONFIGURED --> IN_PROGRESS: 返工
+```
+
+### 7.2 Verification Status
+
+```mermaid
+stateDiagram-v2
+    [*] --> NOT_VERIFIED
+    NOT_VERIFIED --> PASSED: Execution Status = CONFIGURED
+    NOT_VERIFIED --> FAILED: Execution Status = CONFIGURED
+    PASSED --> NOT_VERIFIED: 配置发生修改
+    FAILED --> NOT_VERIFIED: 配置发生修改
+```
+
+约束：
+
+- 只有 `Execution Status=CONFIGURED` 才能进入 `PASSED` 或 `FAILED`。
+- 配置发生修改后，Verification 必须重置为 `NOT_VERIFIED`。
+- 一行真正完成的条件是 `CONFIGURED + PASSED`。
+- workbook 中的人工状态不改变 Final ConfigIR。
+
+## 8. 格式规则
+
+- 冻结表头并启用筛选。
+- 对 XML 层级提供稳定的视觉缩进，但以 `Path` 为结构依据。
+- Bank Required、Configured Required、差异、不确定和 warning 使用可区分样式。
+- 长文本允许换行，不得截断规则依据和差异原因。
+- 不依赖公式表达关键配置语义。
+- `Legend` 必须解释全部枚举、状态、颜色、空值和“不适用”约定。
+
+## 9. 结构化回归
+
+自动化测试不比较 `.xlsx` 整体二进制。测试读取 workbook 后至少断言：
+
+- 七个固定 sheet 的名称和顺序；
+- 方向 sheet 的完整表头；
+- ASSEMBLY、PARSE 关键 XML path；
+- 六种 Value Mode 均可渲染；
+- 递归 `CONCATENATE` 能按 Expression ID、Parent ID 和 Sequence 还原；
+- SchemaIR/ConfigIR 差异、未映射、规则冲突和 Validator warning 进入 `Warnings`；
+- `Rule References` 中版本和 Rule ID 可追溯；
+- 状态单元格的允许值与约束；
+- 冻结窗格、筛选和基础提示样式；
+- 相同 Final 输入和规则版本生成相同结构化内容。
+
+人工查看用 expected xlsx 可以保留，但机器验收以结构化 assertions 为准。

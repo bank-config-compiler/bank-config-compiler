@@ -2,159 +2,148 @@
 
 ## Status
 
-Draft.
+Draft. Trusted-chain work is partially implemented; ConfigIR and Configuration Workbook work is blocked by the unavailable target-system catalog.
 
 ## 1. 阶段目标
 
-Phase0-PoC 目标是确认样例、格式、链路和技术边界，证明项目方向可行。
+Phase0-PoC 证明一条无 UI、可重复运行、可校验、可人工确认、可回归的配置辅助链路可行：
 
-本阶段不追求产品化 UI，不验证生产集成。成功标准是核心链路能够基于真实脱敏样例稳定产出可检查、可追溯、可回归的中间产物和 Schema Workbook。
+```text
+Raw Docs
+→ DocIR Draft / Final DocIR
+→ SchemaIR Draft / Validator / Final SchemaIR
+→ ConfigIR Draft / Validator / Final ConfigIR
+→ deterministic Configuration Workbook
+→ structured golden regression
+```
 
-交付形态应是可重复运行的链路验证工具，例如 CLI、script 或 lightweight workflow runner，加文件 workspace、golden sample fixtures、Validator 和 Workbook Generator。
+本阶段不验证生产集成。成功标准是使用真实脱敏 XML 银行接口样例产出三层中间模型、两份校验结果和 Configuration Workbook，并以结构化 assertions 证明链路可重复。
 
-Skill、Agent 或 Dify workflow 可以作为 LLM 草稿生成组件，但不能作为 Phase0 的完整交付物，因为它们不能单独证明控制、校验、人工确认和回归边界。
+Skill、Agent 或 workflow 可以生成 Draft，但不能替代 Validator、人工确认、确定性 Generator 和 golden regression。
 
-当前 Phase0 样例输入已落地：`docs/reference/samples/b2eboc/b2e0061.md`。正式 DocIR / SchemaIR 设计基线已落地到 `docs/design/` 和 `docs/adr/ADR-0005-schemair-envelope-and-evidence.md`。基于 human review 更新后的 Review Golden sample 已落地到 `samples/golden/b2eboc-b2e0061/`；其中 unresolved questions 是 expected review output 的一部分，不是 sample blocker。
+## 2. 当前事实
 
-当前执行计划见 `docs/planning/00-phase0-poc-plan.md`。已完成的 Python CLI、`ingest`、workspace artifact 协议、`check`、P0-T1 candidate IR、formal IR review 设计和 P0-T2 Review Golden sample boundary 作为 Phase0 bootstrap / sample 工作记录；下一步应基于 expected SchemaIR 实现 Validator、Workbook Generator 和 golden regression。
+已完成：
 
-## 2. In Scope
+- Python CLI、`ingest`、workspace artifact bootstrap 和 `check`。
+- `b2e0061` reference raw doc。
+- 经人工 Review 的 expected DocIR、expected SchemaIR 和 expected review notes。
+- SchemaIR Validator v1、字段级校验结果契约和 expected validation result。当前 Validator 仍接受早期 JSON 枚举，尚需按 XML-only 产品契约收紧。
 
-- 使用一份真实脱敏银行接口文档作为验证样例。
-- 样例字段规模应接近真实业务，初步目标为 20 个以上字段。
-- 确认 `.md`、`.txt` 和粘贴文本作为第一阶段输入范围。
-- Raw Docs 到 DocIR Draft。
-- 人工确认 Final DocIR fixture。
-- Final DocIR 到 SchemaIR Draft。
-- SchemaIR Validator 最小规则。
-- 人工确认 Final SchemaIR fixture。
-- Workbook Generator 基于 Final SchemaIR 生成 Schema Workbook。
-- 保存 Raw Docs、DocIR、SchemaIR、Validator 结果和 Schema Workbook。
-- 确认 DocIR、SchemaIR 和 Schema Workbook 的最小格式。
-- 确认无 UI 端到端验证形态和 golden sample 结构。
-- 提供 golden sample 回归命令或等价验证路径。
+尚未完成：
 
-## 3. Out of Scope
+- DocIR、SchemaIR 和 ConfigIR Draft generator。
+- SchemaIR Validator 的 XML-only 枚举对齐。
+- `configuration-rules/v1`。
+- ConfigIR machine wire contract、人工确认 fixture 和 ConfigIR Validator。
+- Configuration Workbook Generator、expected workbook 和结构化 workbook assertions。
+- 覆盖完整可信链路的 golden regression。
+
+当前 catalog 尚未提供。具体字段、function、mapping 和 Rule ID 不得从历史导出 JSON、LLM 或相近概念推断，因而 ConfigIR 与 Configuration Workbook 实现保持 Blocked。详细任务状态见 `docs/planning/00-phase0-poc-plan.md`。
+
+## 3. In Scope
+
+- 使用一份真实脱敏 XML 银行接口文档作为验证样例。
+- `.md`、`.txt` 和粘贴文本输入。
+- Raw Docs 到 DocIR Draft，人工确认 Final DocIR fixture。
+- Final DocIR 到 SchemaIR Draft，SchemaIR Validator，人工确认 Final SchemaIR fixture。
+- 整理并由业务负责人确认不可变 `configuration-rules/v1`。
+- Final SchemaIR 与指定规则版本到 ConfigIR Draft。
+- 人工确认 ConfigIR fixture 和 ConfigIR Validator。
+- Workbook Generator 基于双 Final 模型、两份通过校验结果和指定规则版本生成 Configuration Workbook。
+- 保存关键中间产物和规则版本。
+- 结构化 golden regression。
+- ASSEMBLY 与 PARSE 使用同一 ConfigIR 表达模型。
+
+## 4. Out of Scope
 
 - UI。
-- Skill、纯 Agent 或单纯 Prompt workflow 作为完整交付物。
-- 真实生产库导入。
-- 目标系统 Import JSON 生成或兼容性验证。
+- JSON 银行报文。
 - `.docx`、PDF、OCR、bbox 和原文区域高亮。
-- 多用户协作、权限、审批流。
+- Import JSON、目标系统 API 写入、自动导入和生产库直连。
+- Excel 反向导入或更新 ConfigIR。
+- 连接、认证、证书、部署或全量系统配置。
+- 多用户、权限和审批流。
 - RAG、多 Agent、自动微调、自动规则学习。
 - 复杂 condition DSL。
-- 多银行、多报文标准泛化。
+- 多银行和多报文标准泛化。
 
-## 4. 功能需求
+## 5. 功能需求
 
-### 4.1 文档输入
+### 5.1 DocIR
 
-系统应支持读取或接收原始银行接口文档文本。输入范围限定为：
+系统基于 Raw Docs 生成 DocIR Draft，至少保留：
 
-- `.md`
-- `.txt`
-- 粘贴文本
+- 接口编码、接口名称、XML 报文格式和版本；
+- `ASSEMBLY` 与 `PARSE`；
+- 字段表、章节、XML 示例和条件；
+- 字段层级、原始约束、来源证据、冲突与不确定项。
 
-系统应保存原始输入，便于后续查看和追溯。
+人工确认后形成 Final DocIR。
 
-### 4.2 DocIR 生成与确认
+### 5.2 SchemaIR
 
-系统应基于原始文档生成 DocIR Draft。
+系统基于 Final DocIR 生成 SchemaIR Draft。SchemaIR 保存银行 XML element、attribute、path、父子层级、类型、required、length、occurs、condition、evidence 和不确定性。
 
-DocIR 必须是强结构化 Markdown，至少保留：
+SchemaIR Validator 必须提供字段级错误，并拦截非法结构、枚举、路径和确定性 invariant。人工修改后必须重新校验，确认后形成 Final SchemaIR。
 
-- 接口编码、接口名称、报文格式和版本等基础信息，若原文缺失则留空或标记不确定。
-- 请求组装与响应处理方向，分别对应 `ASSEMBLY` 和 `PARSE`。
-- 原始字段表中的字段名、路径、类型、长度、出现次数、必输标记和说明。
-- 章节结构。
-- 条件说明。
-- XML/JSON 示例。
-- 无法确认的信息和需要人工检查的位置。
+### 5.3 规则包
 
-Phase0 可以通过人工维护 fixture 的方式表达 Final DocIR。
+Phase0 必须使用业务负责人确认的不可变 `configuration-rules/v1`，其中包含：
 
-### 4.3 SchemaIR 生成与确认
+- 六种取值方式和选择/处理规则；
+- 稳定 Rule ID；
+- 目标系统字段 catalog；
+- function catalog；
+- mapping catalog。
 
-系统应基于 Final DocIR 生成 SchemaIR Draft JSON。
+资料未提供前，本项保持 Blocked，不得制造占位业务标识。
 
-SchemaIR 顶层至少包含：
+### 5.4 ConfigIR
 
-- `interfaceCode`
-- `interfaceName`
-- `messageFormat`
-- `version`
-- `sourceDocument`
-- `envelope`
-- `messages`
+LLM 结合 Final SchemaIR 和 `configuration-rules/v1` 生成 ConfigIR Draft。ConfigIR 必须覆盖：
 
-每个 message 至少包含：
+- `FIXED_VALUE`、`EMPTY`、`FIELD`、`FUNCTION`、`MAPPING`、递归 `CONCATENATE`；
+- configured required、empty/overlength handling、configured length、row limit；
+- 中文字符长度、非法字符和有序替换；
+- Rule ID、confidence、不确定原因和人工 Review 结论；
+- SchemaIR/ConfigIR 差异、原因与规则依据。
 
-- `functionType`
-- `messageName`
-- `rootPath`
-- `fields`
+ConfigIR Validator 只校验结构、引用和确定性 invariant。人工确认业务语义后形成 Final ConfigIR。
 
-每个字段至少包含：
+### 5.5 Configuration Workbook
 
-- `path`
-- `fieldName`
-- `nodeKind`
-- `dataType`
-- `required`
-- `multiple`
-- `hasChildren`
-- `sourceText`
-- `evidence`
-- `confidence`
-- `uncertain`
-- `uncertainReason`
+Generator 只读取 Final SchemaIR、Final ConfigIR、两份与 Final 内容匹配的通过校验结果和 `configuration-rules/v1`。
 
-SchemaIR 字段应覆盖样例 DocIR 中可识别的字段。若字段缺少充分证据，系统应保留字段并设置 `uncertain=true`，而不是静默丢弃。
+工作簿固定包含 `Overview`、`ASSEMBLY`、`PARSE`、`Value Expressions`、`Warnings`、`Rule References`、`Legend`。未映射、规则冲突、差异和 Validator issue 必须进入 Warnings。
 
-Phase0 可以通过人工维护 fixture 的方式表达 Final SchemaIR。
+工作簿是配置规格与执行清单，不直接导入目标系统，也不反向更新 ConfigIR。
 
-### 4.4 SchemaIR Validator
+## 6. Golden Regression
 
-Validator 至少应校验：
+Phase0 golden regression 至少覆盖：
 
-- `interfaceCode` 非空。
-- `messageFormat` 属于允许枚举。
-- `functionType` 属于允许枚举。
-- `path` 非空。
-- `fieldName` 非空。
-- `nodeKind` 属于允许枚举。
-- `dataType` 属于允许枚举。
-- `required` 是 boolean。
-- `multiple` 是 boolean。
-- `hasChildren` 是 boolean。
-- `confidence` 在 0 到 1 之间。
-- `sourceText` 非空。
-- `evidence.kind` 属于允许枚举。
-- 同一 message 内 `path` 不重复。
-- 父子路径关系可解释。
-- `hasChildren`、`multiple`、`dataType` 和 `nodeKind` 不存在明显冲突。
+- ASSEMBLY 与 PARSE；
+- `FIELD`；
+- `FIXED_VALUE`；
+- `EMPTY`；
+- `FUNCTION`；
+- `MAPPING`；
+- 包含任意模式子表达式的递归 `CONCATENATE`；
+- SchemaIR/ConfigIR required 或 length 差异；
+- 未映射、规则冲突和 warning；
+- 七个固定 workbook sheet 和状态列。
 
-Validator 失败时，应返回可展示的字段级错误列表，不能只返回通用失败信息。
+具体业务字段、function、mapping 和 Rule ID 只能来自已确认的 `v1` catalog。
 
-### 4.5 Schema Workbook 生成
+## 7. 通过条件
 
-系统应由 Workbook Generator 基于通过校验的 Final SchemaIR 生成 Schema Workbook。
+- DocIR、SchemaIR、ConfigIR 逻辑契约与机器格式均已冻结。
+- `configuration-rules/v1` 的内容可追溯且经业务负责人确认。
+- 两个 Validator 都能返回可定位的错误。
+- 三个 Draft 都能生成，且不会绕过人工确认形成 Final。
+- 双 Final 模型可以稳定生成 Configuration Workbook。
+- 结构化 regression 覆盖六种 Value Mode、递归表达式、差异和 warnings。
+- 全链路可重复运行并通过测试。
 
-Schema Workbook 不直接落库、不直接导入目标系统。它应是配置人员可阅读、可筛选、可核对的强格式化 Excel 工作簿，用于指导人工配置。
-
-## 5. 通过条件
-
-- 样例文档进入仓库或受控测试资源。
-- 样例字段数量、层级和条件说明足以证明链路价值。
-- DocIR / SchemaIR 最小格式已确认。
-- Schema Workbook 最小结构和字段列已确认。
-- Golden sample 目录结构和回归命令已定义。
-- 无 UI 链路可重复运行，并产出可比较结果。
-
-## 6. 待确认问题
-
-- Schema Workbook 样式、sheet 和列的最小验收标准。
-- 无 UI 端到端验证形态。
-- Golden sample 回归命令。
-- 技术栈选择原则。
+catalog 未确认时，Phase0 不满足通过条件。

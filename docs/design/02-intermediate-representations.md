@@ -1,24 +1,27 @@
-# DocIR / SchemaIR 设计
+# DocIR / SchemaIR / ConfigIR 设计
 
 ## Status
 
-Draft. P0-T2 baseline decisions are captured here and reflected in the b2e0061 Review Golden sample.
+Draft. DocIR / SchemaIR 的 P0-T2 baseline 已反映在 b2e0061 Review Golden sample；ConfigIR wire schema 受真实 catalog blocker 约束，尚未冻结。
 
 ## 1. 设计原则
 
-DocIR 和 SchemaIR 的职责不同：
+三层 IR 的职责不同：
 
 - `DocIR` 是适合 LLM 和 Human Review 的强结构化 Markdown，负责稳定呈现 raw document 中的章节、字段表、条件、示例和 review 信息。
-- `SchemaIR` 是可机器校验、可人工 review、可作为 Schema Workbook 输入的结构化 JSON，是 `Final SchemaIR` 的候选形态。
-- `review-notes.md` 是面向人的 review 入口，每次 DocIR / SchemaIR draft 生成都应产出，用于汇总低置信、推导、冲突和人工确认项。
+- `SchemaIR` 是可机器校验、可人工 Review 的标准化报文模型，负责表达银行 XML 报文的 element、attribute、path、父子层级、类型和银行原始约束。
+- `ConfigIR` 是可机器校验、可人工 Review 的系统配置模型，负责表达目标系统对 SchemaIR 字段的取值和处理策略。
+- `review-notes.md` 是面向人的 Review 入口，每次 DocIR / SchemaIR / ConfigIR Draft 生成都应产出，用于汇总低置信、推导、冲突、差异和人工确认项。
 
 Raw doc 仍表示受控输入源。本次 `b2e0061` 样例以人工修正后的 `raw-doc.md` 作为正确 source；正常流程中不应在转换阶段静默改写 raw doc。
+
+“标准化”表示项目内部统一表达，不表示行业标准、XSD 或 JSON Schema。当前只承诺 XML 银行报文；SchemaIR 和 ConfigIR 使用 JSON 序列化不等于支持 JSON 银行报文。
 
 ## 2. DocIR
 
 ### 2.1 职责
 
-- 保留原始文档中的字段表、章节结构、XML/JSON 示例和条件说明。
+- 保留原始文档中的字段表、章节结构、XML 示例和条件说明。
 - 清洗 Markdown 格式噪声，使字段表稳定可读。
 - 在 `Interface`、`Envelope`、`Message: ASSEMBLY`、`Message: PARSE` 中用 metadata 表格表达关键上下文。
 - 标记无法确认、由规则推导或需要人工检查的位置。
@@ -26,7 +29,7 @@ Raw doc 仍表示受控输入源。本次 `b2e0061` 样例以人工修正后的 
 ### 2.2 非职责
 
 - 不作为最终业务语义模型。
-- 不生成 Schema Workbook。
+- 不生成 Configuration Workbook。
 - 不表达目标系统导入 JSON、历史 ID、父子 ID 或配置状态。
 - 不把复杂条件转换为正式 DSL。
 
@@ -100,7 +103,7 @@ Raw doc 仍表示受控输入源。本次 `b2e0061` 样例以人工修正后的 
 
 ## 3. SchemaIR
 
-SchemaIR 使用 JSON。`Final SchemaIR` 是系统内部事实源，Workbook Generator 必须只读取通过校验的 `Final SchemaIR` 和 validator result。
+SchemaIR 使用 JSON。`Final SchemaIR` 是银行 XML 报文结构与银行原始约束的事实源。Workbook Generator 还必须读取通过校验并经人工确认的 Final ConfigIR；SchemaIR 不承载目标系统配置。
 
 ### 3.1 顶层结构
 
@@ -164,10 +167,9 @@ SchemaIR 使用 JSON。`Final SchemaIR` 是系统内部事实源，Workbook Gene
 - `ASSEMBLY`：组装请求报文。
 - `PARSE`：处理响应报文。
 
-`messageFormat` 枚举：
+当前 `messageFormat` 只允许 `XML`。JSON 银行报文属于未验证的 future candidate。
 
-- `XML`
-- `JSON`
+实现同步说明：当前已实现的 SchemaIR Validator v1 仍接受早期 `JSON` 和 JSON node kind 枚举。该行为不构成产品能力，后续代码批次必须按本契约收紧；本次文档调整不修改代码或测试。
 
 ### 3.4 字段结构
 
@@ -202,17 +204,16 @@ SchemaIR 使用 JSON。`Final SchemaIR` 是系统内部事实源，Workbook Gene
   "confidence": 0.95,
   "uncertain": false,
   "uncertainReason": null,
-  "reviewNote": null,
-  "configGuidance": null
+  "reviewNote": null
 }
 ```
+
+目标系统配置指导不属于 SchemaIR 字段；它由 ConfigIR 表达。
 
 ### 3.5 nodeKind 枚举
 
 - `XML_ELEMENT`
 - `XML_ATTRIBUTE`
-- `JSON_OBJECT`
-- `JSON_ARRAY`
 - `SCALAR`
 
 XML attribute 必须作为字段建模，例如：
@@ -270,7 +271,72 @@ XML attribute 必须作为字段建模，例如：
 
 容器节点如果必填性来自子字段而非原文，应使用 `evidence.kind="DERIVED"` 并降低 confidence。
 
-## 4. Validator 候选规则
+## 4. ConfigIR
+
+### 4.1 职责边界
+
+ConfigIR 回答“当前目标系统应如何配置这个报文字段”。它只覆盖字段取值与处理策略，不覆盖连接、认证、证书、部署或全量系统配置。
+
+Final SchemaIR 与 Final ConfigIR 是两个独立事实源：
+
+- SchemaIR 保存银行原始 required、length、occurs 和 condition。
+- ConfigIR 保存目标系统实际 configured required、configured length、取值方式和处理策略。
+- 两侧值不得相互覆盖。存在差异时，ConfigIR 必须记录原因、Rule ID 和人工 Review 结论，并进入 Workbook `Warnings`。
+
+ConfigIR 的详细生命周期、递归表达式、策略和 Validator 边界见 `docs/design/04-system-configuration-model.md`。
+
+### 4.2 候选顶层结构
+
+下例只表达逻辑契约，不是已冻结 wire schema：
+
+```json
+{
+  "interfaceCode": "b2e0061",
+  "schemaIrRef": "schemair-final.json",
+  "rulePackageVersion": "v1",
+  "directions": [],
+  "review": {
+    "status": "PENDING"
+  }
+}
+```
+
+`rulePackageVersion` 必须精确指向 `configuration-rules/` 中已发布版本。当前 `v1` catalog 尚未提供，因此不得创建带占位业务标识的 Final ConfigIR。
+
+### 4.3 方向与字段配置
+
+`ASSEMBLY` 和 `PARSE` 使用同一字段配置结构。每个字段配置必须引用一个存在的 SchemaIR `path`，并包含：
+
+- 递归 Value Expression；
+- Configured Required；
+- Empty Handling；
+- Overlength Handling；
+- Configured Length；
+- Row Limit；
+- Chinese Character Length；
+- Illegal Characters；
+- 有序 Replacement Rules；
+- Rule References；
+- confidence、uncertain、uncertainReason；
+- 与 SchemaIR 差异的 Difference Reason；
+- 人工 Review 结论。
+
+字段、function 和 mapping 引用必须来自规则包 catalog。缺少引用或无法确认业务语义时，该项保持未确定，整个 ConfigIR 不能进入 Final。
+
+### 4.4 取值表达式
+
+允许模式：
+
+- `FIXED_VALUE`
+- `EMPTY`
+- `FIELD`
+- `FUNCTION`
+- `MAPPING`
+- `CONCATENATE`
+
+`CONCATENATE` 按顺序包含任意模式的子表达式，并允许递归。`EMPTY` 表示该表达式取固定空值，不等同于字段值为空时的 Empty Handling。
+
+## 5. Validator 边界
 
 - `interfaceCode` 非空。
 - `messageFormat` 属于允许枚举。
@@ -286,24 +352,39 @@ XML attribute 必须作为字段建模，例如：
 
 Validator 失败时必须返回字段级错误列表，不能只返回通用失败信息。
 
-## 5. Workbook Generator 输入边界
+ConfigIR Validator 还必须校验：
+
+- SchemaIR path 引用存在；
+- Value Expression 结构、递归关系和顺序合法；
+- Rule ID 属于指定规则版本；
+- FIELD、FUNCTION 和 MAPPING 引用存在于 catalog；
+- required/length 等差异具有 Difference Reason 和 Rule Reference；
+- uncertain、未映射、规则冲突或未完成人工 Review 的配置不能成为 Final。
+
+ConfigIR Validator 只校验结构、引用和确定性 invariant，不能代替人工判断 function 或 mapping 是否符合业务语义。
+
+## 6. Workbook Generator 输入边界
 
 Workbook Generator 只能读取：
 
 - `Final SchemaIR`
+- `Final ConfigIR`
 - `schemair-validation-result.json`
+- `configir-validation-result.json`
+- 指定的 configuration-rules 版本
 - 任务上下文，例如生成时间和源文件名
 
 Workbook Generator 不允许：
 
 - 反向解析 Excel 作为事实源。
 - 根据目标系统导入模板补业务字段。
-- 静默丢弃 `uncertain=true` 字段。
+- 临时推断 Value Mode、Rule ID 或 catalog 引用。
+- 静默丢弃 `uncertain=true`、未映射、规则冲突或差异字段。
 - 把条件必填字段强行改成普通必填字段。
 
 Envelope/head 字段应并入 `ASSEMBLY` 和 `PARSE` 字段 sheet，再接各自交易消息字段。不新增独立 `ENVELOPE` sheet。
 
-## 6. 历史导出 JSON 边界
+## 7. 历史导出 JSON 边界
 
 `docs/reference/samples/b2eboc/b2e0061-assembly.json` 和 `b2e0061-parse.json` 只能作为人工 review 对照：
 

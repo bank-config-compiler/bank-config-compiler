@@ -6,7 +6,7 @@ Reference Only.
 
 ## Purpose
 
-`docs/reference/` 保存候选草案、历史输入和用于讨论的参考样例。这里的材料不是正式承诺，也不能覆盖 requirements、ADR、design、phase 或 planning 文档。
+`docs/reference/` 保存候选草案、历史输入和用于讨论的参考样例。这里的材料不是正式承诺，也不能覆盖 requirements、ADR、design、phase 或 planning 文档，不能作为 ConfigIR 的权威规则或 catalog 来源。
 
 ## Documents
 

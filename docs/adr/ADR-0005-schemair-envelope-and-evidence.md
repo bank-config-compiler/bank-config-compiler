@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted
+Accepted. Envelope/evidence decisions remain; Workbook terminology and input boundary are updated by `ADR-0006-configir-and-configuration-workbook.md`.
 
 ## Date
 

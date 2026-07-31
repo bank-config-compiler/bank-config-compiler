@@ -2,7 +2,7 @@
 
 ## Status
 
-Superseded by `docs/adr/ADR-0004-schemair-and-workbook-artifacts.md`.
+Superseded by `docs/adr/ADR-0004-schemair-and-workbook-artifacts.md`; the current dual-model boundary is defined by `docs/adr/ADR-0006-configir-and-configuration-workbook.md`.
 
 ## 1. 历史背景
 
@@ -22,11 +22,13 @@ Superseded by `docs/adr/ADR-0004-schemair-and-workbook-artifacts.md`.
 Raw Docs
 → DocIR
 → Final SchemaIR
-→ SchemaIR Validator
-→ Schema Workbook
+→ Final ConfigIR
+→ Configuration Workbook
 ```
 
-`Final SchemaIR` 是系统内部事实源。Schema Workbook 是面向配置人员的人工配置交付物。
+`Final SchemaIR` 是银行 XML 报文事实源，`Final ConfigIR` 是目标系统字段配置事实源。Configuration Workbook 是面向配置人员的人工配置交付物。
+
+ConfigIR 中目标系统感知的字段取值、function、mapping 和处理策略，以及工作簿中面向人的配置指导，不等于恢复 Import JSON。它们不包含历史 ID、导入状态、父子 ID、导入模板兼容层或目标系统写入行为。
 
 ## 3. 历史样例处理
 
@@ -37,7 +39,7 @@ Raw Docs
 - 项目最终目标产物。
 - MVP 验收标准。
 - Rule Engine 输出兼容性标准。
-- SchemaIR 字段模型的来源。
+- SchemaIR 字段模型或 ConfigIR 规则/catalog 的权威来源。
 
 它们可以作为：
 

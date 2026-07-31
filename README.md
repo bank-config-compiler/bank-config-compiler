@@ -6,11 +6,13 @@ Draft.
 
 ## 项目定位
 
-本项目面向银企直连实施场景，用于将真实脱敏的银行接口文档转换为可 Review、可校验、可追溯、可回归的 SchemaIR，并生成面向配置人员的 Schema Workbook。
+本项目面向银企直连实施场景，将真实脱敏的银行接口文档整理为可 Review、可校验、可追溯、可回归的银行 XML 报文模型（SchemaIR）和目标系统字段配置模型（ConfigIR），再确定性生成供配置人员使用的 Configuration Workbook。
 
-本项目不是全自动生产配置生成器，也不以目标系统 Import JSON 作为当前交付目标。LLM / Agent 能力可以生成草稿，但可信链路必须包含人工 Review、SchemaIR 校验、确定性 Workbook Generator 和回归证据。
+本项目不是全自动生产配置生成器，也不以目标系统 Import JSON、API 写入或自动导入为当前交付目标。LLM / Agent 只能生成 DocIR、SchemaIR 和 ConfigIR Draft；可信链路必须包含 Validator、人工 Review、确定性 Workbook Generator 和回归证据。
 
-`Final SchemaIR` 是系统内部事实源。Schema Workbook 是由 `Final SchemaIR` 确定性生成的 Excel 交付物，用于指导配置人员人工配置目标系统。
+`Final SchemaIR` 保存银行报文结构与银行原始约束，`Final ConfigIR` 保存目标系统字段配置与规则依据。Configuration Workbook 由双 Final 模型、两份校验结果和指定规则版本确定性生成；它是配置规格与执行清单，不是事实源，也不反向更新 ConfigIR。
+
+当前产品范围只承诺 XML 银行报文。IR 使用 JSON 序列化不等于支持 JSON 银行报文。
 
 ## 交付形态
 
@@ -19,7 +21,7 @@ Draft.
 | Phase | 交付形态 |
 |---|---|
 | Phase0-PoC | 可重复运行的链路验证工具，例如 CLI、script 或 lightweight workflow runner，加文件 workspace、fixtures、Validator、Workbook Generator 和 golden sample regression。 |
-| Phase1-MVP | 轻量 Review Tool，支持 Review、校验、确认、Schema Workbook 预览和下载。 |
+| Phase1-MVP | 轻量 Review Tool，支持三层 IR Review、双 Validator、确认、Configuration Workbook 预览和下载。 |
 | Phase2-Pilot | 受控内部试点工具或小型内部系统，用于真实或准真实项目验证。 |
 | Phase3-Production | 暂不定义。 |
 
@@ -31,9 +33,10 @@ Skill、Agent 或 Dify-style workflow 可以作为辅助组件，但不是完整
 
 - `docs/01-requirements.md`：项目级需求、原则、交付形态和跨阶段约束。
 - `docs/phases/`：各阶段需求。
-- `docs/design/`：系统设计、IR 设计、Schema Workbook 策略和 golden sample 策略。
+- `docs/design/`：系统设计、三层 IR、Configuration Workbook 和 golden sample 策略。
 - `docs/adr/`：已接受的架构决策。
 - `docs/reference/`：参考草案和样例，不是正式承诺。
+- `configuration-rules/`：正式、版本化的目标系统规则资产；不属于 `docs/reference/`。
 
 建议阅读顺序：
 
@@ -54,20 +57,27 @@ Skill、Agent 或 Dify-style workflow 可以作为辅助组件，但不是完整
 - Phase0 当前 reference raw doc 已提供：`docs/reference/samples/b2eboc/b2e0061.md`。
 - 正式 DocIR / SchemaIR 设计基线已沉淀到 `docs/design/02-intermediate-representations.md`、`docs/design/03-ir-field-reference.md` 和 `docs/adr/ADR-0005-schemair-envelope-and-evidence.md`。
 - `samples/golden/b2eboc-b2e0061/` 已提供 b2e0061 Review Golden sample，冻结 expected DocIR、expected SchemaIR 和 expected review notes。
-- SchemaIR Validator v1 已定义 `schemair-validation-result/v1` 输出契约，并为 b2e0061 固化 expected Validator result。
+- SchemaIR Validator v1 已实现，定义了 `schemair-validation-result/v1` 输出契约，并为 b2e0061 固化 expected Validator result。现有实现仍接受早期 `JSON` / JSON node kind 枚举；这只是待收紧的 legacy validation 行为，不代表产品支持 JSON 银行报文。
+- ConfigIR 与 Configuration Workbook 的产品契约已进入正式 requirements、design 和 ADR。
+- `configuration-rules/README.md` 已定义不可变规则包契约。
 
 尚未完成：
 
-- DocIR / SchemaIR 生成。
-- Workbook Generator、Schema Workbook 和 workbook assertions。
+- DocIR / SchemaIR / ConfigIR Draft 生成。
+- SchemaIR Validator 按 XML-only 产品契约收紧 legacy JSON 枚举。
+- `configuration-rules/v1` 实际规则、字段、function 和 mapping catalog。
+- ConfigIR machine wire contract、人工确认 fixture 和 ConfigIR Validator。
+- Workbook Generator、Configuration Workbook 和 workbook assertions。
 - 完整 trusted chain golden regression。
 
-后续 Phase0-PoC 已完成 Review Golden sample 边界和 Validator expected result。下一步可以基于 `samples/golden/b2eboc-b2e0061/schemair.expected.json` 实现 Workbook Generator 和结构化回归断言。
+后续 Phase0-PoC 当前受目标系统 catalog 缺失阻塞。只有真实资料整理并经业务负责人确认后，才能发布不可变 `configuration-rules/v1`，再冻结 ConfigIR wire schema、fixture、Validator 和 Workbook Generator；不得使用历史导出 JSON 或 LLM 猜测补齐。
 
 仍需确认：
 
-- Schema Workbook 的 sheet、列、样式和结构化断言。
-- Golden sample 回归命令。
+- `configuration-rules/v1` 的真实 catalog 内容。
+- ConfigIR 具体 wire schema 与 golden fixture。
+- Configuration Workbook 样式断言的最小集合。
+- 完整 golden regression 命令。
 - 技术栈和无 UI 验证形态。
 
 ## 本地命令
@@ -116,7 +126,7 @@ uv run python -m bank_config_compiler ingest --input docs/reference/samples/b2eb
 | `docir-draft.md` | Markdown | 仅定义文件协议，生成逻辑属于后续 Task。 |
 | `docir-final.md` | Markdown | 仅定义文件协议，人工确认流程属于后续 Task。 |
 | `schemair-draft.json` | JSON | 仅定义文件协议，生成逻辑属于后续 Task。 |
-| `schemair-validation-result.json` | JSON | 仅定义文件协议，Validator 规则属于后续 Task。 |
+| `schemair-validation-result.json` | JSON | SchemaIR Validator 输出协议；Validator 已作为库和测试实现，当前 CLI `check` 只校验该文件可解析。 |
 | `schemair-final.json` | JSON | 仅定义文件协议，人工确认流程属于后续 Task。 |
 
 所有 artifact 必须使用 UTF-8 with no BOM。
