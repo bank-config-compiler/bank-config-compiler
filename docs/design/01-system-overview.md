@@ -6,28 +6,27 @@ Draft.
 
 ## 1. 设计目标
 
-系统支持一条可审计的人机协同链路：LLM 将银行文档整理为 Draft，Validator 和人工 Review 形成 Final SchemaIR 与 Final ConfigIR，确定性 Generator 再生成 Configuration Workbook。
+系统由输入与 artifact workspace、LLM Draft Generators、Review Boundary、Validators、规则资产和确定性 Workbook Generator 协作完成配置辅助链路。本图只表达组件职责和数据流，不重复定义 Draft 到 Final 的产品生命周期。
 
 ```mermaid
 flowchart LR
-    A["Raw Docs"] --> B["DocIR Draft"]
-    B --> C["Final DocIR"]
-    C --> D["SchemaIR Draft"]
-    D --> E["SchemaIR Validator + 人工 Review"]
-    E --> F["Final SchemaIR"]
-    F --> G["ConfigIR Draft"]
-    R["configuration-rules 指定版本"] --> G
-    G --> H["ConfigIR Validator + 人工 Review"]
-    H --> I["Final ConfigIR"]
-    F --> J["确定性 Workbook Generator"]
-    I --> J
-    E --> J
-    H --> J
-    R --> J
-    J --> K["Configuration Workbook"]
+    I["Input / Workspace"] -->|"Raw Docs"| L["LLM Draft Generators"]
+    A["Artifact Store / Workspace"] -->|"Final DocIR / Final SchemaIR"| L
+    R["configuration-rules 指定版本"] -->|"仅用于 ConfigIR Draft"| L
+
+    L -->|"DocIR / SchemaIR / ConfigIR Draft"| W["Human Review Boundary"]
+    W -->|"SchemaIR / ConfigIR Draft"| V["SchemaIR / ConfigIR Validators"]
+    V -->|"Issues / Validation Results"| W
+
+    W -->|"确认后的 Final Artifacts"| A
+    V -->|"匹配内容的 Validation Results"| A
+
+    A -->|"Final SchemaIR + Final ConfigIR + 两份校验结果"| G["确定性 Workbook Generator"]
+    R -->|"精确规则版本"| G
+    G --> K["Configuration Workbook"]
 ```
 
-完整的修正和重新校验闭环以 `docs/01-requirements.md` 为准。
+`docs/01-requirements.md` 中的可信流程是唯一规范性生命周期图。Review Boundary 在 Phase0 可以由人工确认 fixture 表达，在产品化阶段由 Review Workbench 承载；SchemaIR 或 ConfigIR 被修改后，必须重新进入对应 Validator。
 
 系统采用两个事实源：
 

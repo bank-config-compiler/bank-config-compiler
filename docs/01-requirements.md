@@ -111,7 +111,8 @@ flowchart TD
     D --> E["LLM 生成 SchemaIR Draft"]
     E --> F["SchemaIR Validator"]
     F -->|"校验失败：修正后重新校验"| E
-    F -->|"校验通过"| G["人工 Review SchemaIR"]
+    F -->|"校验通过"| SV["SchemaIR Validation Result"]
+    SV --> G["人工 Review SchemaIR"]
     G -->|"修正后重新校验"| E
     G -->|"确认"| H["Final SchemaIR"]
 
@@ -119,14 +120,15 @@ flowchart TD
     R["configuration-rules 指定版本"] --> I
     I --> J["ConfigIR Validator"]
     J -->|"校验失败：修正后重新校验"| I
-    J -->|"校验通过"| K["人工 Review ConfigIR"]
+    J -->|"校验通过"| CV["ConfigIR Validation Result"]
+    CV --> K["人工 Review ConfigIR"]
     K -->|"修正后重新校验"| I
     K -->|"确认"| L["Final ConfigIR"]
 
     H --> M["确定性 Workbook Generator"]
     L --> M
-    F -->|"SchemaIR 校验结果"| M
-    J -->|"ConfigIR 校验结果"| M
+    SV -->|"与 Final SchemaIR 内容匹配"| M
+    CV -->|"与 Final ConfigIR 内容匹配"| M
     R -->|"精确规则版本"| M
     M --> N["Configuration Workbook"]
 ```
