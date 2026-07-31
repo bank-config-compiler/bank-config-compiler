@@ -2,7 +2,7 @@
 
 ## Status
 
-Reference / Draft. Not accepted schema.
+Archived. Not accepted schema. Replaced by the current IR design under `docs/design/`.
 
 ## Date
 

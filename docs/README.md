@@ -26,6 +26,7 @@ Active.
 5. [`phases/`](phases/00-phase0-poc.md) 定义各阶段目标和验收边界。
 6. [`planning/`](planning/README.md) 记录当前阶段的任务状态、依赖和验证路径。
 7. [`reference/`](reference/README.md) 只保存候选草案和参考输入，不构成正式承诺。
+8. [`archive/`](archive/README.md) 保存已被替代或放弃的历史材料，不具有 source-of-truth 权限。
 
 同一层级出现不一致时，应停止实施并先修正文档；低优先级文档不得覆盖高优先级契约。
 
@@ -40,6 +41,7 @@ Active.
 | 查看 Phase0 当前任务、blocker 和验证路径 | `planning/00-phase0-poc-plan.md` |
 | 查看正式目标系统规则资产 | `../configuration-rules/README.md` |
 | 查阅候选草案和参考输入 | `reference/README.md` |
+| 查阅已废弃或被替代的历史材料 | `archive/README.md` |
 | 运行当前 CLI 或检查 workspace artifact | `../README.md` |
 
 ## 文档维护边界
@@ -50,6 +52,7 @@ Active.
 - `design/` 维护模型、模块和交付物设计，不记录实时任务状态。
 - `phases/` 维护阶段目标与验收边界；`planning/` 维护 active task 状态和 blocker。
 - `configuration-rules/` 是正式规则资产；`reference/` 不是权威规则或 catalog 来源。
+- `archive/` 只保存历史上下文，不参与当前设计和实现。
 - 用户可见命令、artifact、配置或当前已实现能力变化时，必须同步检查根 README。
 - 本文件不复制根 README 中的命令，也不复制 planning 中的任务明细。
 
@@ -58,6 +61,7 @@ Active.
 - 每个目录内的正式 Markdown 文档使用 `NN-kebab-case.md`，其中 `NN` 为两位排序编号。
 - `README.md`、`ADR-XXXX-*`、原始样例和 JSON fixture 不加排序编号。
 - `00-09` 用于入口、总览或最早阶段；常规主题使用 `10-89` 范围内的既定顺序。
-- `90-99` 用于 superseded 或历史设计；编号不替代状态声明。
+- Active 目录不再使用 `90-99` 表示历史文档；废弃内容统一迁移到 `archive/`。
 - 正式 Markdown 文档必须显式声明 `Status`；Draft、Placeholder、Reference 或 Superseded 内容不得伪装成当前承诺。
+- 归档文件可以保留原文件名和编号，以维护历史可追溯性。
 - 重命名文档时必须同步全部 Markdown 链接、路径示例和目录索引。

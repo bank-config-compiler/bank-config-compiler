@@ -2,7 +2,7 @@
 
 ## Status
 
-Superseded by `docs/adr/ADR-0004-schemair-and-workbook-artifacts.md`; the current dual-model boundary is defined by `docs/adr/ADR-0006-configir-and-configuration-workbook.md`.
+Archived. Superseded by `docs/adr/ADR-0004-schemair-and-workbook-artifacts.md`; the current dual-model boundary is defined by `docs/adr/ADR-0006-configir-and-configuration-workbook.md`.
 
 ## 1. 历史背景
 

@@ -18,7 +18,8 @@ Active.
 - `04-system-configuration-model.md`：ConfigIR 生命周期、取值表达式、字段处理策略、规则依据和 Validator 边界。
 - `05-configuration-workbook.md`：Configuration Workbook 的 sheet、列、状态流转和结构化回归策略。
 - `06-golden-sample.md`：golden sample 的作用、最低覆盖内容、ConfigIR blocker 和参考目录结构。
-- `90-import-json-mapping.md`：已 superseded 的 Import JSON 历史设计说明。
+
+已 superseded 的历史设计统一存放在 `docs/archive/`，不再列入当前 design 文档。
 
 ## Maintenance Rules
 

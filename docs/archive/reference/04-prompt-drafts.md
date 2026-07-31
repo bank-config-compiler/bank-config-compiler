@@ -2,7 +2,7 @@
 
 ## Status
 
-Reference / Draft. Not accepted prompt.
+Archived. Not accepted prompt. Future prompts must be derived from the current IR design and confirmed rule package.
 
 ## Date
 
