@@ -6,83 +6,24 @@ Draft.
 
 ## 项目定位
 
-本项目面向银企直连实施场景，将真实脱敏的银行接口文档整理为可 Review、可校验、可追溯、可回归的银行 XML 报文模型（SchemaIR）和目标系统字段配置模型（ConfigIR），再确定性生成供配置人员使用的 Configuration Workbook。
+Bank Config Compiler 面向银企直连实施场景，将真实脱敏的银行接口文档整理为可 Review、可校验、可追溯的银行 XML 报文模型和目标系统字段配置模型，并确定性生成供配置人员使用的 Configuration Workbook。
 
-本项目不是全自动生产配置生成器，也不以目标系统 Import JSON、API 写入或自动导入为当前交付目标。LLM / Agent 只能生成 DocIR、SchemaIR 和 ConfigIR Draft；可信链路必须包含 Validator、人工 Review、确定性 Workbook Generator 和回归证据。
-
-`Final SchemaIR` 保存银行报文结构与银行原始约束，`Final ConfigIR` 保存目标系统字段配置与规则依据。Configuration Workbook 由双 Final 模型、两份校验结果和指定规则版本确定性生成；它是配置规格与执行清单，不是事实源，也不反向更新 ConfigIR。
+LLM / Agent 只能生成 DocIR、SchemaIR 和 ConfigIR Draft；DocIR 需要人工 Review，SchemaIR 和 ConfigIR 还必须经过各自的 Validator。Configuration Workbook 是配置规格与执行清单，不是 Import JSON、目标系统可导入文件或 ConfigIR 的反向输入。
 
 当前产品范围只承诺 XML 银行报文。IR 使用 JSON 序列化不等于支持 JSON 银行报文。
 
-## 交付形态
+## 当前能力
 
-项目按阶段演进：
+- CLI 可以从 `.md` / `.txt` 输入创建 workspace，并保存 `raw-doc.md`。
+- CLI 可以检查固定 artifact 名称、UTF-8 no BOM 编码和 JSON 可解析性。
+- SchemaIR Validator v1 已作为库和自动化测试实现，并具有 b2e0061 expected validation result。现有实现仍接受 legacy JSON 枚举；这不代表产品支持 JSON 银行报文。
+- DocIR / SchemaIR Review Golden sample 已落地；Draft generators、ConfigIR、Configuration Workbook 和完整 trusted chain 尚未实现。
 
-| Phase | 交付形态 |
-|---|---|
-| Phase0-PoC | 可重复运行的链路验证工具，例如 CLI、script 或 lightweight workflow runner，加文件 workspace、fixtures、Validator、Workbook Generator 和 golden sample regression。 |
-| Phase1-MVP | 轻量 Review Tool，支持三层 IR Review、双 Validator、确认、Configuration Workbook 预览和下载。 |
-| Phase2-Pilot | 受控内部试点工具或小型内部系统，用于真实或准真实项目验证。 |
-| Phase3-Production | 暂不定义。 |
+Phase0 当前受目标系统 catalog 缺失阻塞。详细任务状态和后续执行边界见 [Phase0-PoC 执行计划](docs/planning/00-phase0-poc-plan.md)。
 
-Skill、Agent 或 Dify-style workflow 可以作为辅助组件，但不是完整交付物，也不是可信边界。
+## 快速开始
 
-## 文档结构
-
-当前 source of truth 位于 `docs/`：
-
-- `docs/01-requirements.md`：项目级需求、原则、交付形态和跨阶段约束。
-- `docs/phases/`：各阶段需求。
-- `docs/design/`：系统设计、三层 IR、Configuration Workbook 和 golden sample 策略。
-- `docs/adr/`：已接受的架构决策。
-- `docs/reference/`：参考草案和样例，不是正式承诺。
-- `configuration-rules/`：正式、版本化的目标系统规则资产；不属于 `docs/reference/`。
-
-建议阅读顺序：
-
-1. `docs/01-requirements.md`
-2. `docs/adr/README.md`
-3. `docs/design/README.md`
-4. `docs/phases/00-phase0-poc.md`
-5. `docs/phases/01-phase1-mvp.md`
-
-## 当前实现状态
-
-当前仓库已完成 Phase0 bootstrap 工作。Phase0 的 active task 状态只在 `docs/planning/00-phase0-poc-plan.md` 维护。
-
-已完成：
-
-- CLI 支持从 `.md` / `.txt` 输入文件创建 workspace，并保存 `raw-doc.md`。
-- CLI 支持校验 workspace 的固定 artifact 名称、UTF-8 no BOM 编码和 JSON 可解析性。
-- Phase0 当前 reference raw doc 已提供：`docs/reference/samples/b2eboc/b2e0061.md`。
-- 正式 DocIR / SchemaIR 设计基线已沉淀到 `docs/design/02-intermediate-representations.md`、`docs/design/03-ir-field-reference.md` 和 `docs/adr/ADR-0005-schemair-envelope-and-evidence.md`。
-- `samples/golden/b2eboc-b2e0061/` 已提供 b2e0061 Review Golden sample，冻结 expected DocIR、expected SchemaIR 和 expected review notes。
-- SchemaIR Validator v1 已实现，定义了 `schemair-validation-result/v1` 输出契约，并为 b2e0061 固化 expected Validator result。现有实现仍接受早期 `JSON` / JSON node kind 枚举；这只是待收紧的 legacy validation 行为，不代表产品支持 JSON 银行报文。
-- ConfigIR 与 Configuration Workbook 的产品契约已进入正式 requirements、design 和 ADR。
-- `configuration-rules/README.md` 已定义不可变规则包契约。
-
-尚未完成：
-
-- DocIR / SchemaIR / ConfigIR Draft 生成。
-- SchemaIR Validator 按 XML-only 产品契约收紧 legacy JSON 枚举。
-- `configuration-rules/v1` 实际规则、字段、function 和 mapping catalog。
-- ConfigIR machine wire contract、人工确认 fixture 和 ConfigIR Validator。
-- Workbook Generator、Configuration Workbook 和 workbook assertions。
-- 完整 trusted chain golden regression。
-
-后续 Phase0-PoC 当前受目标系统 catalog 缺失阻塞。只有真实资料整理并经业务负责人确认后，才能发布不可变 `configuration-rules/v1`，再冻结 ConfigIR wire schema、fixture、Validator 和 Workbook Generator；不得使用历史导出 JSON 或 LLM 猜测补齐。
-
-仍需确认：
-
-- `configuration-rules/v1` 的真实 catalog 内容。
-- ConfigIR 具体 wire schema 与 golden fixture。
-- Configuration Workbook 样式断言的最小集合。
-- 完整 golden regression 命令。
-- 技术栈和无 UI 验证形态。
-
-## 本地命令
-
-安装与测试通过 `uv` 执行：
+安装依赖并运行测试：
 
 ```powershell
 uv run --group dev pytest
@@ -94,19 +35,21 @@ uv run --group dev pytest
 uv run bank-config-compiler ingest --input docs/reference/samples/b2eboc/b2e0061.md --workspace workspace/phase0a-smoke --overwrite
 ```
 
-`ingest` 只是 Phase0 bootstrap 链路的第一步：把外部 `.md` / `.txt` 输入标准化保存为 workspace 内的 `raw-doc.md`。它不生成 DocIR、SchemaIR 或 Validator 结果；后续转换应由独立生成、校验或编排命令负责。
+`ingest` 只把外部 `.md` / `.txt` 输入保存为 workspace 内的 `raw-doc.md`，不生成 DocIR、SchemaIR 或 Validator 结果。
 
-校验只包含 raw doc 的 workspace：
+检查只包含 raw doc 的 workspace：
 
 ```powershell
 uv run bank-config-compiler check --workspace workspace/phase0a-smoke --profile raw
 ```
 
-校验完整 workspace artifact 协议。该命令要求 workspace 中已经存在全部 artifact；当前 bootstrap 不生成 DocIR / SchemaIR 内容。CLI profile 名称仍为 `phase0a`：
+检查完整 workspace artifact 协议：
 
 ```powershell
 uv run bank-config-compiler check --workspace workspace/phase0a-protocol-smoke --profile phase0a
 ```
+
+`phase0a` profile 要求全部当前 artifact 已存在；CLI `check` 只检查文件协议和可解析性，不生成 SchemaIR，也不运行 SchemaIR Validator。
 
 等价模块入口：
 
@@ -114,19 +57,21 @@ uv run bank-config-compiler check --workspace workspace/phase0a-protocol-smoke -
 uv run python -m bank_config_compiler ingest --input docs/reference/samples/b2eboc/b2e0061.md --workspace workspace/phase0a-smoke --overwrite
 ```
 
-`docs/reference/samples/b2eboc/` 是当前 reference sample。它用于设计和 smoke 验证，不等同于已确认的 golden sample。
-
-## Workspace artifacts
+## Workspace Artifacts
 
 当前 bootstrap 固定以下文件名：
 
 | Artifact | 格式 | 当前用途 |
 |---|---|---|
 | `raw-doc.md` | Markdown / text | 由 `ingest` 从外部输入导入，作为后续生成命令的输入。 |
-| `docir-draft.md` | Markdown | 仅定义文件协议，生成逻辑属于后续 Task。 |
-| `docir-final.md` | Markdown | 仅定义文件协议，人工确认流程属于后续 Task。 |
-| `schemair-draft.json` | JSON | 仅定义文件协议，生成逻辑属于后续 Task。 |
-| `schemair-validation-result.json` | JSON | SchemaIR Validator 输出协议；Validator 已作为库和测试实现，当前 CLI `check` 只校验该文件可解析。 |
-| `schemair-final.json` | JSON | 仅定义文件协议，人工确认流程属于后续 Task。 |
+| `docir-draft.md` | Markdown | 仅定义文件协议，生成逻辑尚未实现。 |
+| `docir-final.md` | Markdown | 仅定义文件协议，人工确认流程尚未实现。 |
+| `schemair-draft.json` | JSON | 仅定义文件协议，生成逻辑尚未实现。 |
+| `schemair-validation-result.json` | JSON | SchemaIR Validator 输出协议；当前 CLI `check` 只校验该文件可解析。 |
+| `schemair-final.json` | JSON | 仅定义文件协议，人工确认流程尚未实现。 |
 
 所有 artifact 必须使用 UTF-8 with no BOM。
+
+## 详细文档
+
+正式产品契约、设计决策、阶段计划、规则资产和文档维护规范统一从 [文档中心](docs/README.md) 进入。
