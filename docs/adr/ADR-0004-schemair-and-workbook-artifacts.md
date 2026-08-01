@@ -28,7 +28,7 @@ Accepted. Its fact-source and Workbook input boundary was superseded first by AD
 
 本 ADR supersedes ADR-0001 中“Import JSON Draft 作为确定性最终产物”的部分。ADR-0001 中 Human Review、Validator 和 deterministic generation 作为可信边界的决策仍然有效。
 
-状态说明：ADR-0006 将“Final SchemaIR 单一事实源”和“Workbook 只读取 Final SchemaIR”调整为 Final SchemaIR / Final ConfigIR 双事实源及双模型输入，并将 Schema Workbook 调整为 Configuration Workbook。本 ADR 中“不生成 Import JSON”“Excel 不是事实源”“确定性生成”的决定继续有效。
+状态说明：ADR-0006 曾将“Final SchemaIR 单一事实源”和“Workbook 只读取 Final SchemaIR”调整为 Final SchemaIR / Final ConfigIR 双事实源及双模型输入；ADR-0007 随后以 Final SchemaIR、Final InterfaceStandardIR、Final InterfaceTemplateIR 三个顺序关联的事实源取代该边界，并将 Workbook 调整为每个方向模板一份 Configuration Workbook。本 ADR 中“不生成 Import JSON”“Excel 不是事实源”“确定性生成”的决定继续有效。
 
 ## Alternatives Considered
 

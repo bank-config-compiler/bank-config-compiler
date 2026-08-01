@@ -26,7 +26,7 @@ flowchart TD
     G -->|"确认"| H["Final SchemaIR"]
 
     H --> I["LLM 生成 InterfaceStandardIR Draft"]
-    R["configuration-rules 指定版本"] --> I
+    RS["Standard 使用的 configuration-rules 版本"] --> I
     I --> J["Standard Validator"]
     J -->|"校验失败：修正后重新校验"| I
     J -->|"校验通过"| STV["Standard Validation Result"]
@@ -35,7 +35,7 @@ flowchart TD
     K -->|"确认"| L["Final InterfaceStandardIR"]
 
     L --> M["LLM 生成 InterfaceTemplateIR Draft"]
-    R --> M
+    RT["Template 使用的 configuration-rules 版本"] --> M
     M --> N["Template Validator"]
     N -->|"校验失败：修正后重新校验"| M
     N -->|"校验通过"| TV["Template Validation Result"]
@@ -49,7 +49,8 @@ flowchart TD
     SV -->|"匹配 Final SchemaIR"| Q
     STV -->|"匹配 Final Standard"| Q
     TV -->|"匹配 Final Template"| Q
-    R -->|"精确规则版本"| Q
+    RS -->|"Standard 精确规则版本"| Q
+    RT -->|"Template 精确规则版本"| Q
     X["人工指定 Standard Action"] --> Q
     Q --> W["Configuration Workbook"]
 ```
@@ -119,6 +120,7 @@ Template Validator 负责：
 - Template 精确引用 Final Standard 的 ID、version 和 content hash；
 - 每个 `standardFieldRef` 存在且在同一模板中不重复；
 - Value Expression 树、递归关系和顺序合法；
+- String/Boolean/Date/Number 标量模板行必须有字段值表达式，Node/Object 模板行不得有字段值表达式；
 - FIELD、FUNCTION、MAPPING 与 Rule ID 引用属于指定 catalog/规则版本；
 - 存在模板行时，每个标准 XML Key 恰好具有一个表达式；
 - 缺失标准字段均有 omission Warning；未确认 omission 不能成为 Final；
@@ -155,7 +157,7 @@ Phase0 可以用受控 fixture 或命令流程表达人工确认；Phase1 才提
 
 - 为一个方向模板生成一份 `.xlsx`；
 - 输出绑定标准的完整快照和模板实际字段子集；
-- 将字段值与 XML Key 的递归表达式展开到 `Value Expressions`；
+- 将标量字段值与 XML Key 的递归表达式展开到 `Value Expressions`；
 - 汇总差异、omissions、规则冲突、不确定项和 Validator issue；
 - 生成执行与验证清单。
 

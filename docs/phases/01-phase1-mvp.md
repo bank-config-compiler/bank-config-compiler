@@ -18,7 +18,7 @@ Phase1-MVP 将 Phase0-PoC 链路产品化为最小可用的轻量 Review Tool。
 - 生成、校验、Review 并确认 ASSEMBLY/PARSE 的 Final Interface Standard。
 - 基于已有 Final Standard 创建和 Review 多份同方向 Interface Template。
 - 精确展示模板绑定的 Standard ID/version/content hash。
-- 编辑字段值和 XML Key 的六种 Value Expression。
+- 编辑标量字段值和 XML Key 的六种 Value Expression，并明确展示 Node/Object 无字段值表达式。
 - Review 模板未覆盖标准字段的 omissions。
 - 基于三份 Final 模型和匹配校验结果生成 Configuration Workbook。
 - 预览和下载工作簿。
@@ -76,7 +76,8 @@ Phase1-MVP 将 Phase0-PoC 链路产品化为最小可用的轻量 Review Tool。
 
 - 创建和识别多份同方向模板；
 - 查看 Standard ID/version/content hash 绑定；
-- 查看和编辑字段值 Value Expression；
+- 查看和编辑标量字段值 Value Expression；
+- 对 Node/Object 展示无字段值表达式，不提供 Value Mode 编辑；
 - 为每个 XML Key 编辑独立 Value Expression；
 - 编辑 Empty/Overlength Handling、Row Limit、Chinese Character Length 和 Replacement Rules；
 - 查看 Rule ID、catalog 引用、confidence 和不确定原因；
@@ -101,7 +102,7 @@ UI 必须明确区分 omission、EMPTY 和 Empty Handling。同一标准字段�
 - Rule References；
 - Legend。
 
-Value Expressions 必须能展开字段值和 XML Key 的递归表达式。已确认 omissions 继续显示在 Warnings，不在 Template Sheet 生成空行。
+Value Expressions 必须能展开标量字段值和 XML Key 的递归表达式，且不为 Node/Object 生成 FIELD_VALUE 节点。已确认 omissions 继续显示在 Warnings，不在 Template Sheet 生成空行。
 
 工作簿不直接落库、不直接导入目标系统，也不反向更新任何 IR。
 

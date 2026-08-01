@@ -2,7 +2,9 @@
 
 ## Status
 
-Archived. Superseded by `docs/adr/ADR-0004-schemair-and-workbook-artifacts.md`; the current dual-model boundary is defined by `docs/adr/ADR-0006-configir-and-configuration-workbook.md`.
+Archived. Superseded by `docs/adr/ADR-0004-schemair-and-workbook-artifacts.md`; the current Standard/Template boundary is defined by `docs/adr/ADR-0007-interface-standard-and-template-irs.md`.
+
+The sections below preserve the ADR-0006-era ConfigIR snapshot as historical context. They are not the current product contract.
 
 ## 1. 历史背景
 

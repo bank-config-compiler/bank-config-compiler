@@ -35,7 +35,7 @@ Workbook Generator 不得补字段、选择 Value Mode、猜测 Rule ID、判断
 | `Overview` | 接口、方向、标准/模板身份、版本、Standard Action、规则版本、生成信息和校验摘要。 |
 | `Interface Standard` | 当前模板绑定的一个方向标准完整快照和标准配置执行清单。 |
 | `Interface Template` | 当前模板实际配置的标准字段子集和模板执行清单。 |
-| `Value Expressions` | 将字段值与 XML Key 的 Value Expression 按树展开。 |
+| `Value Expressions` | 将标量字段值与 XML Key 的 Value Expression 按树展开。 |
 | `Warnings` | 差异、omissions、规则冲突、不确定项和 Validator issue。 |
 | `Rule References` | 本工作簿实际使用的规则版本、Rule ID 和来源。 |
 | `Legend` | 列、枚举、状态、颜色、空值和 omission 约定。 |
@@ -122,8 +122,8 @@ Generator 只展示调用者提供的 Action，不连接目标系统验证它是
 | `Field Name` | InterfaceStandardIR | 便于人工查看的字段名称快照。 |
 | `Parent Path` | InterfaceStandardIR | 对应标准字段的目标系统 Path。 |
 | `Data Type` | InterfaceStandardIR | 对应标准字段类型。 |
-| `Value Mode` | InterfaceTemplateIR | 六种取值模式之一。 |
-| `Value Summary` | Generator | 字段值表达式的确定性可读摘要。 |
+| `Value Mode` | InterfaceTemplateIR | 标量字段使用六种取值模式之一；Node/Object 留空。 |
+| `Value Summary` | Generator | 标量字段值表达式的确定性可读摘要；Node/Object 留空。 |
 | `XML Key Summary` | Generator | 各 XML Key 与表达式摘要。 |
 | `Empty Handling` | InterfaceTemplateIR | 源值为空时的处理策略。 |
 | `Overlength Handling` | InterfaceTemplateIR | 超长时报错或截断。 |
@@ -136,6 +136,8 @@ Generator 只展示调用者提供的 Action，不连接目标系统验证它是
 - `EMPTY`：存在模板行且表达式明确取空值；
 - Empty Handling：存在输入但值为空时如何处理；
 - omission：该模板没有这个标准字段配置。
+
+String、Boolean、Date、Number 模板行必须具有字段值表达式。`Node`、`Object` 是无值容器，其 Value Mode 与 Value Summary 单元格留空，且不得在 `Value Expressions` 中生成 `FIELD_VALUE` 节点；`Legend` 必须说明该空值表示“不适用”，不是 UNKNOWN、omission 或 `EMPTY`。容器上的 XML Keys 仍按独立表达式展示。
 
 ### 5.2 可信与执行列
 
@@ -155,7 +157,7 @@ Generator 只展示调用者提供的 Action，不连接目标系统验证它是
 
 ### 6.1 作用
 
-`Interface Template` 主 sheet 必须保持一行对应一个标准字段，因此只适合展示 Value Mode 和简短摘要。以下内容无法可靠压入单个单元格：
+`Interface Template` 主 sheet 必须保持一行对应一个标准字段，因此只适合为标量字段展示 Value Mode 和简短摘要。以下内容无法可靠压入单个单元格：
 
 - 递归 `CONCATENATE`；
 - FUNCTION 的结构化参数；
@@ -170,7 +172,7 @@ Generator 只展示调用者提供的 Action，不连接目标系统验证它是
 |---|---|
 | `Template ID` | 当前模板身份。 |
 | `Standard Field Ref` | 表达式所属标准字段。 |
-| `Expression Scope` | `FIELD_VALUE` 或 `XML_KEY`。 |
+| `Expression Scope` | `FIELD_VALUE` 或 `XML_KEY`；FIELD_VALUE 只用于标量字段。 |
 | `XML Key` | Scope 为 XML_KEY 时的 key，例如 `@version`。 |
 | `Expression ID` | 当前表达式节点的稳定 ID。 |
 | `Parent Expression ID` | 父节点 ID；根表达式为空。 |
@@ -184,6 +186,8 @@ Generator 只展示调用者提供的 Action，不连接目标系统验证它是
 | `Rule Reference` | 支撑该表达式节点的 Rule ID。 |
 
 每个存在模板行的标准 XML Key 必须恰好具有一个根表达式。`CONCATENATE` 子节点按 Parent Expression ID 与 Sequence 还原；禁止压缩成无法校验的自由文本。
+
+每个 String/Boolean/Date/Number 模板行必须恰好具有一个 `FIELD_VALUE` 根表达式。Node/Object 不得具有 `FIELD_VALUE` 表达式；其 XML Key 表达式仍使用 `XML_KEY` Scope。
 
 ## 7. Warnings
 
@@ -267,7 +271,8 @@ NOT_VERIFIED → PASSED
 - parentPath/fullPath、sequence、Node/Object 与 XML Keys；
 - 模板字段是标准字段子集；
 - 已确认 omissions 出现在 Warnings 而不出现在 Template rows；
-- 字段值与 XML Key expression tree 可完整还原；
+- 标量字段值与 XML Key expression tree 可完整还原；
+- 标量字段具有 FIELD_VALUE 表达式，Node/Object 没有 FIELD_VALUE 表达式且主 sheet 的 Value Mode/Value Summary 留空；
 - Rule References 可解析；
 - Standard Action=REUSE 时标准执行列为 NOT_APPLICABLE；
 - 工作簿不是导入文件或 IR 的反向输入。

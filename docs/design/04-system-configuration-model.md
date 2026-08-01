@@ -153,7 +153,7 @@ InterfaceTemplateIR
 ├── rulePackageVersion
 ├── fieldConfigs[]
 │   ├── standardFieldRef
-│   ├── valueExpression
+│   ├── valueExpression?          # 仅 String/Boolean/Date/Number
 │   ├── xmlKeyExpressions{}
 │   ├── processingPolicies
 │   └── evidence / review
@@ -183,6 +183,8 @@ Template Validator 为每个未覆盖标准字段产生 `MISSING_TEMPLATE_FIELD`
 
 ### 4.3 Value Expression
 
+String、Boolean、Date、Number 标量 field config 必须具有一个字段值表达式。`Node`、`Object` 是无值容器，不具有字段值表达式；Validator 必须拒绝容器 field config 中出现 `valueExpression`。容器仍可保存适用的 Processing Policies，并按 4.4 节配置 XML Key Expressions。
+
 | Mode | 语义 | 必要内容 |
 |---|---|---|
 | `FIXED_VALUE` | 使用明确固定值。 | 固定值。 |
@@ -196,7 +198,7 @@ ASSEMBLY 和 PARSE 使用同一结构，但解释方向不同：ASSEMBLY 从系�
 
 ### 4.4 XML Key Expressions
 
-若标准字段存在模板行，则标准定义的每个 XML Key 必须恰好具有一个独立 Value Expression。字段值表达式与 XML Key 表达式共享六种 Mode，但使用不同 Scope。
+若标准字段存在模板行，则标准定义的每个 XML Key 必须恰好具有一个独立 Value Expression。标量字段值表达式与 XML Key 表达式共享六种 Mode，但使用不同 Scope。Node/Object 没有字段值表达式，但不影响其 XML Key 使用这些 Mode。
 
 ```text
 standardFieldRef: document-field
@@ -236,6 +238,7 @@ Template Validator 必须校验：
 - standard ID、version 和 content hash 精确匹配；
 - field reference 存在且不重复；
 - 表达式结构、递归顺序和 catalog 引用；
+- String/Boolean/Date/Number field config 必须有字段值表达式，Node/Object field config 不得有字段值表达式；
 - XML Key expressions 完整且无未知 key；
 - 每个缺失标准字段都有 omission Warning；
 - 每个 Final omission 已记录原因和接受结论；
@@ -256,7 +259,7 @@ Final InterfaceTemplateIR 必须满足：
 
 - Template Validator 通过且结果与当前内容匹配；
 - 绑定的 Final Standard identity/version/hash 精确匹配；
-- 所有 field config 和 XML Key expression 引用有效；
+- 所有适用的标量字段值和 XML Key expression 引用有效，Node/Object 不包含字段值表达式；
 - 每个未覆盖标准字段都有已确认 omission；
 - function、mapping 和其他业务语义已人工确认；
 - 模板身份和版本已冻结。

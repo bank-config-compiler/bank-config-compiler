@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted. Partially superseded by `ADR-0004-schemair-and-workbook-artifacts.md` and extended by `ADR-0006-configir-and-configuration-workbook.md`.
+Accepted. Partially superseded by `ADR-0004-schemair-and-workbook-artifacts.md`; the current target-configuration extension is defined by `ADR-0007-interface-standard-and-template-irs.md`, which supersedes ADR-0006.
 
 ## Context
 

@@ -60,7 +60,9 @@ InterfaceTemplateIR 通过稳定 `standardFieldRef` 引用标准字段。模板�
 
 XML attribute 不形成独立接口标准行，而作为所属 element 的 XML Keys。若元素存在模板行，每个 XML Key 必须具有独立 Value Expression。
 
-Value Expressions 是 InterfaceTemplateIR 的结构化 Workbook 视图，用于完整展开字段值表达式、XML Key 表达式、递归 `CONCATENATE`、function 参数和 mapping 引用。它不是新的事实源。
+String、Boolean、Date、Number 标量模板行必须具有字段值表达式。`Node`、`Object` 是无值容器，其模板行不得配置字段值表达式；容器上的 XML Keys 仍分别具有独立表达式。
+
+Value Expressions 是 InterfaceTemplateIR 的结构化 Workbook 视图，用于完整展开标量字段值表达式、XML Key 表达式、递归 `CONCATENATE`、function 参数和 mapping 引用。它不是新的事实源。
 
 ### Configuration Workbook 粒度
 
@@ -151,6 +153,6 @@ Why not chosen:
 - Workbook Generator 输入增加 Final InterfaceStandardIR、Final InterfaceTemplateIR 和对应校验结果。
 - Interface Template Review 必须同时展示实际配置行和未覆盖标准字段的 omission 列表。
 - 标准变更需要显式评估所有绑定模板，而不是静默传播。
-- Golden regression 必须覆盖父路径、sequence、Node/Object、XML Keys、模板字段子集、omission Review 和字段/XML Key Value Expressions。
+- Golden regression 必须覆盖父路径、sequence、Node/Object 无字段值表达式、XML Keys、模板字段子集、omission Review 和标量字段/XML Key Value Expressions。
 - `configuration-rules/v1` 尚未提供，因此两个新 IR 的 wire schema、fixture、Validator 和 Workbook Generator 实现继续 Blocked。
 - 如果未来支持同字段多行 condition、JSON `List`、Import JSON 或目标系统 API，必须另行确认契约和兼容成本。

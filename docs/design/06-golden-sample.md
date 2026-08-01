@@ -59,6 +59,7 @@ Golden 至少覆盖：
 
 - FIELD、FIXED_VALUE、EMPTY、FUNCTION、MAPPING 和递归 CONCATENATE；
 - ASSEMBLY 与 PARSE 使用同一表达结构；
+- String/Boolean/Date/Number 标量字段必须有字段值表达式，Node/Object 不得有字段值表达式；
 - 模板字段是标准字段子集；
 - 缺失字段生成 MISSING_TEMPLATE_FIELD Warning；
 - 未确认 omission 阻止 Final；
@@ -94,7 +95,7 @@ Legend
 - Standard Sheet 包含完整标准字段；
 - Template Sheet 只包含实际配置的标准字段子集；
 - 已确认 omissions 只进入 Warnings，不制造空模板行；
-- Value Expressions 能按 Expression Scope 还原字段值和 XML Key 表达式树；
+- Value Expressions 能按 Expression Scope 还原标量字段值和 XML Key 表达式树，并且不为 Node/Object 生成 FIELD_VALUE 节点；
 - 递归 CONCATENATE、function 参数和 mapping 引用可结构化还原；
 - SchemaIR/Standard 差异、规则冲突、不确定项和 Validator warning 不被静默忽略；
 - 相同 Final 输入、三份校验结果、规则版本和 Standard Action 可重复生成相同结构化业务内容。

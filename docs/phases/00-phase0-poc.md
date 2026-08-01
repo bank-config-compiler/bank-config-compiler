@@ -53,7 +53,7 @@ LLM、Agent 或 workflow 可以生成 Draft，但不能替代 Validator、人工
 - Final Standard 到 InterfaceTemplateIR Draft、Template Validator 和人工确认 Final Template。
 - 一个标准关联多份同方向模板，模板精确绑定不可变标准版本。
 - 模板字段子集、omission Warning 与人工 Review。
-- 字段值和 XML Key 使用同一递归 Value Expression 模型。
+- 标量字段值和 XML Key 使用同一递归 Value Expression 模型；Node/Object 无字段值表达式。
 - Workbook Generator 基于三份 Final 模型、三份校验结果、规则版本和 Standard Action 生成一份方向模板工作簿。
 - 保存关键中间产物和结构化 golden regression。
 
@@ -111,7 +111,7 @@ LLM 基于 Final Standard 和规则版本生成 Template Draft，至少覆盖：
 - 精确 Standard ID/version/content hash 绑定；
 - 标准字段的合法子集；
 - FIXED_VALUE、EMPTY、FIELD、FUNCTION、MAPPING 和递归 CONCATENATE；
-- 字段值与每个 XML Key 的独立表达式；
+- 标量字段值与每个 XML Key 的独立表达式，Node/Object 不配置字段值表达式；
 - empty/overlength handling、row limit、中文字符长度和有序替换；
 - Rule ID、confidence、不确定原因和人工结论；
 - 缺失字段的 Warning、omission reason 与 Review disposition。
@@ -124,7 +124,7 @@ Generator 只读取 Final SchemaIR、Final Standard、选定的 Final Template�
 
 工作簿固定包含 `Overview`、`Interface Standard`、`Interface Template`、`Value Expressions`、`Warnings`、`Rule References`、`Legend`。
 
-`Value Expressions` 按树展开字段值和 XML Key 表达式，是 Final Template 的派生明细，不是额外事实源。已确认 omission 进入 Warnings，不在 Template Sheet 生成虚假行。
+`Value Expressions` 按树展开标量字段值和 XML Key 表达式，是 Final Template 的派生明细，不是额外事实源。Node/Object 不生成 FIELD_VALUE 节点；已确认 omission 进入 Warnings，不在 Template Sheet 生成虚假行。
 
 工作簿不直接导入目标系统，也不反向更新任一 IR。
 
@@ -136,8 +136,9 @@ Phase0 golden regression 至少覆盖：
 - parentPath/fullPath、sequence、Node/Object、XML Keys；
 - VALUE、NO_CONSTRAINT、UNKNOWN；
 - 六种 Value Mode 和递归 CONCATENATE；
+- 标量字段必须有字段值表达式，Node/Object 不得有字段值表达式；
 - 模板字段子集、未确认/已确认 omission 和 EMPTY 的区别；
-- 字段值与 XML Key expression tree；
+- 标量字段值与 XML Key expression tree；
 - Standard version/hash mismatch；
 - SchemaIR/Standard 差异、规则冲突和 warnings；
 - 七个固定 workbook sheet、Standard Action 和状态列。

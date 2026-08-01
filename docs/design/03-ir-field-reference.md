@@ -59,7 +59,7 @@ DocIR 主表不展示完整 `Path`，避免人工 review 时被长路径淹没�
 | `fieldName` | string | 当前节点名称。XML attribute 不带 `@`。 |
 | `displayName` | string/null | 面向配置人员的中文名称或说明。 |
 | `parentPath` | string/null | 父节点路径。root 字段可为 `null`。 |
-| `level` | number | 路径层级，用于 workbook 缩进和排序。 |
+| `level` | number | SchemaIR 路径层级，用于校验父子关系和辅助 Review；Configuration Workbook 的目标字段层级与顺序以 InterfaceStandardIR 的 parentPath/fullPath 和 sequence 为准。 |
 | `nodeKind` | string | `XML_ELEMENT`、`XML_ATTRIBUTE` 或 `SCALAR`。 |
 | `dataType` | string | 标准化类型，例如 `string`、`decimal`、`date`、`object`。 |
 | `format` | string/null | 格式提示，例如 `YYYYMMDD`、`HHMMSS`、`email`。 |

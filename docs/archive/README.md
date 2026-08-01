@@ -14,11 +14,11 @@ Archive Only.
 
 | 当前路径 | 原路径 | 归档日期 | 原因 | 当前替代 |
 |---|---|---|---|---|
-| `design/90-import-json-mapping.md` | `docs/design/90-import-json-mapping.md` | 2026-07-31 | Import JSON 方案已被正式决策放弃。 | `docs/adr/ADR-0004-schemair-and-workbook-artifacts.md`、`docs/adr/ADR-0006-configir-and-configuration-workbook.md` |
-| `reference/01-architecture-reference.md` | `docs/reference/01-architecture-reference.md` | 2026-07-31 | 旧架构草案缺少 ConfigIR，且已由正式系统设计替代。 | `docs/design/01-system-overview.md` |
+| `design/90-import-json-mapping.md` | `docs/design/90-import-json-mapping.md` | 2026-07-31 | Import JSON 方案已被正式决策放弃。 | `docs/adr/ADR-0004-schemair-and-workbook-artifacts.md`、`docs/adr/ADR-0007-interface-standard-and-template-irs.md` |
+| `reference/01-architecture-reference.md` | `docs/reference/01-architecture-reference.md` | 2026-07-31 | 旧架构草案未覆盖当前 InterfaceStandardIR / InterfaceTemplateIR 和可信链路，且已由正式系统设计替代。 | `docs/design/01-system-overview.md` |
 | `reference/02-api-contract-draft.md` | `docs/reference/02-api-contract-draft.md` | 2026-07-31 | 未接受的 API 草案使用旧状态和旧 Workbook 契约。 | 尚无正式 API；未来设计以 requirements、ADR 和 system overview 为输入。 |
-| `reference/03-docir-schemair-draft.md` | `docs/reference/03-docir-schemair-draft.md` | 2026-07-31 | 早期 IR 草案已被正式三层 IR 设计替代。 | `docs/design/02-intermediate-representations.md`、`docs/design/03-ir-field-reference.md`、`docs/design/04-system-configuration-model.md` |
-| `reference/04-prompt-drafts.md` | `docs/reference/04-prompt-drafts.md` | 2026-07-31 | Prompt 结构未覆盖当前 envelope、evidence 和 ConfigIR 契约。 | 尚无正式 Prompt；未来实现以当前 IR 设计和规则包为输入。 |
+| `reference/03-docir-schemair-draft.md` | `docs/reference/03-docir-schemair-draft.md` | 2026-07-31 | 早期 IR 草案已被正式四层 IR 设计替代。 | `docs/design/02-intermediate-representations.md`、`docs/design/03-ir-field-reference.md`、`docs/design/04-system-configuration-model.md` |
+| `reference/04-prompt-drafts.md` | `docs/reference/04-prompt-drafts.md` | 2026-07-31 | Prompt 结构未覆盖当前 envelope、evidence、InterfaceStandardIR 和 InterfaceTemplateIR 契约。 | 尚无正式 Prompt；未来实现以当前 IR 设计和规则包为输入。 |
 
 ## Archive Rules
 

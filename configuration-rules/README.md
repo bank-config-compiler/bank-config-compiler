@@ -69,7 +69,8 @@ Interface Standard：
 Interface Template：
 
 - FIXED_VALUE、EMPTY、FIELD、FUNCTION、MAPPING、CONCATENATE 的选择原则；
-- 字段值和 XML Key Value Expressions；
+- String/Boolean/Date/Number 标量字段值和 XML Key Value Expressions；
+- Node/Object 无字段值表达式，以及容器处理策略和 XML Key 表达式的适用边界；
 - empty handling、overlength handling、row limit、中文字符长度和有序替换；
 - 模板字段 omission 与 EMPTY 的区别；
 - 其他可被 TemplateIR 引用的处理规则。

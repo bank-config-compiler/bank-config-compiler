@@ -382,7 +382,7 @@ InterfaceTemplateIR 回答“一份模板如何对已确认标准的字段进行
 
 ### 5.4 取值表达式与 XML Keys
 
-字段和 XML Key 统一使用以下表达式模式：
+String、Boolean、Date、Number 标量字段的字段值和 XML Key 的值统一使用以下表达式模式：
 
 - `FIXED_VALUE`
 - `EMPTY`
@@ -392,6 +392,8 @@ InterfaceTemplateIR 回答“一份模板如何对已确认标准的字段进行
 - `CONCATENATE`
 
 `CONCATENATE` 按顺序包含任意模式的子表达式并允许递归。`EMPTY` 表示存在配置且明确取空值，不表示字段被省略，也不等同于 Empty Handling。
+
+标量 field config 必须具有一个字段值表达式。`Node`、`Object` 是无值容器，其 field config 不得具有字段值表达式；容器仍可保存适用的处理策略和 XML Key 表达式。
 
 每个 field config 还可以表达 Empty Handling、Overlength Handling、Row Limit、Chinese Character Length、Ordered Replacement Rules、Rule References 和 Review 信息。
 
@@ -428,7 +430,8 @@ Template Validator 还必须校验：
 
 - Standard identity、version 和 content hash 精确匹配；
 - standard field reference 存在且不重复；
-- Value Expression 结构、递归关系和顺序合法；
+- 标量字段值与 XML Key Value Expression 的结构、递归关系和顺序合法；
+- String/Boolean/Date/Number field config 必须有字段值表达式，Node/Object field config 不得有字段值表达式；
 - Rule ID、FIELD、FUNCTION 和 MAPPING 引用存在；
 - field config 存在时，XML Key expressions 完整且不包含未知 key；
 - 所有缺失标准字段均有 Warning 与 omission；
@@ -459,7 +462,7 @@ Workbook Generator 不允许：
 - 把 omission 转换为 `EMPTY`。
 - 把条件必填字段强行改成普通必填字段。
 
-一份 Workbook 只包含一个方向标准和一份绑定模板。固定主 sheet 为 `Interface Standard` 与 `Interface Template`，不保留另一方向的空 sheet。`Value Expressions` 按 Expression Scope 分别展开字段值和 XML Key 的表达式树。
+一份 Workbook 只包含一个方向标准和一份绑定模板。固定主 sheet 为 `Interface Standard` 与 `Interface Template`，不保留另一方向的空 sheet。`Value Expressions` 按 Expression Scope 分别展开标量字段值和 XML Key 的表达式树，不为 Node/Object 创建 FIELD_VALUE 表达式节点。
 
 ## 8. 历史导出 JSON 边界
 

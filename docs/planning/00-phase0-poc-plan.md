@@ -62,6 +62,7 @@ SchemaIR Validator 当前仍接受 legacy JSON 枚举。这是待修实现差距
 - function 原始标识、显示名称、参数和适用规则；
 - mapping 原始标识、显示名称和业务含义；
 - 六种 Value Mode 的选择规则；
+- Node/Object 无字段值表达式时处理策略与 XML Key 表达式的适用规则；
 - empty、overlength、row limit、中文字符长度和替换规则。
 
 资料提供并经业务 Review 前：
@@ -140,7 +141,7 @@ configuration-rules/v1/
 - 模板字段是标准字段子集；
 - fieldConfigs 与 omissions 分离；
 - 六种 Value Mode 和递归 CONCATENATE；
-- 字段值与 XML Key expressions；
+- 标量字段值与 XML Key expressions，Node/Object 不包含字段值表达式；
 - empty/overlength、row limit、中文字符长度和 replacements；
 - omission reason 与 Review disposition。
 
@@ -152,7 +153,8 @@ configuration-rules/v1/
 
 - Standard 版本和 hash 精确匹配；
 - standardFieldRef 存在且不重复；
-- expression tree 和 catalog/Rule ID 引用；
+- 标量字段值/XML Key expression tree 和 catalog/Rule ID 引用；
+- 标量字段必须有字段值表达式，Node/Object 不得有字段值表达式；
 - XML Key expression 完整性；
 - omission coverage 与人工结论；
 - Final 条件。
@@ -167,7 +169,7 @@ configuration-rules/v1/
 - 一份方向标准 + 一份绑定模板；
 - Standard Action CREATE/REUSE/UPDATE；
 - Standard 完整快照与 Template 字段子集；
-- 字段/XML Key Value Expressions 展开；
+- 标量字段/XML Key Value Expressions 展开，Node/Object 不生成 FIELD_VALUE 节点；
 - omissions、差异、Warnings 与 Rule References；
 - `workbook-assertions.expected.json`；
 - 完整 trusted-chain golden regression。
@@ -176,7 +178,7 @@ configuration-rules/v1/
 
 - 相同三份 Final、三份校验结果、规则版本和 Standard Action 可重复生成相同结构化内容。
 - 模板 omission 不制造虚假行，已确认 omission 在 Warnings 可追溯。
-- 六种 Value Mode、递归 CONCATENATE、XML Key expression 和 REUSE 状态均有断言。
+- 六种 Value Mode、递归 CONCATENATE、Node/Object 无字段值表达式、XML Key expression 和 REUSE 状态均有断言。
 
 ## 5. P0-T4：Draft generators
 

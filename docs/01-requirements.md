@@ -127,7 +127,7 @@ XML attribute 不形成独立接口标准行，而作为所属 element 标准行
 
 ### 6.3 取值表达式和处理策略
 
-模板对两个方向统一支持：
+String、Boolean、Date、Number 标量字段的字段值，以及 XML Key 的值，在两个方向统一支持：
 
 - `FIXED_VALUE`
 - `EMPTY`
@@ -137,6 +137,8 @@ XML attribute 不形成独立接口标准行，而作为所属 element 标准行
 - `CONCATENATE`
 
 `CONCATENATE` 按顺序包含任意模式的子表达式并允许递归。表达式必须保存为机器可校验的树，不能压缩成只能由自然语言解释的字符串。
+
+标量模板行必须具有一个字段值表达式。`Node`、`Object` 是无值容器，模板行不得配置字段值表达式；它们仍可保存适用的处理策略，以及下述独立 XML Key 表达式。
 
 模板行还表达：
 
@@ -181,7 +183,7 @@ flowchart TD
     G -->|"确认"| H["Final SchemaIR"]
 
     H --> I["LLM 生成 InterfaceStandardIR Draft"]
-    R["configuration-rules 指定版本"] --> I
+    RS["Standard 使用的 configuration-rules 版本"] --> I
     I --> J["Standard Validator"]
     J -->|"校验失败：修正后重新校验"| I
     J -->|"校验通过"| STV["Standard Validation Result"]
@@ -190,7 +192,7 @@ flowchart TD
     K -->|"确认"| L["Final InterfaceStandardIR"]
 
     L --> M["LLM 生成 InterfaceTemplateIR Draft"]
-    R --> M
+    RT["Template 使用的 configuration-rules 版本"] --> M
     M --> N["Template Validator"]
     N -->|"校验失败：修正后重新校验"| M
     N -->|"校验通过"| TV["Template Validation Result"]
@@ -204,7 +206,8 @@ flowchart TD
     SV -->|"匹配 Final SchemaIR"| Q
     STV -->|"匹配 Final Standard"| Q
     TV -->|"匹配 Final Template"| Q
-    R -->|"精确规则版本"| Q
+    RS -->|"Standard 精确规则版本"| Q
+    RT -->|"Template 精确规则版本"| Q
     X["人工指定 Standard Action"] --> Q
     Q --> W["Configuration Workbook"]
 ```
@@ -225,7 +228,7 @@ flowchart TD
 
 `Interface Standard` 保存模板所绑定标准的完整快照；`Interface Template` 只列出当前模板实际配置的字段。`Overview` 记录标准与模板身份、版本、内容摘要、规则版本、校验结果和调用者指定的 `Standard Action = CREATE | REUSE | UPDATE`。
 
-`Value Expressions` 是模板表达式的结构化明细视图，不是额外事实源。主 sheet 只展示 Value Mode 和可读摘要；该 sheet 按树展开递归 `CONCATENATE`、function 参数和 mapping 引用，并通过 Expression Scope 区分字段值表达式与 XML Key 表达式。
+`Value Expressions` 是模板表达式的结构化明细视图，不是额外事实源。主 sheet 对标量字段展示 Value Mode 和可读摘要；`Node`、`Object` 行的 Value Mode 和 Value Summary 留空，并由 `Legend` 说明该字段没有值表达式。该 sheet 按树展开递归 `CONCATENATE`、function 参数和 mapping 引用，并通过 Expression Scope 区分标量字段值表达式与 XML Key 表达式。
 
 `Warnings` 必须展示约束差异、字段 omission、规则冲突、不确定项和 Validator issue。已确认的场景性 omission 仍须显示原因和 Review Disposition；未确认 omission 不能进入 Final Template，因此不能生成可交付工作簿。
 
@@ -258,9 +261,10 @@ flowchart TD
 - 缺失模板字段产生 Warning；未确认 omission 阻止 Final，确认后允许 Final 且继续显示在 Workbook。
 - omission 与 `EMPTY` 明确区分。
 - `FIELD`、`FIXED_VALUE`、`EMPTY`、`FUNCTION`、`MAPPING` 和递归 `CONCATENATE`。
+- String/Boolean/Date/Number 标量模板行必须有字段值表达式，Node/Object 模板行不得有字段值表达式。
 - 存在模板行时，每个 XML Key 都具有独立表达式；未知或缺失 Key 是错误。
 - ASSEMBLY 与 PARSE 使用同一表达结构但绑定不同方向标准。
-- `Value Expressions` 能还原字段值和 XML Key 的递归表达式树。
+- `Value Expressions` 能还原标量字段值和 XML Key 的递归表达式树。
 - 当前 XML 流程拒绝 `List`。
 - Configuration Workbook 不被描述为可导入文件或 IR 的反向输入。
 
