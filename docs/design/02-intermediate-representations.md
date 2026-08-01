@@ -1,24 +1,28 @@
-# DocIR / SchemaIR 设计
+# DocIR / SchemaIR / InterfaceStandardIR / InterfaceTemplateIR 设计
 
 ## Status
 
-Draft. P0-T2 baseline decisions are captured here and reflected in the b2e0061 Review Golden sample.
+Draft. DocIR / SchemaIR 的 P0-T2 baseline 已反映在 b2e0061 Review Golden sample；InterfaceStandardIR / InterfaceTemplateIR wire schema 受真实 catalog blocker 约束，尚未冻结。
 
 ## 1. 设计原则
 
-DocIR 和 SchemaIR 的职责不同：
+四层 IR 的职责不同：
 
 - `DocIR` 是适合 LLM 和 Human Review 的强结构化 Markdown，负责稳定呈现 raw document 中的章节、字段表、条件、示例和 review 信息。
-- `SchemaIR` 是可机器校验、可人工 review、可作为 Schema Workbook 输入的结构化 JSON，是 `Final SchemaIR` 的候选形态。
-- `review-notes.md` 是面向人的 review 入口，每次 DocIR / SchemaIR draft 生成都应产出，用于汇总低置信、推导、冲突和人工确认项。
+- `SchemaIR` 是可机器校验、可人工 Review 的标准化报文模型，负责表达银行 XML 报文的 element、attribute、path、父子层级、类型和银行原始约束。
+- `InterfaceStandardIR` 是可机器校验、可人工 Review 的接口标准模型，负责表达目标系统实际配置的报文字段格式和层级。
+- `InterfaceTemplateIR` 是可机器校验、可人工 Review 的接口模板模型，负责表达一份模板如何对所绑定标准字段取值和处理。
+- `review-notes.md` 是面向人的 Review 入口，每次 IR Draft 生成都应产出，用于汇总低置信、推导、冲突、差异、omission 和人工确认项。
 
 Raw doc 仍表示受控输入源。本次 `b2e0061` 样例以人工修正后的 `raw-doc.md` 作为正确 source；正常流程中不应在转换阶段静默改写 raw doc。
+
+“标准化”表示项目内部统一表达，不表示行业标准、XSD 或 JSON Schema。当前只承诺 XML 银行报文；IR 使用 JSON 序列化不等于支持 JSON 银行报文。
 
 ## 2. DocIR
 
 ### 2.1 职责
 
-- 保留原始文档中的字段表、章节结构、XML/JSON 示例和条件说明。
+- 保留原始文档中的字段表、章节结构、XML 示例和条件说明。
 - 清洗 Markdown 格式噪声，使字段表稳定可读。
 - 在 `Interface`、`Envelope`、`Message: ASSEMBLY`、`Message: PARSE` 中用 metadata 表格表达关键上下文。
 - 标记无法确认、由规则推导或需要人工检查的位置。
@@ -26,7 +30,7 @@ Raw doc 仍表示受控输入源。本次 `b2e0061` 样例以人工修正后的 
 ### 2.2 非职责
 
 - 不作为最终业务语义模型。
-- 不生成 Schema Workbook。
+- 不生成 Configuration Workbook。
 - 不表达目标系统导入 JSON、历史 ID、父子 ID 或配置状态。
 - 不把复杂条件转换为正式 DSL。
 
@@ -100,7 +104,7 @@ Raw doc 仍表示受控输入源。本次 `b2e0061` 样例以人工修正后的 
 
 ## 3. SchemaIR
 
-SchemaIR 使用 JSON。`Final SchemaIR` 是系统内部事实源，Workbook Generator 必须只读取通过校验的 `Final SchemaIR` 和 validator result。
+SchemaIR 使用 JSON。`Final SchemaIR` 是银行 XML 报文结构与银行原始约束的事实源。目标系统接口标准与接口模板分别由后续 IR 表达；SchemaIR 不承载目标系统配置。
 
 ### 3.1 顶层结构
 
@@ -164,10 +168,9 @@ SchemaIR 使用 JSON。`Final SchemaIR` 是系统内部事实源，Workbook Gene
 - `ASSEMBLY`：组装请求报文。
 - `PARSE`：处理响应报文。
 
-`messageFormat` 枚举：
+当前 `messageFormat` 只允许 `XML`。JSON 银行报文属于未验证的 future candidate。
 
-- `XML`
-- `JSON`
+实现同步说明：当前已实现的 SchemaIR Validator v1 仍接受早期 `JSON` 和 JSON node kind 枚举。该行为不构成产品能力，后续代码批次必须按本契约收紧；本次文档调整不修改代码或测试。
 
 ### 3.4 字段结构
 
@@ -202,17 +205,16 @@ SchemaIR 使用 JSON。`Final SchemaIR` 是系统内部事实源，Workbook Gene
   "confidence": 0.95,
   "uncertain": false,
   "uncertainReason": null,
-  "reviewNote": null,
-  "configGuidance": null
+  "reviewNote": null
 }
 ```
+
+目标系统配置指导不属于 SchemaIR 字段；它由 InterfaceStandardIR 与 InterfaceTemplateIR 分层表达。
 
 ### 3.5 nodeKind 枚举
 
 - `XML_ELEMENT`
 - `XML_ATTRIBUTE`
-- `JSON_OBJECT`
-- `JSON_ARRAY`
 - `SCALAR`
 
 XML attribute 必须作为字段建模，例如：
@@ -270,7 +272,136 @@ XML attribute 必须作为字段建模，例如：
 
 容器节点如果必填性来自子字段而非原文，应使用 `evidence.kind="DERIVED"` 并降低 confidence。
 
-## 4. Validator 候选规则
+## 4. InterfaceStandardIR
+
+### 4.1 职责边界
+
+InterfaceStandardIR 回答“目标系统如何定义这个方向的报文字段格式与层级”。它从 Final SchemaIR 派生，但不是 SchemaIR 的别名：
+
+- SchemaIR 保存银行原始完整 path、attribute、occurs 和类型事实。
+- InterfaceStandardIR 保存目标系统实际 parent path、Node/Object 类型、XML Keys 和配置约束。
+- 两侧值不得相互覆盖；差异必须记录原因、Rule ID 和人工 Review 结论。
+
+### 4.2 候选顶层结构
+
+下例只表达逻辑契约，不是已冻结 wire schema：
+
+```json
+{
+  "standardId": "internal-stable-id",
+  "interfaceCode": "b2e0061",
+  "direction": "ASSEMBLY",
+  "version": "artifact-version",
+  "schemaIrRef": "schemair-final.json",
+  "schemaIrContentHash": "content-hash",
+  "rulePackageVersion": "published-version",
+  "fields": [],
+  "review": {
+    "status": "PENDING"
+  }
+}
+```
+
+每个方向拥有独立标准。Final Standard 版本不可原地覆盖；`interfaceCode` 只用于关联，不能替代 stable ID、version 和 content hash。
+
+### 4.3 标准字段
+
+每个标准字段至少包含：
+
+- stable `fieldId`；
+- `sequence`；
+- `fieldName`、`fieldDescription`；
+- `parentPath`、`fullPath`；
+- Required、Length Limit；
+- Illegal Characters；
+- XML Keys；
+- Regex；
+- Data Type；
+- SchemaIR source reference、Rule References、Difference Reason；
+- confidence、uncertain、uncertainReason 和人工 Review 结论。
+
+目标系统 Path 表示父路径。`fullPath` 由 parent path 与当前字段身份构成，用于唯一定位和模板引用。XML attribute 继续存在于 SchemaIR，但在接口标准中作为所属 element 行的 XML Keys，不单独生成标准行。
+
+同一 parent 下的 `sequence` 必须是唯一、连续的正整数，并保存 XML 输出顺序。Validator 不得依赖 JSON 数组当前物理顺序代替该约束。
+
+### 4.4 数据类型与约束状态
+
+XML 目标类型为 `String`、`Boolean`、`Date`、`Number`、`Node`、`Object`：
+
+- 重复且无值的容器为 `Node`；
+- 不重复且无值的容器为 `Object`；
+- 有值叶子使用四种标量类型；
+- JSON-only `List` 不得进入当前 XML Final Standard。
+
+Length、Illegal Characters、Regex 等可能缺失的约束必须区分 `VALUE`、`NO_CONSTRAINT` 和 `UNKNOWN`。`UNKNOWN` 阻止 Final；人工确认无约束后使用 `NO_CONSTRAINT`，不能以普通 null 混淆两者。
+
+## 5. InterfaceTemplateIR
+
+### 5.1 职责边界与标准绑定
+
+InterfaceTemplateIR 回答“一份模板如何对已确认标准的字段进行取值与处理”。它必须绑定一个 `standardId + standardVersion + contentHash`，不能自动解析到最新标准。
+
+一个标准可以关联多份同方向模板。新增模板复用已有 Final Standard；标准版本变化不会静默改变已有模板。
+
+### 5.2 候选顶层结构
+
+```json
+{
+  "templateId": "internal-stable-id",
+  "interfaceCode": "b2e0061",
+  "direction": "ASSEMBLY",
+  "version": "artifact-version",
+  "standardRef": {
+    "standardId": "internal-stable-id",
+    "version": "artifact-version",
+    "contentHash": "content-hash"
+  },
+  "rulePackageVersion": "published-version",
+  "fieldConfigs": [],
+  "omissions": [],
+  "review": {
+    "status": "PENDING"
+  }
+}
+```
+
+### 5.3 模板字段子集与 omissions
+
+模板字段是标准字段子集。每条 `fieldConfig` 引用一个存在的 `standardFieldRef`，同一模板中不得重复。
+
+未出现在 `fieldConfigs` 的标准字段必须生成 omission candidate。每条 omission 至少保留：
+
+- `standardFieldRef`；
+- omission reason；
+- Review disposition；
+- reviewer / reviewed-at 等审计信息的候选位置。
+
+未确认 omission 阻止 Final Template。人工确认有意省略后，模板可以 Final，但 omission 继续进入 Workbook `Warnings`。omission 不等同于 `EMPTY`，也不生成虚假模板行。
+
+同一标准字段多行并按 condition 选择是 future candidate；当前 Validator 拒绝重复引用，不预留半实现 condition 字段。
+
+### 5.4 取值表达式与 XML Keys
+
+String、Boolean、Date、Number 标量字段的字段值和 XML Key 的值统一使用以下表达式模式：
+
+- `FIXED_VALUE`
+- `EMPTY`
+- `FIELD`
+- `FUNCTION`
+- `MAPPING`
+- `CONCATENATE`
+
+`CONCATENATE` 按顺序包含任意模式的子表达式并允许递归。`EMPTY` 表示存在配置且明确取空值，不表示字段被省略，也不等同于 Empty Handling。
+
+标量 field config 必须具有一个字段值表达式。`Node`、`Object` 是无值容器，其 field config 不得具有字段值表达式；容器仍可保存适用的处理策略和 XML Key 表达式。
+
+每个 field config 还可以表达 Empty Handling、Overlength Handling、Row Limit、Chinese Character Length、Ordered Replacement Rules、Rule References 和 Review 信息。
+
+如果标准字段定义了 XML Keys，存在该字段模板行时，每个 key 必须具有独立 Value Expression。引用未知 key 或缺少表达式是错误；整个字段被确认省略时，其 keys 一并省略。
+
+## 6. Validator 边界
+
+SchemaIR Validator 必须校验：
 
 - `interfaceCode` 非空。
 - `messageFormat` 属于允许枚举。
@@ -286,24 +417,54 @@ XML attribute 必须作为字段建模，例如：
 
 Validator 失败时必须返回字段级错误列表，不能只返回通用失败信息。
 
-## 5. Workbook Generator 输入边界
+Standard Validator 还必须校验：
+
+- parentPath、fullPath、fieldId、sequence 和 SchemaIR source reference 合法；
+- Node/Object/标量映射与 SchemaIR 结构相容；
+- XML 不使用 List；
+- XML Keys 能追溯到 SchemaIR attribute；
+- 差异具有原因、Rule Reference 和人工结论；
+- `UNKNOWN` 约束不能成为 Final。
+
+Template Validator 还必须校验：
+
+- Standard identity、version 和 content hash 精确匹配；
+- standard field reference 存在且不重复；
+- 标量字段值与 XML Key Value Expression 的结构、递归关系和顺序合法；
+- String/Boolean/Date/Number field config 必须有字段值表达式，Node/Object field config 不得有字段值表达式；
+- Rule ID、FIELD、FUNCTION 和 MAPPING 引用存在；
+- field config 存在时，XML Key expressions 完整且不包含未知 key；
+- 所有缺失标准字段均有 Warning 与 omission；
+- 未确认 omission、规则冲突或不确定配置不能成为 Final。
+
+Validator 不能代替人工判断 function、mapping 或场景性 omission 是否符合业务语义。
+
+## 7. Workbook Generator 输入边界
 
 Workbook Generator 只能读取：
 
 - `Final SchemaIR`
+- `Final InterfaceStandardIR`
+- 选定的 `Final InterfaceTemplateIR`
 - `schemair-validation-result.json`
+- Standard / Template validation results
+- Standard 与 Template 实际使用的 configuration-rules 版本
+- 调用者显式指定的 Standard Action
 - 任务上下文，例如生成时间和源文件名
 
 Workbook Generator 不允许：
 
 - 反向解析 Excel 作为事实源。
 - 根据目标系统导入模板补业务字段。
-- 静默丢弃 `uncertain=true` 字段。
+- 临时推断 Value Mode、Rule ID 或 catalog 引用。
+- 连接目标系统推断 Standard Action。
+- 静默丢弃 `uncertain=true`、omission、规则冲突或差异字段。
+- 把 omission 转换为 `EMPTY`。
 - 把条件必填字段强行改成普通必填字段。
 
-Envelope/head 字段应并入 `ASSEMBLY` 和 `PARSE` 字段 sheet，再接各自交易消息字段。不新增独立 `ENVELOPE` sheet。
+一份 Workbook 只包含一个方向标准和一份绑定模板。固定主 sheet 为 `Interface Standard` 与 `Interface Template`，不保留另一方向的空 sheet。`Value Expressions` 按 Expression Scope 分别展开标量字段值和 XML Key 的表达式树，不为 Node/Object 创建 FIELD_VALUE 表达式节点。
 
-## 6. 历史导出 JSON 边界
+## 8. 历史导出 JSON 边界
 
 `docs/reference/samples/b2eboc/b2e0061-assembly.json` 和 `b2e0061-parse.json` 只能作为人工 review 对照：
 

@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted.
+Accepted. Delivery model retained; target configuration IR and Configuration Workbook boundaries are updated by ADR-0006 and ADR-0007.
 
 ## Context
 

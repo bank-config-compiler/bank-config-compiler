@@ -2,7 +2,7 @@
 
 ## Status
 
-Reference / Draft. Not accepted schema.
+Archived. Not accepted schema. Replaced by the current IR design under `docs/design/`.
 
 ## Date
 
@@ -10,7 +10,7 @@ Reference / Draft. Not accepted schema.
 
 ## Context
 
-本文从 `tmp/docs/docir.md` 和 `tmp/docs/schemair.md` 整理候选中间表示。当前正式结构以 `docs/design/intermediate-representations.md` 为准；本文只保留为低优先级参考，不作为实现契约。
+本文从 `tmp/docs/docir.md` 和 `tmp/docs/schemair.md` 整理候选中间表示。当前正式结构以 `docs/design/02-intermediate-representations.md` 为准；本文只保留为低优先级参考，不作为实现契约。
 
 ## DocIR 候选定义
 

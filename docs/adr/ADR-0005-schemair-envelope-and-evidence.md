@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted
+Accepted. Envelope/evidence decisions remain; target configuration and Workbook boundaries are updated by ADR-0006 and ADR-0007.
 
 ## Date
 

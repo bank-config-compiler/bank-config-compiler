@@ -2,7 +2,7 @@
 
 ## Status
 
-Reference / Draft. Not accepted architecture.
+Archived. Not accepted architecture. Replaced by `docs/design/01-system-overview.md`.
 
 ## Date
 

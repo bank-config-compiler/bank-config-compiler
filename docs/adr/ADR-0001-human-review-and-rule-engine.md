@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted. Partially superseded by `ADR-0004-schemair-and-workbook-artifacts.md`.
+Accepted. Partially superseded by `ADR-0004-schemair-and-workbook-artifacts.md`; the current target-configuration extension is defined by `ADR-0007-interface-standard-and-template-irs.md`, which supersedes ADR-0006.
 
 ## Context
 
@@ -19,7 +19,7 @@ Accepted. Partially superseded by `ADR-0004-schemair-and-workbook-artifacts.md`.
 - 最终交付物只能由确定性生成器基于 Final SchemaIR 生成。
 - Validator 必须在 SchemaIR 进入最终交付物生成器前拦截明显结构错误。
 
-注：本 ADR 原先将 Import JSON Draft 作为确定性最终产物。该部分已由 `ADR-0004-schemair-and-workbook-artifacts.md` supersede；当前最终交付物为 Schema Workbook。
+注：本 ADR 原先将 Import JSON Draft 作为确定性最终产物。该部分已由 ADR-0004 supersede；ADR-0006、ADR-0007 又依次调整目标配置模型和 Workbook 边界。Human Review 与确定性生成器作为可信边界的决定仍然有效。
 
 ## Alternatives Considered
 

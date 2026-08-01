@@ -2,7 +2,7 @@
 
 ## Status
 
-Reference / Draft. Not accepted API.
+Archived. Not accepted API. No current API contract replaces this draft.
 
 ## Date
 

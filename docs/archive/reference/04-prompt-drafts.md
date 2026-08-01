@@ -2,7 +2,7 @@
 
 ## Status
 
-Reference / Draft. Not accepted prompt.
+Archived. Not accepted prompt. Future prompts must be derived from the current IR design and confirmed rule package.
 
 ## Date
 
@@ -12,12 +12,15 @@ Reference / Draft. Not accepted prompt.
 
 本文从 `tmp/prompts` 整理初始 Prompt 草案。它们可作为后续 Prompt 工程的起点，但不代表最终实现。
 
-正式方向要求：
+与当前正式契约对齐时必须满足：
 
-- LLM 只生成 DocIR Draft 和 SchemaIR Draft。
-- LLM 不直接生成最终 Schema Workbook。
+- LLM 只生成 DocIR、SchemaIR 和 ConfigIR Draft。
+- LLM 不直接生成 Final 模型或最终 Configuration Workbook。
 - 所有 LLM 输出必须经过校验后才能进入后续流程。
-- DocIR / SchemaIR 最小格式仍需讨论。
+- SchemaIR 当前只表达 XML 银行报文。
+- ConfigIR prompt 必须等待真实 `configuration-rules/v1` catalog，不得从本草案或历史 JSON 猜测。
+
+本文现有 prompt 只覆盖早期 DocIR / SchemaIR 候选，不是完整当前流程。
 - Golden sample 应用于 Prompt 回归。
 
 ## DocIR Normalize Prompt 候选
