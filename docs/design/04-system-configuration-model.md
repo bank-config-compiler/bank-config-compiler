@@ -2,14 +2,14 @@
 
 ## Status
 
-Draft. Logical contract confirmed; machine wire schemas remain blocked by the unavailable `configuration-rules/v1` catalog.
+Draft. Logical contract confirmed; `configuration-rules/v1` Draft is available and machine wire schemas are now P0-T3 implementation work.
 
 ## 1. 目的与边界
 
 目标系统配置分为两个有顺序的模型：
 
 - InterfaceStandardIR 定义报文字段格式和层级结构。
-- InterfaceTemplateIR 定义一份模板如何对已确认的标准字段进行取值和处理。
+- InterfaceTemplateIR 定义一份模板如何按方向连接系统字段与已确认 Standard Field，并进行取值和处理。
 
 两者不包含连接、认证、证书、部署、目标系统 API、Import JSON 或全量系统配置。SchemaIR 继续保存银行原始事实，目标配置不得回写覆盖 SchemaIR。
 
@@ -57,6 +57,7 @@ InterfaceStandardIR
 ├── version
 ├── schemaIrReference + schemaIrContentHash
 ├── rulePackageVersion
+├── xmlEncodingReference         # 指向 SchemaIR message；不是 Standard Field
 ├── fields[]
 │   ├── fieldId
 │   ├── sequence
@@ -68,11 +69,14 @@ InterfaceStandardIR
 │   ├── xmlKeys[]
 │   ├── regex
 │   ├── dataType
+│   ├── conditionalConstraints[]
 │   └── evidence / differences / review
 └── review
 ```
 
 这些字段描述逻辑契约，不是已经冻结的 JSON wire schema。
+
+方向级 XML encoding 保存在 Final SchemaIR `messages[].xmlEncoding`。InterfaceStandardIR 只保存可追溯引用，Workbook `Overview` 展示确认值；encoding 不生成 Standard Field。证据值冲突时必须 Review，不能由 Generator 选择。
 
 ### 3.2 Path 与层级
 
@@ -136,6 +140,10 @@ SchemaIR 与 Standard 值不一致时必须记录：
 - confidence / uncertain reason；
 - 人工 Review 结论。
 
+银行字段、路径、出现次数和约束由 raw-doc/Final SchemaIR 决定；正式导出只证明目标系统配置形态。当前已确认范围内，raw-doc 没写的约束投影为 `NO_CONSTRAINT`，证据冲突或无法判断时为 `UNKNOWN`。b2e0061 Final Standard 保留 `@security`、排除 `vamflag`；正式导出 observed `@lang` 只形成 evidence 和差异 Warning。
+
+银行文档明确的条件 required 与基础 `required` 分开保存。P0 条件结构包含 controlling field reference、`EQUALS | IS_EMPTY`、可选 literal、target field reference、`REQUIRED` effect、银行原文 evidence 和 Review。Validator 校验结构与引用，但不执行条件。
+
 ## 4. InterfaceTemplateIR
 
 ### 4.1 逻辑结构
@@ -152,8 +160,11 @@ InterfaceTemplateIR
 │   └── contentHash
 ├── rulePackageVersion
 ├── fieldConfigs[]
-│   ├── standardFieldRef
-│   ├── valueExpression?          # 仅 String/Boolean/Date/Number
+│   ├── bindingKind               # VALUE | STRUCTURE_ONLY | COLLECTION_ITEM
+│   ├── standardFieldRef          # ASSEMBLY target；PARSE source
+│   ├── standardProjection        # required / length / dataType 的显式镜像
+│   ├── parseTarget?              # PARSE ref/name/path/dataType
+│   ├── valueExpression?          # 仅 VALUE 标量绑定
 │   ├── xmlKeyExpressions{}
 │   ├── processingPolicies
 │   └── evidence / review
@@ -161,11 +172,11 @@ InterfaceTemplateIR
 └── review
 ```
 
-### 4.2 字段子集与 omission
+### 4.2 方向性绑定与 omission
 
-`fieldConfigs` 是标准字段集合的子集。同一 `standardFieldRef` 最多出现一次；缺失字段不是自动错误，也不生成空模板行。
+ASSEMBLY 的标量 `fieldConfigs` 以 Standard Field 为 target，是标准标量字段集合的子集。同一 target `standardFieldRef` 最多出现一次；缺失字段不是自动错误，也不生成空模板行。
 
-Template Validator 为每个未覆盖标准字段产生 `MISSING_TEMPLATE_FIELD` Warning 和 omission candidate。omission 至少包含：
+Template Validator 为每个未覆盖的 ASSEMBLY 标量 Standard Field 产生 `MISSING_TEMPLATE_FIELD` Warning 和 omission candidate。omission 至少包含：
 
 - Standard Field Reference；
 - Omission Reason；
@@ -175,11 +186,25 @@ Template Validator 为每个未覆盖标准字段产生 `MISSING_TEMPLATE_FIELD`
 
 未确认 omission 阻止 Final Template。人工确认该业务场景确实不需要字段后，omission 允许进入 Final，并继续显示在 Workbook Warnings。
 
+Node/Object 不参加 ASSEMBLY omission coverage。容器只有在需要配置 XML Key 或承载明确结构绑定时才创建结构行：普通容器使用 `STRUCTURE_ONLY`，Parse collection source 使用 `COLLECTION_ITEM`。缺少必需的 XML Key expression 是配置错误，不是 omission。
+
 必须区分：
 
 - omission：没有模板行，不配置该字段；
 - `EMPTY`：存在模板行，字段明确取空值；
 - Empty Handling：存在源值为空时的处理策略。
+
+PARSE 的 target 是固定 Parse Field；Value Expression 的 FIELD_REF 引用绑定 Standard 的银行 source field，也可以使用 literal、function 或 CONCATENATE。Parse Field Catalog 定义最终 JSON/Java 对象的 name、path 和 datatype，不属于银行 Standard。Validator 只检查实际配置的 target；未配置 Parse Field 默认不产生 omission 或 warning，也不推断为代码赋值字段。
+
+三种结构绑定含义：
+
+- `VALUE`：标量值绑定；
+- `STRUCTURE_ONLY`：Node/Object 结构或 XML Key 配置，不包含字段值表达式；
+- `COLLECTION_ITEM`：PARSE 每个重复 Standard Node 创建一个 Parse List 元素。
+
+b2e0061 的 `b2e0061-rq` 与 `b2e0061-rs` 按 raw-doc `0..1000` 建模为 `Node`。`b2e0061-rs -> paymentLineList` 使用 `COLLECTION_ITEM`，其子字段写入当前列表元素；Standard source 的 `Node` 与 Parse target 的 `List` 必须分别保存和展示。
+
+每个 field config 都显式保存 `standardProjection.required/length/dataType`。这三个值完整镜像所绑定 Final Standard 的状态和值，不是 Template 覆盖项；任一不一致必须由 Validator 拒绝。
 
 ### 4.3 Value Expression
 
@@ -187,14 +212,14 @@ String、Boolean、Date、Number 标量 field config 必须具有一个字段值
 
 | Mode | 语义 | 必要内容 |
 |---|---|---|
-| `FIXED_VALUE` | 使用明确固定值。 | 固定值。 |
+| `FIXED_VALUE` | 使用固定 payload。 | `LITERAL` 或 `SECURE_INPUT_REF` 二选一。安全输入只保存引用标识，不保存真实值。 |
 | `EMPTY` | 表达式明确取空值。 | 无。 |
 | `FIELD` | 使用 catalog 中的业务字段。 | Field reference。 |
-| `FUNCTION` | 调用 catalog 中的 function。 | Function reference 和结构化参数。 |
-| `MAPPING` | 使用 catalog 中的 mapping。 | Mapping reference。 |
+| `FUNCTION` | 调用 catalog 中的 function。 | Function reference；输入、参数和输出均为 String，参数只允许 FIELD reference 或 literal。 |
+| `MAPPING` | 使用预设规则对完整 FIELD String 精确查表。 | 一个 FIELD reference、一个全局唯一 `mappingRuleName` 和 Rule Reference；未匹配报错。 |
 | `CONCATENATE` | 按顺序组合子表达式。 | 一个或多个有序子表达式，可递归。 |
 
-ASSEMBLY 和 PARSE 使用同一结构，但解释方向不同：ASSEMBLY 从系统数据形成报文字段；PARSE 从报文字段形成系统接收数据。
+只有 `CONCATENATE` children 允许递归 Value Expression。ASSEMBLY 和 PARSE 使用同一表达结构，但端点相反：ASSEMBLY 从系统数据形成银行 Standard Field；PARSE 从银行 Standard Field 形成固定 Parse Field。
 
 ### 4.4 XML Key Expressions
 
@@ -218,9 +243,13 @@ xmlKeyExpressions:
 - Overlength Handling；
 - Row Limit；
 - Chinese Character Length；
-- Ordered Replacement Rules。
+- 一个 Replacement `mappingRuleName`。
 
-Required、Length Limit、Illegal Characters、Regex 和目标 Data Type 属于 InterfaceStandardIR，不在模板中重复定义或覆盖。
+Template 不覆盖 Standard 约束；但每个配置行必须以 `standardProjection` 显式镜像绑定 Standard 的 Required、Length Limit 和 Data Type，用于确定性校验与 Workbook 展示。Illegal Characters 与 Regex 仍只保存在 InterfaceStandardIR。
+
+Empty Handling 支持 `BLANK`（空值报送）与 `DELETE`（删除栏位）。Overlength 支持 `INTERCEPT`（校验失败）、`TRUNCATE_FRONT`（保留前部）、`OVERLONG_LINE_BREAK`（超长换行）和 `TRUNCATE_BACK`（保留后部）。Row Limit 是该栏位允许出现的行数，必须为正整数。Chinese Character Length 使用 `STANDARD_1..6`，具体字符权重来自规则包。
+
+Replacement 在 Value Expression 后处理结果 String：每个 field config 最多引用一个全局唯一 `mappingRuleName`；命中片段替换为 target，空 target 删除片段，未命中内容保留。MAPPING 与 Replacement 共用 `mappings.yaml`，但匹配边界与 unmatched 行为不同。
 
 ## 5. Validator 边界
 
@@ -231,20 +260,28 @@ Standard Validator 必须校验：
 - Node/Object/标量类型和 XML-only 限制；
 - XML Keys 与 SchemaIR attribute 的对应关系；
 - 约束状态和 SchemaIR/Standard 差异记录；
+- 银行条件引用、operator/effect、literal 和 evidence；
 - 所有 Final 决定均已完成人工 Review。
 
 Template Validator 必须校验：
 
 - standard ID、version 和 content hash 精确匹配；
-- field reference 存在且不重复；
+- 每个 `standardProjection.required/length/dataType` 与 Final Standard 完全一致；
+- `VALUE | STRUCTURE_ONLY | COLLECTION_ITEM` 与方向、Standard 类型和 Parse target 相容；
+- ASSEMBLY target Standard Field reference 存在且不重复；
+- PARSE target Parse Field reference 存在、path/datatype 与 catalog 相容，表达式内 Standard FIELD_REF 存在；
 - 表达式结构、递归顺序和 catalog 引用；
 - String/Boolean/Date/Number field config 必须有字段值表达式，Node/Object field config 不得有字段值表达式；
 - XML Key expressions 完整且无未知 key；
-- 每个缺失标准字段都有 omission Warning；
+- 每个缺失 ASSEMBLY 标量 Standard Field 都有 omission Warning；Node/Object 不参加 omission coverage，未配置 Parse Field 不自动产生 coverage issue；
+- 有 XML Key 或结构绑定需求的容器必须有适用结构行和完整 key expressions；
+- FIXED_VALUE payload 只允许 `LITERAL | SECURE_INPUT_REF`，且安全引用不得包含真实值；
 - 每个 Final omission 已记录原因和接受结论；
 - uncertain、规则冲突或未确认配置不能成为 Final。
 
-Validator 不能判断 function、mapping 或 omission 是否符合业务语义；这类决定必须由人工 Review。
+Validator 不能判断 function、具体 Mapping 选择、目的系统业务 Condition 或 omission 是否符合业务语义；这类决定必须由人工 Review。Validator 仍必须确定性校验 Function/MAPPING/Replacement 的 catalog 引用、String 类型、单规则基数和执行结构；Template Condition 不属于 P0。
+
+Mapping catalog 中标记 `redacted: true` 的规则只允许验证结构与 Workbook 表达，Final Template 必须拒绝引用，防止 `<REDACTED>` 成为可执行 target。
 
 ## 6. Final 条件
 
@@ -253,6 +290,7 @@ Final InterfaceStandardIR 必须满足：
 - Standard Validator 通过且结果与当前内容匹配；
 - 不含 `UNKNOWN` 约束；
 - 差异和推导均有规则依据与人工结论；
+- 银行条件具有有效引用、证据和人工结论；
 - 标准身份和版本已冻结。
 
 Final InterfaceTemplateIR 必须满足：
@@ -260,8 +298,8 @@ Final InterfaceTemplateIR 必须满足：
 - Template Validator 通过且结果与当前内容匹配；
 - 绑定的 Final Standard identity/version/hash 精确匹配；
 - 所有适用的标量字段值和 XML Key expression 引用有效，Node/Object 不包含字段值表达式；
-- 每个未覆盖标准字段都有已确认 omission；
-- function、mapping 和其他业务语义已人工确认；
+- 每个未覆盖 ASSEMBLY 标量 Standard Field 都有已确认 omission；Node/Object 不产生 omission，PARSE 只要求实际配置目标合法；
+- function、MAPPING、Replacement 和其他 P0 业务语义已人工确认；Template Condition 不得进入 P0 Final；
 - 模板身份和版本已冻结。
 
 标准、模板或规则版本变化后，旧校验结果失效。不得通过原地覆盖 Final artifact 绕过迁移和重新 Review。

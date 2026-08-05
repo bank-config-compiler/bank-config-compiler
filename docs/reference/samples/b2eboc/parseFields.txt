@@ -1,0 +1,16 @@
+## 解析回执后需要生成的json对象
+
+bankReturnCode	银行返回编码	STRING	Root
+bankReturnMessage	银行返回信息	STRING	Root
+failReason	失败原因	STRING	Root
+instructionId		STRING	Root.paymentLineList
+lineBankReturnCode	银行返回码	STRING	Root.paymentLineList
+lineBankReturnMessage	银行返回消息	STRING	Root.paymentLineList.lineReturnMessageList
+lineReturnMessageList	银行返回行信息列表	LIST	Root.paymentLineList
+paymentFailReason	支付失败原因	STRING	Root.paymentLineList
+paymentLineList	循环LIST	LIST	Root
+paymentNumber	支付凭证号：是识别一笔支付，用于与银行沟通的支付凭证	STRING	Root.paymentLineList
+paymentStatus	支付状态	STRING	Root.paymentLineList
+queryStatus	查询状态	STRING	Root
+sourceCode		STRING	Root.paymentLineList
+sourceMessageId	来源报文ID：上游传送 或 支付头的send_message_id	STRING	Root

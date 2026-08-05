@@ -20,12 +20,12 @@ Active.
 正式文档按以下优先级解释：
 
 1. [`01-requirements.md`](01-requirements.md) 定义项目级产品契约、范围和成功标准。
-2. [`../configuration-rules/`](../configuration-rules/README.md) 保存 InterfaceStandardIR / InterfaceTemplateIR 可引用的正式、版本化目标系统规则资产。
+2. [`../configuration-rules/`](../configuration-rules/README.md) 保存 InterfaceStandardIR / InterfaceTemplateIR 可引用的版本化目标系统规则资产；只有 `RELEASED` 版本可以支撑 Final IR。
 3. [`adr/`](adr/README.md) 记录已经接受且约束后续实现的工程决策。
 4. [`design/`](design/README.md) 细化系统、数据模型和交付物设计。
 5. [`phases/`](phases/00-phase0-poc.md) 定义各阶段目标和验收边界。
 6. [`planning/`](planning/README.md) 记录当前阶段的任务状态、依赖和验证路径。
-7. [`reference/`](reference/README.md) 只保存候选草案和参考输入，不构成正式承诺。
+7. [`reference/`](reference/README.md) 保存 raw-doc、正式导出和 catalog 样例等证据，不构成未经治理的正式承诺。
 8. [`archive/`](archive/README.md) 保存已被替代或放弃的历史材料，不具有 source-of-truth 权限。
 
 同一层级出现不一致时，应停止实施并先修正文档；低优先级文档不得覆盖高优先级契约。
@@ -40,7 +40,7 @@ Active.
 | 查看阶段目标和进入条件 | `phases/00-phase0-poc.md`，再按阶段编号继续 |
 | 查看 Phase0 当前任务、blocker 和验证路径 | `planning/00-phase0-poc-plan.md` |
 | 查看正式目标系统规则资产 | `../configuration-rules/README.md` |
-| 查阅候选草案和参考输入 | `reference/README.md` |
+| 查阅 raw-doc、正式导出和 catalog 样例证据 | `reference/README.md` |
 | 查阅已废弃或被替代的历史材料 | `archive/README.md` |
 | 运行当前 CLI 或检查 workspace artifact | `../README.md` |
 
@@ -51,7 +51,7 @@ Active.
 - `adr/` 维护已经接受且需要长期解释的决策，不重写历史。
 - `design/` 维护模型、模块和交付物设计，不记录实时任务状态。
 - `phases/` 维护阶段目标与验收边界；`planning/` 维护 active task 状态和 blocker。
-- `configuration-rules/` 是正式规则资产；`reference/` 不是权威规则或 catalog 来源。
+- `configuration-rules/` 是正式规则资产；`reference/` 保存可进入规则 Review 的证据，但不能绕过治理直接成为 Final IR 输入。
 - `archive/` 只保存历史上下文，不参与当前设计和实现。
 - 用户可见命令、artifact、配置或当前已实现能力变化时，必须同步检查根 README。
 - 本文件不复制根 README 中的命令，也不复制 planning 中的任务明细。

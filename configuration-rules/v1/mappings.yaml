@@ -1,0 +1,202 @@
+packageVersion: v1
+status: DRAFT
+catalog:
+  catalogId: BKL_MAPPING_RULE_SAMPLE
+  sampleSubset: true
+  ruleNameScope: GLOBAL_UNIQUE
+  sourceDataType: String
+  targetDataType: String
+  sourceFiles:
+  - docs/reference/samples/mapping.txt
+  - docs/reference/samples/b2eboc/others.json
+  rules:
+  - mappingRuleName: Swift-Uppercase-List
+    description: 英文小写转大写
+    sourceFile: docs/reference/samples/mapping.txt
+    entries:
+    - source: z
+      target: Z
+    - source: y
+      target: Y
+    - source: x
+      target: X
+    - source: w
+      target: W
+    - source: v
+      target: V
+    - source: u
+      target: U
+    - source: t
+      target: T
+    - source: s
+      target: S
+    - source: r
+      target: R
+    - source: q
+      target: Q
+    - source: p
+      target: P
+    - source: o
+      target: O
+    - source: n
+      target: N
+    - source: m
+      target: M
+    - source: l
+      target: L
+    - source: k
+      target: K
+    - source: j
+      target: J
+    - source: i
+      target: I
+    - source: h
+      target: H
+    - source: g
+      target: G
+    - source: f
+      target: F
+    - source: e
+      target: E
+    - source: d
+      target: D
+    - source: c
+      target: C
+    - source: b
+      target: B
+    - source: a
+      target: A
+  - mappingRuleName: BDC-ChargeBearer-List
+    description: 手续费承担方式映射列表
+    sourceFile: docs/reference/samples/mapping.txt
+    entries:
+    - source: DEBT
+      target: OUR
+    - source: CRED
+      target: BEN
+    - source: SHAR
+      target: SHA
+  - mappingRuleName: Swift_illegalCharacter_List_For_ING_Turkey
+    description: 非法字符列表(ING土耳其专用）
+    sourceFile: docs/reference/samples/mapping.txt
+    entries:
+    - source: )
+      target: ''
+    - source: '@'
+      target: ''
+    - source: '#'
+      target: ''
+    - source: $
+      target: ''
+    - source: ！
+      target: ''
+    - source: “
+      target: ''
+    - source: ”
+      target: ''
+    - source: ‘
+      target: ''
+    - source: ’
+      target: ''
+    - source: '&'
+      target: ''
+    - source: '` '
+      target: ''
+    - source: (
+      target: ''
+    - source: '{'
+      target: ''
+    - source: '}'
+      target: ''
+    - source: '*'
+      target: ''
+    - source: ^
+      target: ''
+    - source: _
+      target: ''
+    - source: '['
+      target: ''
+    - source: ']'
+      target: ''
+    - source: '%'
+      target: ''
+    - source: '|'
+      target: ''
+    - source: \
+      target: ''
+    - source: +
+      target: ''
+    - source: '='
+      target: ''
+    - source: '-'
+      target: ''
+    - source: <
+      target: ''
+    - source: '>'
+      target: ''
+    - source: ;
+      target: ''
+    - source: '?'
+      target: ''
+  - mappingRuleName: Swift-ClearingMethod-List
+    description: 清算方式映射列表
+    sourceFile: docs/reference/samples/mapping.txt
+    entries:
+    - source: PRP
+      target: PMT
+      sourceDescription: 转账付款(不区分境内外转账类型)
+    - source: DFT
+      target: PMT
+      sourceDescription: 境内转账
+    - source: COS
+      target: PMT
+      sourceDescription: 支票支付
+    - source: BKT
+      target: PMT
+      sourceDescription: 同行转账
+    - source: ACH
+      target: PMT
+      sourceDescription: 小额批量支付
+    - source: RTGS
+      target: PMT
+      sourceDescription: 境内大额转账
+    - source: SEPA
+      target: TT
+      sourceDescription: SPEA支付
+    - source: CBT
+      target: TT
+      sourceDescription: 跨境转账
+  - mappingRuleName: 中行支付状态映射列表
+    description: null
+    sourceFile: docs/reference/samples/mapping.txt
+    entries:
+    - source: B054
+      target: SC_308
+    - source: B010
+      target: SC_307
+    - source: B009
+      target: SC_307
+    - source: B008
+      target: SC_307
+    - source: B007
+      target: SC_307
+    - source: B006
+      target: SC_307
+  - mappingRuleName: Swift-CompanyName-List
+    description: null
+    sourceFile: docs/reference/samples/b2eboc/others.json
+    redacted: true
+    entries:
+    - source: ATTIJARI
+      target: <REDACTED>
+    - source: OTP
+      target: <REDACTED>
+    - source: SICO
+      target: <REDACTED>
+validation:
+  requireUniqueRuleName: true
+  requireUniqueSourceWithinRule: true
+  requireStringSource: true
+  requireStringTarget: true
+  allowEmptyTarget: true
+  rejectRedactedRuleInFinal: true
