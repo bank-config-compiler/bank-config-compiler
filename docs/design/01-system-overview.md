@@ -66,9 +66,9 @@ Final SchemaIR
 
 系统采用三个顺序关联的配置事实源：
 
-- Final SchemaIR：银行 XML 报文结构与银行原始约束。
-- Final InterfaceStandardIR：一个 `interfaceCode + direction` 的目标系统接口标准。
-- Final InterfaceTemplateIR：一份模板对所绑定标准字段的取值、处理和 omission 决策。
+- Final SchemaIR：银行 XML 报文结构、方向级 `messages[].xmlEncoding` 与银行原始约束。
+- Final InterfaceStandardIR：一个 `interfaceCode + direction` 的目标系统接口标准，包括银行文档明确条件约束。
+- Final InterfaceTemplateIR：一份模板的方向性 source/target、取值、处理和适用的 ASSEMBLY omission 决策。
 
 Configuration Workbook 是派生交付物，不是事实源，也不是可导入文件。
 
@@ -91,13 +91,13 @@ Configuration Workbook 是派生交付物，不是事实源，也不是可导入
 - 从 Raw Docs 生成 DocIR Draft。
 - 从 Final DocIR 生成 SchemaIR Draft。
 - 从 Final SchemaIR 与指定规则版本生成 InterfaceStandardIR Draft。
-- 从 Final InterfaceStandardIR 与指定规则版本生成 InterfaceTemplateIR Draft。
+- 从 Final InterfaceStandardIR、方向性 FIELD catalog 与指定规则版本生成 InterfaceTemplateIR Draft。
 
 约束：
 
 - 只能输出 Draft。
 - Template generator 必须精确绑定已确认的标准版本。
-- 不得在缺少 catalog 时推断字段、function 或 mapping。
+- 不得在缺少 catalog 事实时根据相近名称推断字段、function、mapping 或业务 Condition。
 - 输出必须经过结构校验和人工 Review。
 - 不生成最终工作簿。
 
@@ -114,19 +114,26 @@ Standard Validator 负责：
 - XML Keys 能追溯到 SchemaIR attribute；
 - 约束状态不是未确认的 `UNKNOWN`；
 - SchemaIR/Standard 差异具有原因、Rule ID 和 Review 结论。
+- 银行条件引用、operator/effect、literal 和 evidence 合法，但 Validator 不执行条件。
+- raw-doc 未写的约束在已审查范围内投影为 `NO_CONSTRAINT`；证据冲突或无法判定时保持 `UNKNOWN` 并阻止 Final。
 
 Template Validator 负责：
 
 - Template 精确引用 Final Standard 的 ID、version 和 content hash；
-- 每个 `standardFieldRef` 存在且在同一模板中不重复；
+- 每个配置行显式保存的 `standardProjection.required/length/dataType` 与绑定 Standard 完全一致；
+- `VALUE | STRUCTURE_ONLY | COLLECTION_ITEM` 的结构绑定与方向、Standard 类型和 Parse target 相容；
+- ASSEMBLY target Standard Field 引用存在且不重复；
+- PARSE target Parse Field 引用存在、path/datatype 与 catalog 相容，表达式内 Standard FIELD_REF 存在；
 - Value Expression 树、递归关系和顺序合法；
 - String/Boolean/Date/Number 标量模板行必须有字段值表达式，Node/Object 模板行不得有字段值表达式；
-- FIELD、FUNCTION、MAPPING 与 Rule ID 引用属于指定 catalog/规则版本；
+- FIELD、FUNCTION、`mappingRuleName` 与 Rule ID 引用属于指定 catalog/规则版本；Function/MAPPING/Replacement 输入输出满足 String 和单规则约束；
 - 存在模板行时，每个标准 XML Key 恰好具有一个表达式；
-- 缺失标准字段均有 omission Warning；未确认 omission 不能成为 Final；
+- 缺失 ASSEMBLY 标量 Standard Field 均有 omission Warning；未确认 omission 不能成为 Final；Node/Object 不参加 omission coverage，未配置 Parse Field 不自动产生 omission；
+- 有 XML Key 或结构绑定需求的 Node/Object 必须有适用结构行：普通容器使用 `STRUCTURE_ONLY`，Parse collection source 使用 `COLLECTION_ITEM`；缺失 XML Key 配置直接报错，不伪装成 omission；
+- `FIXED_VALUE` payload 必须在 `LITERAL` 与 `SECURE_INPUT_REF` 中二选一，安全输入只保存引用标识；
 - 已确认 omission 与 `EMPTY` 保持不同语义。
 
-Validator 不判断某个 function、mapping 或字段省略是否符合业务语义；该判断必须由人工 Review 完成。
+Validator 不判断某个 function、mapping、目的系统业务 Condition 或字段省略是否符合业务语义；该判断必须由人工 Review 完成。
 
 ### 2.4 Review Workbench
 
@@ -157,8 +164,10 @@ Phase0 可以用受控 fixture 或命令流程表达人工确认；Phase1 才提
 
 - 为一个方向模板生成一份 `.xlsx`；
 - 输出绑定标准的完整快照和模板实际字段子集；
+- 在 `Overview` 展示 Final SchemaIR 的方向级 XML encoding，不生成伪 Standard 字段；
+- 在 Template sheet 分列展示 Standard 快照、Template 镜像、Parse target 和 Value Expression，避免混合两端类型；
 - 将标量字段值与 XML Key 的递归表达式展开到 `Value Expressions`；
-- 汇总差异、omissions、规则冲突、不确定项和 Validator issue；
+- 汇总差异、银行条件、ASSEMBLY omissions、规则冲突、不确定项和 Validator issue；
 - 生成执行与验证清单。
 
 禁止：
@@ -172,11 +181,11 @@ Phase0 可以用受控 fixture 或命令流程表达人工确认；Phase1 才提
 
 ## 3. 规则资产边界
 
-正式规则资产位于仓库顶层 `configuration-rules/`。`docs/reference/` 不是规则来源。
+正式规则资产位于仓库顶层 `configuration-rules/`。`docs/reference/` 可以提供 raw-doc、正式导出和 catalog 样例等 Review 证据，但未经规则治理不能成为 Final IR 的规则来源。
 
 规则版本一旦发布不可原地覆盖。InterfaceStandardIR、InterfaceTemplateIR、Validator result 和 Configuration Workbook 必须记录实际使用的精确规则版本及 Rule ID。标准和后续模板可以使用不同规则版本，但模板对标准 artifact 的绑定不因此改变。
 
-当前 catalog 未提供，因而两个目标配置 IR 的 wire contract、Validator、golden fixture 和 Workbook Generator 仍受阻，不得以历史导出 JSON 代替。
+`configuration-rules/v1` Draft 已提供，两个目标配置 IR 的 wire contract、Validator、golden fixture 和 Workbook Generator 已进入 P0-T3 实现。规则包 `RELEASED` 前不得形成 Final IR；正式导出只能作为经治理的目标配置证据，不能直接代替 IR 或 Generator 输入。
 
 ## 4. 候选任务状态
 
@@ -221,7 +230,7 @@ workspace/{taskId}/
     └── configuration-workbook.xlsx
 ```
 
-这是候选 artifact 结构，不是已经实现的完整协议。当前 bootstrap 只实现根 README 中列出的 artifact；具体 wire 和命名在 catalog 确认后的代码实施 spec 中冻结。
+这是候选 artifact 结构，不是已经实现的完整协议。当前 bootstrap 只实现根 README 中列出的 artifact；规则包 Draft 已具备，但具体 wire 和命名仍需在 P0-T3 后续代码 commit 中冻结。
 
 ## 6. 分阶段交付
 

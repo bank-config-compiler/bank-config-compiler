@@ -2,15 +2,15 @@
 
 ## Status
 
-Draft. DocIR / SchemaIR golden baseline exists; InterfaceStandardIR / InterfaceTemplateIR and Configuration Workbook golden assets remain blocked by the unavailable target-system catalog.
+Draft. DocIR / SchemaIR golden baseline exists; `configuration-rules/v1` Draft and formal Standard/Template exports are available, so InterfaceStandardIR / InterfaceTemplateIR and Configuration Workbook golden work is now P0-T3 in progress.
 
 ## 1. 目的
 
 Golden sample 是 Prompt、四类 IR、三个 Validator、Workbook Generator 和验收判断的核心回归证据。它必须区分：
 
 - 已由现有测试证明的 DocIR / SchemaIR 基线；
-- catalog 提供后才能建立的目标配置和 Workbook 基线；
-- 仅用于理解历史系统形态、不能作为正确答案的 reference JSON。
+- 正在建立的目标配置和 Workbook 基线；
+- 用于理解真实目标系统配置、但不直接成为 expected IR 的正式导出证据。
 
 ## 2. 完整 Golden 组成
 
@@ -32,7 +32,7 @@ Golden sample 是 Prompt、四类 IR、三个 Validator、Workbook Generator 和
 
 ## 3. 规则来源边界
 
-具体 Rule ID、FIELD、FUNCTION 和 MAPPING 标识只能来自已确认的 `configuration-rules/v1`。不得为满足测试覆盖创建占位业务标识，也不得从历史导出 JSON 反推 catalog。
+具体 Rule ID、FIELD、FUNCTION 和 `mappingRuleName` 只能来自已确认的 `configuration-rules/v1`。正式导出可以证明 b2e0061 实际配置和调用形态，但必须先经规则包治理和人工确认，不能被测试直接当作 expected IR。不得为满足覆盖创建占位业务标识或内联 Mapping entries。
 
 Standard 与 Template fixture 必须分别记录实际使用的规则版本。模板必须绑定 expected Standard 的 stable ID、version 和 content hash。
 
@@ -49,7 +49,10 @@ Golden 至少覆盖：
 - XML attribute 转换为所属 element 的 XML Keys；
 - VALUE、NO_CONSTRAINT 和 UNKNOWN 的 Review 路径；
 - SchemaIR/Standard required、length、type 或其他差异；
+- `transtype EQUALS "2" => obssid REQUIRED` 等银行文档条件与基础 Required 分离；
 - 当前 XML 流程拒绝 JSON-only List。
+- b2e0061 `b2e0061-rq` 与 `b2e0061-rs` 按 `0..1000` 为 Node；`@security` 保留、`vamflag` 排除，`@lang` 仅作为 observed evidence/difference Warning。
+- 方向级 `messages[].xmlEncoding` 冲突 Review 与 Workbook Overview 展示。
 
 具体样例无法自然覆盖的类型或差异，应使用最小受控 fixture 补充，不能污染真实 golden 事实。
 
@@ -57,20 +60,25 @@ Golden 至少覆盖：
 
 Golden 至少覆盖：
 
-- FIELD、FIXED_VALUE、EMPTY、FUNCTION、MAPPING 和递归 CONCATENATE；
-- ASSEMBLY 与 PARSE 使用同一表达结构；
+- 六种 Value Mode；MAPPING 覆盖单一 FIELD input、预设规则引用和 unmatched error；
+- Replacement 覆盖单一预设规则、片段替换、空 target 删除和未命中内容保留；
+- ASSEMBLY 与 PARSE 使用同一表达结构，但 ASSEMBLY target 为 Standard Field、PARSE target 为 Parse Field；
+- 每个配置行显式镜像 Standard required/length/dataType，任一不一致校验失败；
+- `VALUE`、`STRUCTURE_ONLY`、`COLLECTION_ITEM`，包括 `b2e0061-rs(Node) -> paymentLineList(List)`；
 - String/Boolean/Date/Number 标量字段必须有字段值表达式，Node/Object 不得有字段值表达式；
-- 模板字段是标准字段子集；
-- 缺失字段生成 MISSING_TEMPLATE_FIELD Warning；
+- ASSEMBLY 模板 target 是标准字段子集；
+- 缺失 ASSEMBLY 标量 Standard Field 生成 MISSING_TEMPLATE_FIELD Warning；Node/Object 不参加 omission coverage；
+- PARSE 只校验实际配置的 Parse Field，未配置字段不生成 omission/warning；
 - 未确认 omission 阻止 Final；
 - 已确认 omission 带原因进入 Final，并继续出现在 Workbook Warnings；
 - omission、EMPTY 与 Empty Handling 三者不同；
 - 同一 standardFieldRef 重复时校验失败；
 - 存在模板行时，每个标准 XML Key 有独立表达式；
 - 未知或缺失 XML Key expression 校验失败；
+- FIXED_VALUE 同时覆盖 `LITERAL` 与只保存引用标识的 `SECURE_INPUT_REF`；
 - 标准 ID、version 或 content hash 不匹配时校验失败。
 
-同字段多行 condition 是 future candidate，不属于当前 golden 成功路径。
+目的系统业务 Condition 和同目标多行是 future candidate，不属于当前 golden 成功路径。银行文档明确条件属于 Standard golden，并在 Workbook 中展示但不执行。
 
 ## 6. Workbook Assertions
 
@@ -90,13 +98,19 @@ Legend
 
 - 一份 workbook 只包含一个方向标准和一份绑定模板；
 - Standard / Template identity、version、content hash 和规则版本准确；
+- Overview 的方向级 XML encoding 来自 Final SchemaIR；
 - Standard Action 为 CREATE、REUSE 或 UPDATE；
 - REUSE 标准行不进入执行完成率；
 - Standard Sheet 包含完整标准字段；
-- Template Sheet 只包含实际配置的标准字段子集；
-- 已确认 omissions 只进入 Warnings，不制造空模板行；
+- Template Sheet 只包含实际配置的方向性绑定；
+- Standard 快照、Template required/length/dataType 镜像、Parse target 与 Value Expression 分列，且镜像完全一致；
+- `b2e0061-rs(Node) -> paymentLineList(List)` 的 COLLECTION_ITEM 及两端类型可还原；
+- 已确认 ASSEMBLY omissions 只进入 Warnings，不制造空模板行；未配置 Parse Field 不制造 omission；
 - Value Expressions 能按 Expression Scope 还原标量字段值和 XML Key 表达式树，并且不为 Node/Object 生成 FIELD_VALUE 节点；
-- 递归 CONCATENATE、function 参数和 mapping 引用可结构化还原；
+- 递归 CONCATENATE 和 function 参数可结构化还原；
+- MAPPING/Replacement 的 `mappingRuleName` 可还原且 Workbook 不复制 entries；
+- SECURE_INPUT_REF 仅展示安全引用标识，不泄露真实值；
+- 银行条件、evidence 和 Review disposition 可结构化还原；
 - SchemaIR/Standard 差异、规则冲突、不确定项和 Validator warning 不被静默忽略；
 - 相同 Final 输入、三份校验结果、规则版本和 Standard Action 可重复生成相同结构化业务内容。
 
@@ -104,21 +118,21 @@ Legend
 
 ## 7. Reference Sample 边界
 
-`docs/reference/samples/b2eboc/` 包含真实语境 raw doc 与历史 ASSEMBLY/PARSE 导出 JSON。历史 JSON 只用于理解目标系统概念和人工对照：
+`docs/reference/samples/b2eboc/` 包含真实语境 raw doc、字段目录与正式 ASSEMBLY/PARSE Standard/Template 导出。正式导出用于理解目标系统真实配置和人工对照：
 
-- 不能作为 SchemaIR、StandardIR 或 TemplateIR 的权威输入；
-- 不能提供 Rule ID、catalog 标识或 expected 配置值；
+- 不能作为 SchemaIR 的银行事实来源，也不能直接成为 StandardIR、TemplateIR 或 Generator 输入；
+- 可以作为 b2e0061 目标配置和调用形态证据，但必须先进入规则包或人工确认的 expected fixture；
+- Rule ID 只能由正式规则包定义；
 - 不引入历史 database ID、parent ID、approval status 或 import contract；
 - 与 raw doc/SchemaIR 冲突时，银行报文事实以人工确认的 SchemaIR 为准；
 - 目标配置事实必须来自正式规则包和人工确认的 Final IR。
 
-## 8. 当前 Blocker
+## 8. 当前执行边界
 
-目标系统 catalog 和完整规则资料尚未提供，因此当前不得创建：
+`configuration-rules/v1` Draft 已建立，P0-T3 可以开始以下工作：
 
-- `configuration-rules/v1`；
 - Final InterfaceStandardIR / InterfaceTemplateIR fixture；
 - Standard / Template Validator expected result；
 - expected Configuration Workbook 和相关 assertions。
 
-资料确认后，先建立不可变规则包，再按 Standard → Template → Workbook 的顺序补齐 golden 资产。
+这些资产必须按 SchemaIR wire amendment → Standard → Template → Workbook 顺序补齐。现有 P0-T2 DocIR、SchemaIR 和 review-notes expected artifacts 是审查前 Golden，本批次不改写；其 README 指向 ADR-0008，后续 P0-T3 fixture 才迁移 `xmlEncoding`、Standard 镜像和结构绑定。规则包仍为 Draft；已确认的 Function String、processing policy、MAPPING 和 Replacement 契约必须进入专项 golden，但不得把 Mapping 样例子集扩张成全量 catalog。P0-T3 完成后才可把规则包和相关 Final fixture 冻结。

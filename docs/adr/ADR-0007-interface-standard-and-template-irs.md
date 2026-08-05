@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted.
+Accepted. Amended by `ADR-0008-directional-template-bindings-and-bank-conditions.md` for bank-fact projection, Standard mirrors, PARSE target/collection binding, omission semantics and bank-document conditions; amended by `ADR-0009-preset-mapping-catalog-and-replacement.md` for MAPPING and Replacement.
 
 ## Date
 

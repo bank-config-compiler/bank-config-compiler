@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted. Envelope/evidence decisions remain; target configuration and Workbook boundaries are updated by ADR-0006 and ADR-0007.
+Accepted. Envelope/evidence decisions remain; target configuration and Workbook boundaries are updated by ADR-0006 and ADR-0007. Direction-level `xmlEncoding` and observed-only attribute projection are added by ADR-0008.
 
 ## Date
 

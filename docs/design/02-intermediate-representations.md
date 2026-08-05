@@ -2,7 +2,7 @@
 
 ## Status
 
-Draft. DocIR / SchemaIR 的 P0-T2 baseline 已反映在 b2e0061 Review Golden sample；InterfaceStandardIR / InterfaceTemplateIR wire schema 受真实 catalog blocker 约束，尚未冻结。
+Draft. DocIR / SchemaIR 的 P0-T2 baseline 已反映在 b2e0061 Review Golden sample；`configuration-rules/v1` Draft 已提供，InterfaceStandardIR / InterfaceTemplateIR wire schema 进入 P0-T3 实现但尚未冻结。
 
 ## 1. 设计原则
 
@@ -10,8 +10,8 @@ Draft. DocIR / SchemaIR 的 P0-T2 baseline 已反映在 b2e0061 Review Golden sa
 
 - `DocIR` 是适合 LLM 和 Human Review 的强结构化 Markdown，负责稳定呈现 raw document 中的章节、字段表、条件、示例和 review 信息。
 - `SchemaIR` 是可机器校验、可人工 Review 的标准化报文模型，负责表达银行 XML 报文的 element、attribute、path、父子层级、类型和银行原始约束。
-- `InterfaceStandardIR` 是可机器校验、可人工 Review 的接口标准模型，负责表达目标系统实际配置的报文字段格式和层级。
-- `InterfaceTemplateIR` 是可机器校验、可人工 Review 的接口模板模型，负责表达一份模板如何对所绑定标准字段取值和处理。
+- `InterfaceStandardIR` 是可机器校验、可人工 Review 的接口标准模型，负责表达目标系统实际配置的银行报文字段格式、层级和银行条件约束。
+- `InterfaceTemplateIR` 是可机器校验、可人工 Review 的接口模板模型，负责表达 ASSEMBLY 的系统字段到银行标准字段、PARSE 的银行标准字段到固定 Parse Field 的取值和处理。
 - `review-notes.md` 是面向人的 Review 入口，每次 IR Draft 生成都应产出，用于汇总低置信、推导、冲突、差异、omission 和人工确认项。
 
 Raw doc 仍表示受控输入源。本次 `b2e0061` 样例以人工修正后的 `raw-doc.md` 作为正确 source；正常流程中不应在转换阶段静默改写 raw doc。
@@ -88,7 +88,7 @@ Raw doc 仍表示受控输入源。本次 `b2e0061` 样例以人工修正后的 
 | 2 |  | `trn-b2e0061-rq` | [1..1] | Object | Y | 转账交易请求 |  |  | 交易包装节点。 |
 | 2.1 |  | 　`ceitinfo` | [0..1] | String | N | 数字签名 |  | 该标签由前置机自动添加，企业无需上送 | 是否进入可配置字段需确认。 |
 | 2.2 |  | 　`transtype` | [0..1] | String | N | 交易类型 | 不超过1位数字；可空 | 1 委托待授权；2 授权退回修改；非空只能为1或2 |  |
-| 2.3 |  | 　`b2e0061-rq` | [0..1000] | Object | Y | 转账请求内容 | 不超过1000笔 |  | 最小出现次数需确认。 |
+| 2.3 |  | 　`b2e0061-rq` | [0..1000] | Node | Y | 转账请求内容 | 不超过1000笔 |  | 每次出现表示一个重复交易元素。 |
 | 2.3.1 |  | 　　`insid` | [1..1] | String | Y | 指令ID；客户端唯一标识 | 非空字符串；长度1-32 | 客户号下不能重复；不支持中文 |  |
 ```
 
@@ -139,7 +139,7 @@ SchemaIR 使用 JSON。`Final SchemaIR` 是银行 XML 报文结构与银行原�
 - `Root.bocb2e`
 - `Root.bocb2e.@version`
 - `Root.bocb2e.@security`
-- `Root.bocb2e.@locale` 或 observed `Root.bocb2e.@lang`
+- `Root.bocb2e.@locale`
 - `Root.bocb2e.head`
 - `Root.bocb2e.head.termid`
 - `Root.bocb2e.head.trnid`
@@ -158,6 +158,7 @@ SchemaIR 使用 JSON。`Final SchemaIR` 是银行 XML 报文结构与银行原�
   "functionType": "ASSEMBLY",
   "messageName": "b2e0061-rq",
   "rootPath": "Root.bocb2e.trans.trn-b2e0061-rq",
+  "xmlEncoding": "UTF-8",
   "description": "组装请求报文",
   "fields": []
 }
@@ -169,6 +170,8 @@ SchemaIR 使用 JSON。`Final SchemaIR` 是银行 XML 报文结构与银行原�
 - `PARSE`：处理响应报文。
 
 当前 `messageFormat` 只允许 `XML`。JSON 银行报文属于未验证的 future candidate。
+
+`messages[].xmlEncoding` 保存该方向 XML 报文的 Final encoding。raw-doc、XML 声明或其他证据出现冲突时必须进入 Review；确认值只展示在 Workbook `Overview`，不得伪造一个 Interface Standard 字段。上例的 `UTF-8` 仅说明 wire 形态；b2e0061 raw-doc 同时出现 UTF-8 建议和 GB2312 示例，两个方向的 Final 值必须在后续 SchemaIR fixture Review 时分别确认。
 
 实现同步说明：当前已实现的 SchemaIR Validator v1 仍接受早期 `JSON` 和 JSON node kind 枚举。该行为不构成产品能力，后续代码批次必须按本契约收紧；本次文档调整不修改代码或测试。
 
@@ -209,7 +212,9 @@ SchemaIR 使用 JSON。`Final SchemaIR` 是银行 XML 报文结构与银行原�
 }
 ```
 
-目标系统配置指导不属于 SchemaIR 字段；它由 InterfaceStandardIR 与 InterfaceTemplateIR 分层表达。
+`conditionText` 保留银行原始条件说明。银行文档明确、无歧义且落在规则包支持范围内的跨字段条件还需要形成结构化 `conditionalConstraints[]`，至少包含 controlling field path、operator、literal（适用时）、target field path、effect、sourceText/evidence 和人工 Review。P0 只支持 `EQUALS`、`IS_EMPTY` 与 `REQUIRED`；复杂条件继续保留文本，不强行转换。
+
+目标系统配置指导不属于 SchemaIR 字段；它由 InterfaceStandardIR 与 InterfaceTemplateIR 分层表达。正式导出中 observed `@lang` 只作为 SchemaIR evidence/difference Warning 保留，不进入 b2e0061 Final Standard。该 Standard 以银行文档为准保留 `@security`，排除正式导出中的 `vamflag`。
 
 ### 3.5 nodeKind 枚举
 
@@ -318,6 +323,7 @@ InterfaceStandardIR 回答“目标系统如何定义这个方向的报文字段
 - Regex；
 - Data Type；
 - SchemaIR source reference、Rule References、Difference Reason；
+- 银行文档结构化条件约束及其 evidence；
 - confidence、uncertain、uncertainReason 和人工 Review 结论。
 
 目标系统 Path 表示父路径。`fullPath` 由 parent path 与当前字段身份构成，用于唯一定位和模板引用。XML attribute 继续存在于 SchemaIR，但在接口标准中作为所属 element 行的 XML Keys，不单独生成标准行。
@@ -335,11 +341,18 @@ XML 目标类型为 `String`、`Boolean`、`Date`、`Number`、`Node`、`Object`
 
 Length、Illegal Characters、Regex 等可能缺失的约束必须区分 `VALUE`、`NO_CONSTRAINT` 和 `UNKNOWN`。`UNKNOWN` 阻止 Final；人工确认无约束后使用 `NO_CONSTRAINT`，不能以普通 null 混淆两者。
 
+在当前已确认范围内，raw-doc 没有写某项约束表示该项为 `NO_CONSTRAINT`；只有证据冲突或无法判定时才使用 `UNKNOWN`。不得从正式导出覆盖银行字段、路径、出现次数或约束事实。
+
+基础 `required` 与条件 `required` 分开保存。例如 `obssid.required=false` 不覆盖 `transtype EQUALS "2" => obssid REQUIRED`。Standard Validator 校验条件引用、受支持 operator/effect、literal 类型和 evidence，不执行银行业务条件。
+
 ## 5. InterfaceTemplateIR
 
 ### 5.1 职责边界与标准绑定
 
-InterfaceTemplateIR 回答“一份模板如何对已确认标准的字段进行取值与处理”。它必须绑定一个 `standardId + standardVersion + contentHash`，不能自动解析到最新标准。
+InterfaceTemplateIR 回答“一份模板如何连接系统字段与已确认 Standard Field，并进行取值和处理”。它必须绑定一个 `standardId + standardVersion + contentHash`，不能自动解析到最新标准。
+
+- ASSEMBLY：source 是 Value Expression，target 是 `standardFieldRef`。
+- PARSE：target 是 `parseFieldRef`；Value Expression 中的 FIELD_REF 引用 `standardFieldRef`。
 
 一个标准可以关联多份同方向模板。新增模板复用已有 Final Standard；标准版本变化不会静默改变已有模板。
 
@@ -365,11 +378,19 @@ InterfaceTemplateIR 回答“一份模板如何对已确认标准的字段进行
 }
 ```
 
-### 5.3 模板字段子集与 omissions
+每个 `fieldConfig` 至少还包含：
 
-模板字段是标准字段子集。每条 `fieldConfig` 引用一个存在的 `standardFieldRef`，同一模板中不得重复。
+- `bindingKind`: `VALUE | STRUCTURE_ONLY | COLLECTION_ITEM`；
+- `standardFieldRef`：ASSEMBLY target 或 PARSE source；
+- `standardProjection.required/length/dataType`：绑定 Standard 的显式镜像；
+- PARSE 时的 `parseTarget`：Parse Field ref/name/path/datatype；
+- 标量绑定的 `valueExpression`，或容器绑定的 XML Key/collection 信息。
 
-未出现在 `fieldConfigs` 的标准字段必须生成 omission candidate。每条 omission 至少保留：
+Template Validator 必须逐值比较 `standardProjection` 与所绑定 Final Standard；任一状态或值不一致均为 error。镜像用于 Workbook 展示和防止 Standard/Template 漂移，不允许 Template 覆盖 Standard。
+
+### 5.3 方向性绑定与 omissions
+
+ASSEMBLY 每条标量 `fieldConfig` 以一个存在的 `standardFieldRef` 为 target，同一模板中不得重复。未出现在 `fieldConfigs` 的 ASSEMBLY 标量 Standard Field 必须生成 omission candidate。每条 omission 至少保留：
 
 - `standardFieldRef`；
 - omission reason；
@@ -378,7 +399,13 @@ InterfaceTemplateIR 回答“一份模板如何对已确认标准的字段进行
 
 未确认 omission 阻止 Final Template。人工确认有意省略后，模板可以 Final，但 omission 继续进入 Workbook `Warnings`。omission 不等同于 `EMPTY`，也不生成虚假模板行。
 
-同一标准字段多行并按 condition 选择是 future candidate；当前 Validator 拒绝重复引用，不预留半实现 condition 字段。
+Node/Object 不参加 ASSEMBLY omission coverage。容器没有 XML Key 且不承担结构绑定时可以没有 Template 行；有 XML Key 或结构绑定需求时必须有适用结构行：普通容器使用 `STRUCTURE_ONLY`，Parse collection source 使用 `COLLECTION_ITEM`。缺失 key expression 是 XML Key error，不得伪装成 omission。
+
+PARSE 每条 `fieldConfig` 以 Parse Field 为 target；Value Expression 中的 FIELD_REF 引用绑定 Standard 的银行 source field，也可使用 literal、function 或 CONCATENATE。Parse Field Catalog 是固定 JSON/Java 输出对象定义，不属于银行 Standard。Validator 只校验实际配置的 `parseFieldRef`、path 和 datatype；未配置 Parse Field 默认不产生 omission 或 warning，也不被推断为代码赋值字段。
+
+`b2e0061-rq` 与 `b2e0061-rs` 都因 raw-doc `0..1000` 建模为 Standard `Node`。PARSE 中 `b2e0061-rs -> paymentLineList` 使用 `COLLECTION_ITEM`：每出现一个银行 `b2e0061-rs` Node，就创建一个 `paymentLineList(List)` 元素，子字段写入当前元素。Standard `Node` 与 Parse target `List` 是两端不同类型，不得压成同一 Data Type。
+
+同一目标字段多行并按目的系统业务 Condition 选择是 future candidate；当前 Validator 拒绝 contract 之外的重复 target，不预留半实现 Template Condition 字段。银行文档明确条件属于 SchemaIR/InterfaceStandardIR，不属于此处。
 
 ### 5.4 取值表达式与 XML Keys
 
@@ -391,11 +418,15 @@ String、Boolean、Date、Number 标量字段的字段值和 XML Key 的值统�
 - `MAPPING`
 - `CONCATENATE`
 
-`CONCATENATE` 按顺序包含任意模式的子表达式并允许递归。`EMPTY` 表示存在配置且明确取空值，不表示字段被省略，也不等同于 Empty Handling。
+FUNCTION 参数只允许 FIELD reference 或 literal；Function 输入、参数和返回值均为 String。`CONCATENATE` 按顺序包含任意模式的子表达式并允许递归，且只有其 children 可以递归 Value Expression。`EMPTY` 表示存在配置且明确取空值，不表示字段被省略，也不等同于 Empty Handling。
+
+`SECURE_INPUT_REF` 不是第七种 Value Mode，而是 `FIXED_VALUE` 的 payload kind；它与 `LITERAL` 二选一。IR 只保存可安全解析的引用标识，不保存真实敏感值，Workbook 也只展示引用标识。
+
+MAPPING expression 保存一个 String FIELD_REF 和一个全局唯一 `mappingRuleName`，不内联 entries。它对完整值精确匹配，未匹配必须报错。Replacement 不是 Value Expression：field config 在 Value Expression 完成后最多引用一个 `replacementRuleName`，命中片段替换为空 target 时删除，未命中内容保留。
 
 标量 field config 必须具有一个字段值表达式。`Node`、`Object` 是无值容器，其 field config 不得具有字段值表达式；容器仍可保存适用的处理策略和 XML Key 表达式。
 
-每个 field config 还可以表达 Empty Handling、Overlength Handling、Row Limit、Chinese Character Length、Ordered Replacement Rules、Rule References 和 Review 信息。
+每个 field config 还可以表达 Empty Handling、Overlength Handling、Row Limit、Chinese Character Length、单一 Replacement Rule、Rule References 和 Review 信息。MAPPING 与 Replacement 均进入 P0 wire contract、Validator、Workbook 和专项 golden。
 
 如果标准字段定义了 XML Keys，存在该字段模板行时，每个 key 必须具有独立 Value Expression。引用未知 key 或缺少表达式是错误；整个字段被确认省略时，其 keys 一并省略。
 
@@ -424,20 +455,28 @@ Standard Validator 还必须校验：
 - XML 不使用 List；
 - XML Keys 能追溯到 SchemaIR attribute；
 - 差异具有原因、Rule Reference 和人工结论；
+- 银行条件引用、operator/effect、literal 和 evidence 合法；
 - `UNKNOWN` 约束不能成为 Final。
 
 Template Validator 还必须校验：
 
 - Standard identity、version 和 content hash 精确匹配；
-- standard field reference 存在且不重复；
+- 每个 field config 的 `standardProjection.required/length/dataType` 与 Final Standard 完全一致；
+- `bindingKind` 与方向、Standard 类型和 Parse target 相容；
+- ASSEMBLY target Standard Field reference 存在且不重复；
+- PARSE target Parse Field reference 存在、path/datatype 与 catalog 相容，表达式内 Standard FIELD_REF 存在；
 - 标量字段值与 XML Key Value Expression 的结构、递归关系和顺序合法；
 - String/Boolean/Date/Number field config 必须有字段值表达式，Node/Object field config 不得有字段值表达式；
-- Rule ID、FIELD、FUNCTION 和 MAPPING 引用存在；
+- Rule ID、FIELD、FUNCTION 和 `mappingRuleName` 引用存在；Function 与 Mapping 数据类型为 String；
+- MAPPING 只接受一个 FIELD_REF 和一个规则，完整值未匹配时报错；Replacement 只接受一个规则并在 Value Expression 后执行；
+- `redacted: true` 的 Mapping rule 只用于结构验证，不能被 Final Template 引用；
 - field config 存在时，XML Key expressions 完整且不包含未知 key；
-- 所有缺失标准字段均有 Warning 与 omission；
+- 所有缺失 ASSEMBLY 标量 Standard Field 均有 Warning 与 omission；Node/Object 不参加 omission coverage，未配置 Parse Field 不自动生成 coverage issue；
+- 有 XML Key 或结构绑定需求的容器缺少适用结构行/key expression 时直接失败；
+- FIXED_VALUE payload 只允许 `LITERAL | SECURE_INPUT_REF`，安全引用不得携带真实值；
 - 未确认 omission、规则冲突或不确定配置不能成为 Final。
 
-Validator 不能代替人工判断 function、mapping 或场景性 omission 是否符合业务语义。
+Validator 不能代替人工判断 function、mapping、目的系统业务 Condition 或场景性 omission 是否符合业务语义。
 
 ## 7. Workbook Generator 输入边界
 
@@ -464,11 +503,12 @@ Workbook Generator 不允许：
 
 一份 Workbook 只包含一个方向标准和一份绑定模板。固定主 sheet 为 `Interface Standard` 与 `Interface Template`，不保留另一方向的空 sheet。`Value Expressions` 按 Expression Scope 分别展开标量字段值和 XML Key 的表达式树，不为 Node/Object 创建 FIELD_VALUE 表达式节点。
 
-## 8. 历史导出 JSON 边界
+## 8. 正式导出 JSON 边界
 
-`docs/reference/samples/b2eboc/b2e0061-assembly.json` 和 `b2e0061-parse.json` 只能作为人工 review 对照：
+`docs/reference/samples/b2eboc/` 中的四份 `b2e0061-*-standard.json` / `b2e0061-*-template.json` 是目标系统正式导出，可作为 b2e0061 Standard/Template 实际配置、processing policy 和 function 调用形态的证据，但必须经过规则包治理或 expected fixture 人工确认：
 
 - 不作为 SchemaIR 字段来源。
 - 不进入 expected SchemaIR。
-- 不作为 golden regression 输入。
-- 不引入历史 ID、parent ID、approvalStatus、configStatus 或目标系统导入字段。
+- 不直接作为 IR、Workbook Generator 或 golden regression 输入。
+- 不引入 database ID、parent ID、approvalStatus、configStatus 或目标系统导入 contract。
+- 不把正式导出的目的系统业务 Condition 推导成通用规则。

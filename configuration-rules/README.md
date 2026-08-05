@@ -2,122 +2,67 @@
 
 ## Status
 
-Contract only. No rule package version has been published.
+Active. `v1` is Draft and is not yet an immutable released package.
 
 ## Purpose
 
-`configuration-rules/` 是 InterfaceStandardIR 与 InterfaceTemplateIR 的正式、版本化规则来源：
+`configuration-rules/` 保存 InterfaceStandardIR 与 InterfaceTemplateIR 可引用的、版本化的目标系统规则事实。银行文档事实仍属于 SchemaIR；参考导出、字段清单和 `bkl.md` 只提供可追溯证据，不直接成为 Final IR 输入。
 
-- Standard 规则定义如何将 Final SchemaIR 映射为目标系统接口标准。
-- Template 规则定义取值表达式、处理策略，以及 fields/functions/mappings catalog。
+每个 IR 通过 `<rulePackageVersion, ruleId>` 引用规则。Rule ID 在不同版本间保持可读且不携带版本后缀，例如 `STD.FIELD.PARENT_PATH`；版本由 `rulePackageVersion` 单独表达。
 
-本目录不保存银行报文事实。银行原始结构和约束属于 SchemaIR。`docs/reference/` 中的候选材料和历史导出 JSON 不是权威规则资产，不能用于补猜 Standard 或 Template 配置。
+## Version Lifecycle
 
-## Planned Structure
+规则包使用以下生命周期：
 
-```text
-configuration-rules/
-├── README.md
-└── v1/
-    ├── README.md
-    ├── rules.md
-    ├── fields.md
-    ├── functions.md
-    └── mappings.md
-```
+- `DRAFT`：允许补充和修正；只能用于设计、实现和 Draft fixture，不得支撑 Final IR。
+- `RELEASED`：维护人和业务 reviewer 已确认，机器校验通过；目录内容冻结。
+- `SUPERSEDED`：由新版本替代，但旧内容继续保留以验证历史 IR。
 
-当前只提交维护契约。`v1/` 必须在真实目标系统资料整理并经业务负责人确认后创建；不得添加占位业务标识或猜测内容。
+已发布版本不得原地修改。规则、字段或 function 发生语义变化时必须创建新版本；拼写修复若影响内容哈希也按新版本处理。
 
-## Versioning
+每个 Final Standard、Final Template、对应 Validator result 和 Workbook 必须记录实际使用的精确规则版本。Standard 与后续 Template 可以使用不同规则版本，但 Template 仍精确绑定 Standard artifact ID、version 和 content hash。规则升级不会自动迁移已有 Final artifact；必须显式评估影响、重新校验并人工 Review。
 
-- 版本目录一旦发布不可原地覆盖。
-- 任何改变 Standard 或 Template 解释和生成结果的规则/catalog 变化必须发布新版本。
-- 已发布目录中的拼写或说明修订也通过新版本记录，不原地修改。
-- 每个 Final Standard、Final Template、Validator result 和 Workbook 必须记录实际使用的精确规则版本。
-- Standard 与后续 Template 可以使用不同规则版本；Template 仍必须精确绑定 Standard artifact ID、version 和 content hash。
-- 规则变化不会自动迁移已有 Final artifact；必须显式评估影响、重新校验并人工 Review。
+## Package Layout
 
-## Rule IDs
+每个版本至少包含：
 
-- 每条可被 StandardIR 或 TemplateIR 引用的规则必须具有稳定唯一 Rule ID。
-- Rule ID 在已发布版本内不可重新分配、改变含义或删除后复用。
-- IR 中的 Rule Reference 必须能解析到该 artifact 指定的规则版本。
-- 多条规则共同支撑一个决定时，必须保留全部引用。
+- `README.md`：范围、来源、治理和使用边界。
+- `rules.yaml`：Rule ID、值域和可机器读取的规则事实。
+- `fields.yaml`：按方向区分的 FIELD catalog。
+- `functions.yaml`：function 标识和已确认调用契约。
+- `mappings.yaml`：全局唯一 `mappingRuleName`、String source-target entries 和来源。
+- `rules.md`：规则解释、取舍和实现边界。
+- `review.md`：来源、脱敏、确认记录和未决项。
 
-Rule ID 命名格式在整理首个真实规则包时确定，当前不得预先制造格式或编号。
+目标系统具有预设 Mapping catalog。Template 的 MAPPING 与 Replacement 只保存 `mappingRuleName`，entries 由对应版本的 `mappings.yaml` 提供；不创建独立 `mappings.md`，使用语义统一记录在 `rules.yaml` 与 `rules.md`。
 
-## Package Files
+规则包同时定义 Template 对绑定 Standard 的 Required/Length/Data Type 镜像、Node/Object coverage、PARSE collection item binding，以及 `FIXED_VALUE` 的安全引用 payload。银行事实仍以 Final SchemaIR 为准；正式导出与 raw-doc 冲突时必须记录差异，不能反向覆盖银行事实。
 
-### `v1/README.md`
+## Governance
 
-记录规则包状态、发布日期、维护人、原始资料来源、脱敏说明、业务 Review 结论、适用目标系统和版本关系。
-
-### `v1/rules.md`
-
-至少记录两组规则。
-
-Interface Standard：
-
-- parentPath/fullPath 形成方式；
-- sibling sequence；
-- String/Boolean/Date/Number/Node/Object 映射；
-- XML Keys 表达；
-- required、length、illegal characters 和 regex；
-- VALUE、NO_CONSTRAINT、UNKNOWN 的使用与 Review；
-- SchemaIR/Standard 差异处理。
-
-Interface Template：
-
-- FIXED_VALUE、EMPTY、FIELD、FUNCTION、MAPPING、CONCATENATE 的选择原则；
-- String/Boolean/Date/Number 标量字段值和 XML Key Value Expressions；
-- Node/Object 无字段值表达式，以及容器处理策略和 XML Key 表达式的适用边界；
-- empty handling、overlength handling、row limit、中文字符长度和有序替换；
-- 模板字段 omission 与 EMPTY 的区别；
-- 其他可被 TemplateIR 引用的处理规则。
-
-### `v1/fields.md`
-
-保存目标系统业务字段的原始标识、显示名称和资料中明确给出的适用说明，供 Template FIELD 引用。
-
-### `v1/functions.md`
-
-保存目标系统 function 的原始标识、显示名称、参数和适用说明，供 Template FUNCTION 引用。
-
-### `v1/mappings.md`
-
-保存目标系统 mapping 的原始标识、显示名称和业务对应关系，供 Template MAPPING 引用。
+- Maintainer：`deng`
+- Business reviewer：`configuration-reviewer`
+- YAML loader 必须使用 `yaml.safe_load`，只接受标准 YAML 类型，再执行项目自己的结构、唯一性和引用校验。
+- 参考资料缺失时必须保留 `UNKNOWN` 或维持功能未支持状态，禁止从相近名称、历史经验或模型常识补齐。
 
 ## Source Requirements
 
 允许来源：
 
-- 用户提供并确认的目标系统正式资料；
+- 用户提供并确认的目标系统正式资料或正式导出；
+- 银行原始文档；
 - 业务负责人确认的补充说明；
-- 能追溯到上述资料的整理结果。
+- 能追溯到上述材料的字段清单和整理结果。
 
 禁止来源：
 
-- `docs/reference/` 中未确认的候选草案；
-- 历史导出 JSON 中反推的字段、function、mapping 或配置规则；
-- LLM 常识或模型补全；
-- 相近系统、相似名称或不完整线索；
-- 为满足测试覆盖而创建的占位业务标识。
+- 未确认的候选草案；
+- LLM 常识或相近系统经验；
+- 仅凭相似 function/field 名称推断 alias 或配置；
+- 为满足测试覆盖创建的占位业务标识或默认行为。
 
-资料缺失或相互冲突时必须记录 blocker 并停止对应 Standard/Template 工作，不能默默选择一种解释。
+资料缺失或相互冲突时，规则包必须保存来源差异、`UNKNOWN` 或 documented-only 状态；不得默默选择一种解释。
 
-## Publication Checklist
+## Available Versions
 
-发布首个版本前必须满足：
-
-- 所有规则和 catalog 项均可追溯到真实资料。
-- Standard 与 Template 规则职责边界明确。
-- Rule ID 唯一且引用有效。
-- 原始标识和显示名称经业务 Review。
-- 六种 Value Mode 与处理策略有明确适用规则。
-- 缺失、冲突和不适用项被显式记录。
-- 规则包由业务负责人确认。
-- 内部链接、编码和唯一 ID 检查通过。
-
-## Current Blocker
-
-目标系统 catalog 和完整规则资料尚未提供，因此 `v1/` 尚不存在。Phase0 的 InterfaceStandardIR / InterfaceTemplateIR wire contract、Validator、golden fixture 和 Configuration Workbook 实现保持 Blocked。
+- [`v1/`](v1/README.md)：b2e0061 Phase0 所需最小规则集，当前为 Draft。

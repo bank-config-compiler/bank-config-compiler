@@ -26,14 +26,14 @@ IR 是 Intermediate Representation（中间表示）。它把来源不同、结�
 | 产物 | 更容易理解的名称 | 回答的问题 | 内容边界 | 可信状态 |
 |---|---|---|---|---|
 | `DocIR` | 结构化文档稿 | 银行文档写了什么？ | 章节、字段表、示例、条件、冲突、原文证据和不确定项。 | LLM 生成 Draft，人工确认后成为 Final DocIR。 |
-| `SchemaIR` | 标准化报文模型 | 银行 XML 报文是什么结构？ | element、attribute、完整 path、父子层级、原始类型、必填、长度、出现次数和银行约束。 | LLM 生成 Draft，经 SchemaIR Validator 和人工 Review 后成为 Final SchemaIR。 |
-| `InterfaceStandardIR` | 接口标准模型 | 目标系统应如何定义这个方向的报文字段格式和层级？ | 目标系统字段名称、描述、路径、必填、长度、非法字符、XML 内键、正则、数据类型和顺序。 | LLM 生成 Draft，经 Standard Validator 和人工 Review 后成为 Final InterfaceStandardIR。 |
-| `InterfaceTemplateIR` | 接口模板模型 | 当前模板如何转换和赋值这些标准字段？ | 标准字段子集、字段与 XML 内键取值表达式、处理策略、规则依据、省略原因和人工结论。 | LLM 生成 Draft，经 Template Validator 和人工 Review 后成为 Final InterfaceTemplateIR。 |
+| `SchemaIR` | 标准化报文模型 | 银行 XML 报文是什么结构？ | element、attribute、方向级 XML encoding、完整 path、父子层级、原始类型、必填、长度、出现次数和银行约束。 | LLM 生成 Draft，经 SchemaIR Validator 和人工 Review 后成为 Final SchemaIR。 |
+| `InterfaceStandardIR` | 接口标准模型 | 目标系统应如何定义这个方向的银行报文字段格式和层级？ | 目标系统字段名称、描述、路径、基础/条件必填、长度、非法字符、XML 内键、正则、数据类型和顺序。 | LLM 生成 Draft，经 Standard Validator 和人工 Review 后成为 Final InterfaceStandardIR。 |
+| `InterfaceTemplateIR` | 接口模板模型 | 当前模板如何连接银行标准字段与系统字段并进行取值和处理？ | 方向性 source/target、字段与 XML 内键取值表达式、处理策略、规则依据、ASSEMBLY omission 和人工结论。 | LLM 生成 Draft，经 Template Validator 和人工 Review 后成为 Final InterfaceTemplateIR。 |
 | `Configuration Workbook` | 配置工作簿 | 配置人员要配置什么、依据是什么、执行与验证到哪一步？ | 一个方向标准的快照、一份模板、表达式明细、Warnings、规则引用和执行清单。 | 派生交付物，不是事实源。 |
 
 “标准化报文模型”中的“标准化”只表示将不同银行文档统一为项目内部结构，不表示行业标准、XSD 或 JSON Schema。
 
-本项目当前只承诺处理 XML 银行报文。各 IR 可以使用 JSON 作为机器可校验的序列化格式，但这不等于支持 JSON 银行报文。目标系统数据类型词汇中的 `List` 仅适用于 JSON，当前 XML 流程必须拒绝使用；JSON 报文能力是 future candidate。
+本项目当前只承诺处理 XML 银行报文。各 IR 可以使用 JSON 作为机器可校验的序列化格式，但这不等于支持 JSON 银行报文。`List` 不得进入 XML InterfaceStandardIR；PARSE 固定输出对象的字段目录可以使用 `List` 表达 Java/JSON 对象层级，这不扩大银行报文格式范围。
 
 ## 3. 产品事实源与关联关系
 
@@ -41,9 +41,13 @@ IR 是 Intermediate Representation（中间表示）。它把来源不同、结�
 
 - `Final SchemaIR` 保存银行报文结构和银行原始约束。
 - `Final InterfaceStandardIR` 保存一个 `interfaceCode + direction` 下目标系统实际采用的接口标准。
-- `Final InterfaceTemplateIR` 保存一份模板对所绑定标准字段的取值和处理配置。
+- `Final InterfaceTemplateIR` 保存一份模板的方向性转换配置、Standard 约束镜像和结构绑定：ASSEMBLY 从系统字段写入银行 Standard Field；PARSE 从银行 Standard Field 写入固定 Parse Field。
 
 三者不得相互覆盖。SchemaIR 与 InterfaceStandardIR 的 required、length、type 或其他约束存在差异时，必须同时保留两侧值；InterfaceStandardIR 记录差异原因、Rule ID 和人工 Review 结论，差异进入 Workbook `Warnings`。
+
+银行字段、path、出现次数和约束以 raw-doc 经人工确认形成的 Final SchemaIR 为准；正式 Standard/Template 导出只证明目标系统表示方式和已观察配置，不能覆盖银行事实。b2e0061 Final Standard 因此保留 raw-doc 定义的 `@security` XML Key、排除只存在于正式导出的 `vamflag`，并将样例中观察到但协议说明未定义的 `@lang` 保留在 SchemaIR 和差异 Warning 中而不进入 Final Standard。
+
+每个 SchemaIR message 使用 `xmlEncoding` 保存当前方向 XML declaration 的 encoding。协议建议值、报文示例值或其他证据冲突时必须进入人工 Review；Final 值只作为报文级元数据展示在 Workbook `Overview`，不生成 Interface Standard 字段或 XML Key。
 
 一个方向标准可以被多份同方向模板复用。模板必须绑定不可变的 `standardId + standardVersion + contentHash`，不能仅凭 `interfaceCode` 自动跟随最新标准。标准升级后，已有模板仍指向原版本；迁移必须重新校验和 Review。
 
@@ -56,7 +60,7 @@ Configuration Workbook 不是事实源，不反向更新任何 IR。人工填写
 - 接口标准必须在接口模板之前形成 Final；新增模板直接复用已确认的标准，不重新生成标准。
 - Validator 只校验结构、引用和确定性 invariant，不能代替人工判断 function、mapping 或场景性字段省略是否符合业务语义。
 - Workbook Generator 只做确定性格式化和配置指导，不补业务字段、不临时推断配置逻辑、不对接目标系统、不承诺导入兼容性。
-- ASSEMBLY 与 PARSE 分别拥有独立的标准和模板，但模板取值使用同一套表达模型。
+- ASSEMBLY 与 PARSE 分别拥有独立的标准和模板，并复用同一套 Value Expression 结构；两方向的 source/target 端点不同。
 - 外部输入、LLM 输出和 third-party response 必须在信任边界处先校验。
 - 真实银行文档和配置资料属于敏感输入，日志不得记录完整原文、凭证或 secret。
 - 连接、认证、证书、部署或全量目标系统配置不属于上述 IR。
@@ -76,6 +80,7 @@ Configuration Workbook 不是事实源，不反向更新任何 IR。人工填写
 - Regex；
 - Data Type；
 - SchemaIR 来源、规则引用、差异、不确定性和人工 Review 结论。
+- 与基础 Required 分离的银行文档条件约束、原文 evidence 和人工 Review 结论。
 
 目标系统配置中的 Path 表示父路径，因此映射为 `parentPath`。`fullPath` 包含当前字段名，用于唯一定位、审计和引用。例如 `Document` 的 parentPath 为 `Root`；`MsgId` 的 parentPath 可以为 `Root.Document.pain.001.001.02.GrpHdr`。
 
@@ -99,10 +104,16 @@ XML attribute 不形成独立接口标准行，而作为所属 element 标准行
 银行文档未给出长度、非法字符、正则等信息时，必须区分：
 
 - `VALUE`：存在明确配置值；
-- `NO_CONSTRAINT`：人工确认目标系统无需该约束；
-- `UNKNOWN`：信息不足，尚未确定。
+- `NO_CONSTRAINT`：在当前已人工确认的 raw-doc 范围内没有写该约束，或人工确认目标系统无需该约束；
+- `UNKNOWN`：证据相互冲突或仍无法判定。
 
 `UNKNOWN` 必须进入 Review，未经确认不得形成 Final InterfaceStandardIR。空值不能同时表示“无约束”和“尚不确定”。
+
+### 5.4 银行文档条件约束
+
+银行文档明确、无歧义且落在规则包支持子集内的条件必须结构化保存，不能只压缩为基础 Required。例如 b2e0061 的 `obssid` 基础 Required 为 `false`，同时保存 `transtype EQUALS "2" => obssid REQUIRED`。
+
+P0 只支持 `EQUALS`、`IS_EMPTY` 谓词和 `REQUIRED` 效果。条件必须引用同方向已存在字段，并保留银行原文 evidence 与人工 Review。复杂或无法可靠结构化的约束继续保存为 `conditionText` 和 Review 提示，不得丢失或猜测。
 
 ## 6. InterfaceTemplateIR 能力
 
@@ -110,20 +121,34 @@ XML attribute 不形成独立接口标准行，而作为所属 element 标准行
 
 每份模板属于一个 `interfaceCode + direction`，具有稳定内部 `templateId` 和不可变版本，并精确绑定一个 Final InterfaceStandardIR 版本。一个标准可以关联多份模板，模板按方向独立，不在 ASSEMBLY 与 PARSE 间自动配对。
 
-### 6.2 模板字段子集与 omission
+### 6.2 方向性字段绑定与 omission
 
-模板字段是接口标准字段的合法子集：
+每个 Template field config 必须显式保存 `standardProjection`，其中的 Required、Length 和 Data Type 完整镜像所绑定 Final Standard 的约束状态和值。Template Validator 必须逐项校验完全相等；当前项目不接受出于内部业务需要缩短 Length、改变 Required 或改变 Standard Data Type。
+
+模板字段使用以下结构绑定类型：
+
+- `VALUE`：标量 Standard Field 与一个字段值表达式关联；
+- `STRUCTURE_ONLY`：Node/Object 仅承担结构或 XML Key 配置，不具有字段值表达式；
+- `COLLECTION_ITEM`：PARSE 中每个重复 Standard Node 创建目标 Parse List 的一个元素，其子字段在当前元素内解析。
+
+ASSEMBLY 模板行以 Standard Field 为目标，以 ASSEMBLY FIELD catalog 或其他 Value Expression 为数据源。ASSEMBLY omission coverage 只适用于应配置值的标量 Standard Field：
 
 - 同一模板中，一个标准字段最多出现一条模板行。
-- 当前场景不需要报送或解析的标准字段可以没有模板行。
-- 缺失字段产生 `MISSING_TEMPLATE_FIELD` Warning，而不是自动生成 `EMPTY` 行。
-- 每个缺失字段必须保存 omission 记录，至少包含 `standardFieldRef`、省略原因和人工 Review 结论。
+- 当前场景不需要报送的标量标准字段可以没有模板行。
+- 缺失的适用标量字段产生 `MISSING_TEMPLATE_FIELD` Warning，而不是自动生成 `EMPTY` 行。
+- 每个缺失的适用标量字段必须保存 omission 记录，至少包含 `standardFieldRef`、省略原因和人工 Review 结论。
 - omission 未确认时模板保持 Draft；人工确认有意省略后，允许形成 Final InterfaceTemplateIR。
 - 已确认的 omission 仍保留在 Workbook `Warnings`，不得静默隐藏。
 
 “不配置字段”与 `EMPTY` 不同：omission 表示该模板没有这个字段配置；`EMPTY` 表示该字段存在模板行且明确取空值。
 
-同一标准字段通过 condition 配置多条模板行是已知 future candidate。本期不支持多行、不定义 condition wire 字段，Validator 必须拒绝重复 `standardFieldRef`。
+Node/Object 不参加 ASSEMBLY omission coverage。无 XML Key、无需结构绑定的容器可以没有 Template 行；容器存在 XML Key 时必须有结构绑定行并提供全部 key expression：普通容器使用 `STRUCTURE_ONLY`，同时承担 Parse collection source 时由 `COLLECTION_ITEM` 行承载。缺失时报告 XML Key 配置错误而不是 omission。
+
+PARSE 模板行以 Parse Field catalog 为目标；Value Expression 中的 FIELD_REF 引用绑定 Standard 的银行字段，也可以使用受支持的 literal、function 或 CONCATENATE。Standard source 与 Parse target 的 name、path 和 datatype 必须分别保存和展示，不能用 Standard Data Type 代替 Parse target Data Type。Validator 只校验实际配置的 Parse Field 引用、path 和 datatype；未配置 Parse Field 默认不产生 omission 或 warning，也不能根据 b2e0061 的配置情况将其全局分类为代码赋值字段。
+
+b2e0061 raw-doc 将 `b2e0061-rq` 和 `b2e0061-rs` 都定义为 `0..1000`，因此两者在 Final Standard 中均为 `Node`，不能沿用正式导出的 `Object`。PARSE 使用 `COLLECTION_ITEM` 将每个 `b2e0061-rs` 映射为 `paymentLineList` 的一个 `List` 元素；其 `status`、`insid`、`obssid` 等子字段写入当前元素。
+
+同一目标字段通过目的系统业务 Condition 配置多条模板行是已知 future candidate。本期不支持多行、不定义通用 Template Condition wire 字段，Validator 必须拒绝超出当前 contract 的重复目标引用。第 5.4 节的银行文档条件属于 Standard 约束，不属于这里的业务 Condition。
 
 ### 6.3 取值表达式和处理策略
 
@@ -136,7 +161,13 @@ String、Boolean、Date、Number 标量字段的字段值，以及 XML Key 的�
 - `MAPPING`
 - `CONCATENATE`
 
-`CONCATENATE` 按顺序包含任意模式的子表达式并允许递归。表达式必须保存为机器可校验的树，不能压缩成只能由自然语言解释的字符串。
+FUNCTION 参数只允许 FIELD reference 或 literal。`CONCATENATE` 按顺序包含任意模式的子表达式并允许递归；只有 CONCATENATE children 可以递归 Value Expression。表达式必须保存为机器可校验的树，不能压缩成只能由自然语言解释的字符串。
+
+六种 Value Mode 不增加第七种安全值模式。`FIXED_VALUE` 的 payload 必须在 `LITERAL` 与 `SECURE_INPUT_REF` 中二选一；安全输入只保存引用标识，不在 IR、Workbook 或日志中保存或展示真实值。正式导出中的 `<REDACTED>` 不是可执行字面量，不能进入 Final fixture。
+
+所有 Function 输入、参数和返回值都是 String。MAPPING expression 使用一个 String FIELD reference 作为输入，并通过全局唯一 `mappingRuleName` 引用预设 catalog；对完整值精确匹配，未匹配必须报错。Template/IR 不内联 mapping entries。
+
+Replacement 在 Value Expression 完成后引用一个 `mappingRuleName` 处理结果 String；命中片段替换为 target，空 target 表示删除，未命中内容原样保留。每个 MAPPING expression 或 Replacement policy 都只能选择一个规则。MAPPING 与 Replacement 纳入 P0 IR、Validator、Workbook 和专项 golden。
 
 标量模板行必须具有一个字段值表达式。`Node`、`Object` 是无值容器，模板行不得配置字段值表达式；它们仍可保存适用的处理策略，以及下述独立 XML Key 表达式。
 
@@ -146,24 +177,26 @@ String、Boolean、Date、Number 标量字段的字段值，以及 XML Key 的�
 - Overlength Handling；
 - Row Limit；
 - Chinese Character Length；
-- Ordered Replacement Rules；
+- 一个 Replacement `mappingRuleName`；
 - Rule References、confidence、不确定原因和人工 Review 结论。
 
-ASSEMBLY 中，表达式描述系统数据如何转换为报文字段；PARSE 中，表达式描述报文字段如何转换为系统接收字段。
+Processing policy 的 P0 值域为：Empty Handling `BLANK | DELETE`；Overlength `INTERCEPT | TRUNCATE_FRONT | OVERLONG_LINE_BREAK | TRUNCATE_BACK`；Row Limit 为正整数；字符长度使用 `STANDARD_1..6`。具体语义和字符权重以 `configuration-rules/v1/rules.yaml` 为准，系统默认值未知，不能省略后由实现者猜测。
+
+ASSEMBLY 中，表达式描述系统请求字段如何转换为银行 Standard Field；PARSE 中，表达式描述银行响应 Standard Field 如何转换为固定 Parse Field。
 
 ### 6.4 XML Key 表达式
 
 接口标准 element 行只定义 XML Keys 的名称。若该标准字段存在模板行，每个 XML Key 必须在模板行中具有独立 Value Expression，例如 `@version → FIXED_VALUE("1.0")`。
 
-模板行引用未知 XML Key 或缺少已定义 XML Key 的表达式时，Template Validator 必须报错。若整个标准字段已通过 omission Review 确认省略，其 XML Keys 随字段一起省略，不再要求单独表达式。
+模板行引用未知 XML Key 或缺少已定义 XML Key 的表达式时，Template Validator 必须报错。标量字段已通过 omission Review 确认省略时，其 XML Keys 随字段一起省略；Node/Object 不使用 omission，具有 XML Key 的容器必须存在适用的结构绑定配置。
 
 ## 7. 正式规则资产
 
 InterfaceStandardIR 与 InterfaceTemplateIR 的权威目标系统规则来源位于仓库顶层 `configuration-rules/`，不位于 `docs/reference/`。
 
-规则包采用不可变版本目录。每条可被 IR 引用的规则使用稳定 Rule ID；字段、function 和 mapping catalog 保存目标系统原始标识和显示名称。每个 Final IR 记录自己实际使用的精确规则版本，不要求标准和后续模板必须使用同一版本。
+规则包采用版本目录；`DRAFT` 可补充，`RELEASED` 后不可变。每条可被 IR 引用的规则使用稳定 Rule ID；字段、function 和 Mapping catalog 保存有来源的原始标识。MAPPING 与 Replacement 使用预设 catalog 的全局唯一 `mappingRuleName`，不在 IR 内联 entries。每个 Final IR 记录自己实际使用的精确规则版本，不要求标准和后续模板必须使用同一版本。
 
-当前 catalog 尚未提供，因此仓库只定义规则包维护契约。不得从历史 JSON、LLM 输出或相近概念推断 `v1` 内容。
+`configuration-rules/v1` Draft 已根据正式导出、`bkl.md`、ASSEMBLY/PARSE 字段清单、Mapping 样例和业务确认建立。Draft 可用于 P0 实现，但只有 `RELEASED` 版本可被 Final IR 引用。Function String 类型、MAPPING/Replacement 和 processing policy 值域已确认；仍未知的系统默认值必须保持 `UNKNOWN`，不得从相近概念推断。
 
 ## 8. 可信流程
 
@@ -226,11 +259,13 @@ flowchart TD
 - `Rule References`
 - `Legend`
 
-`Interface Standard` 保存模板所绑定标准的完整快照；`Interface Template` 只列出当前模板实际配置的字段。`Overview` 记录标准与模板身份、版本、内容摘要、规则版本、校验结果和调用者指定的 `Standard Action = CREATE | REUSE | UPDATE`。
+`Interface Standard` 保存模板所绑定标准的完整快照；`Interface Template` 只列出当前模板实际配置的字段。`Overview` 记录标准与模板身份、版本、内容摘要、规则版本、当前方向 Final `xmlEncoding`、校验结果和调用者指定的 `Standard Action = CREATE | REUSE | UPDATE`。
+
+`Interface Template` 必须将 Standard snapshot、Template `standardProjection` 和 Parse target 分列展示。ASSEMBLY 的 Standard 是 target；PARSE 的 Standard 是 source，并额外展示 Parse target 的 name/path/datatype。例如 `b2e0061-rs(Node)` 与 `paymentLineList(List)` 必须同时可见，不能合并为一个含糊的 Data Type 列。
 
 `Value Expressions` 是模板表达式的结构化明细视图，不是额外事实源。主 sheet 对标量字段展示 Value Mode 和可读摘要；`Node`、`Object` 行的 Value Mode 和 Value Summary 留空，并由 `Legend` 说明该字段没有值表达式。该 sheet 按树展开递归 `CONCATENATE`、function 参数和 mapping 引用，并通过 Expression Scope 区分标量字段值表达式与 XML Key 表达式。
 
-`Warnings` 必须展示约束差异、字段 omission、规则冲突、不确定项和 Validator issue。已确认的场景性 omission 仍须显示原因和 Review Disposition；未确认 omission 不能进入 Final Template，因此不能生成可交付工作簿。
+`Warnings` 必须展示约束差异、银行条件、ASSEMBLY 标量字段 omission、规则冲突、不确定项和 Validator issue。已确认的场景性 omission 仍须显示原因和 Review Disposition；未确认 omission 不能进入 Final Template，因此不能生成可交付工作簿。Node/Object 不产生 omission，未配置 Parse Field 不自动进入 Warnings。
 
 相同 Final 输入、校验结果、规则版本和 Standard Action 必须稳定生成相同结构化内容。工作簿不是目标系统导入文件，也不是 IR 的反向输入。
 
@@ -246,9 +281,9 @@ flowchart TD
 - 目标系统 API 写入、自动导入或生产库直连。
 - 从 Excel 反向导入或更新任一 IR。
 - 连接、认证、证书、部署和全量目标系统配置。
-- 当前阶段的 JSON 银行报文及 `List` 类型配置。
-- 同一标准字段多条模板行及 condition 选择逻辑。
-- 未经业务负责人确认的字段、function 或 mapping catalog 推断。
+- 当前阶段的 JSON 银行报文；Parse Field Catalog 中用于固定输出对象的 `List` 不表示支持 JSON 银行报文。
+- 目的系统业务 Condition、多条同目标模板行及运行时选择逻辑。
+- 未经业务负责人确认的字段、function 或 Mapping 行为推断。
 
 ## 12. 验收场景
 
@@ -257,15 +292,22 @@ flowchart TD
 - Interface Standard 的父路径、完整路径、同级顺序、`Node`/`Object`/标量映射和 XML Keys。
 - `NO_CONSTRAINT` 与 `UNKNOWN` 明确区分，后者阻止 Final Standard。
 - SchemaIR 与 InterfaceStandardIR 约束不一致时保留双方值、原因、Rule ID 和人工结论。
-- 模板只配置标准字段的合法子集。
-- 缺失模板字段产生 Warning；未确认 omission 阻止 Final，确认后允许 Final 且继续显示在 Workbook。
+- ASSEMBLY 目标是 Standard Field；PARSE 目标是 Parse Field，表达式内 FIELD_REF 引用绑定 Standard。
+- ASSEMBLY 缺失的适用标量字段产生 Warning；Node/Object 不产生 omission；未确认 omission 阻止 Final，确认后允许 Final 且继续显示在 Workbook。
+- PARSE 只校验实际配置的 Parse Field；未配置 catalog 字段默认不产生 omission 或 Warning。
+- Template `standardProjection.required/length/dataType` 与绑定 Standard 完全相等，Workbook 分别展示 Standard、Template 镜像和 Parse target。
+- `b2e0061-rs(Node) → paymentLineList(List)` 使用 `COLLECTION_ITEM`，每个响应节点生成一个列表元素。
 - omission 与 `EMPTY` 明确区分。
-- `FIELD`、`FIXED_VALUE`、`EMPTY`、`FUNCTION`、`MAPPING` 和递归 `CONCATENATE`。
+- 六种 Value Mode 均进入 P0；MAPPING 使用单一预设规则引用并对未匹配完整值报错。
+- `SECURE_INPUT_REF` 作为 `FIXED_VALUE` payload 与 `LITERAL` 二选一，不成为第七种 Value Mode。
+- Replacement 使用单一预设规则引用，按片段替换/删除并保留未命中内容。
 - String/Boolean/Date/Number 标量模板行必须有字段值表达式，Node/Object 模板行不得有字段值表达式。
 - 存在模板行时，每个 XML Key 都具有独立表达式；未知或缺失 Key 是错误。
-- ASSEMBLY 与 PARSE 使用同一表达结构但绑定不同方向标准。
+- 银行文档明确条件在 SchemaIR/InterfaceStandardIR/Workbook 可追溯，基础 Required 不覆盖条件 Required。
+- `messages[].xmlEncoding` 经人工 Review 后进入 Workbook Overview，不生成 Standard 字段。
+- ASSEMBLY 与 PARSE 使用同一表达结构但具有相反 source/target 端点。
 - `Value Expressions` 能还原标量字段值和 XML Key 的递归表达式树。
-- 当前 XML 流程拒绝 `List`。
+- 当前 XML Standard 拒绝 `List`；Parse Field Catalog 可以使用 `List`。
 - Configuration Workbook 不被描述为可导入文件或 IR 的反向输入。
 
 ## 13. 跨阶段失败标准
@@ -277,9 +319,13 @@ flowchart TD
 - 接口模板绕过未确认的接口标准生成或自动跟随未知最新版标准。
 - Draft 未经要求的校验和人工确认即进入后续可信链路。
 - 使用无来源规则、无法解析的 Rule ID 或不存在的 catalog 标识。
-- 缺少 catalog 时由历史 JSON 或模型猜测补齐配置。
+- 缺少 catalog 事实时由导出相似字段、函数名称或模型常识猜测补齐配置。
 - 约束差异、模板 omission、规则冲突或不确定项被静默忽略。
 - omission 被错误转换为 `EMPTY`，或未确认 omission 进入 Final Template。
+- Node/Object 被错误纳入 ASSEMBLY omission coverage，或具有 XML Key 的容器缺少适用结构绑定/key expressions 却未报错。
+- 未配置 Parse Field 被自动生成 omission/warning，或被全局推断为代码赋值字段。
+- Template 镜像值与绑定 Standard 不一致，或 PARSE 将 Standard source datatype 与 Parse target datatype 混为一列。
+- 银行条件被丢失、误当作基础 Required，或与目的系统业务 Condition 混为一体。
 - Workbook Generator 临时补业务字段、选择表达式或判断目标系统是否已存在标准。
 - Configuration Workbook 不能从绑定版本的 Final 模型稳定重建，或不足以指导人工配置与验证。
 - 当前正式文档或产品把 JSON 银行报文描述为已支持。
@@ -288,5 +334,5 @@ flowchart TD
 
 - 本文维护项目级产品契约；具体模型见 `docs/design/`，任务状态见 `docs/planning/`。
 - 已形成约束的关键决策记录在 `docs/adr/`。
-- `docs/reference/` 中的材料只能作为候选草案和参考输入。
+- `docs/reference/` 中的 raw-doc、正式导出和 catalog 样例只能作为证据；必须经过人工确认或规则治理后才能进入 Final IR，且不得修改正式导出来迎合 Final 结论。
 - 规则资产必须遵守 `configuration-rules/README.md`，不能以普通设计文档替代。

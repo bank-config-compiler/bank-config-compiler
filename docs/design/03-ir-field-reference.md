@@ -2,7 +2,7 @@
 
 ## Status
 
-Draft. Applies to P0-T2 expected DocIR / SchemaIR work.
+Draft. Applies to P0-T2 expected DocIR / SchemaIR work and the P0-T3 SchemaIR wire-contract amendment.
 
 ## 1. 目的
 
@@ -51,6 +51,8 @@ DocIR 主表不展示完整 `Path`，避免人工 review 时被长路径淹没�
 | `envelope` | object | 可复用 BOCB2E envelope/head/trans 模型。 |
 | `messages` | array | 交易消息集合，当前按 `ASSEMBLY` / `PARSE` 区分。 |
 
+每个 `messages[]` 还保存方向级 `xmlEncoding`。它来自 raw-doc/XML 声明等银行证据；证据冲突时必须 Review，Final 值展示在 Workbook `Overview`，不投影成 Standard Field。
+
 ## 4. SchemaIR 字段对象
 
 | 字段 | 类型 | 含义 |
@@ -64,12 +66,12 @@ DocIR 主表不展示完整 `Path`，避免人工 review 时被长路径淹没�
 | `dataType` | string | 标准化类型，例如 `string`、`decimal`、`date`、`object`。 |
 | `format` | string/null | 格式提示，例如 `YYYYMMDD`、`HHMMSS`、`email`。 |
 | `length` | object | `min`、`max`、`raw`。冲突或非数值格式可只保留 `raw`。 |
-| `required` | boolean | 普通必填。条件必填字段用 `false`，条件进入 `conditionText`。 |
+| `required` | boolean | 基础必填。条件必填字段使用 `false`，条件同时进入 `conditionText`；可结构化的银行条件另进入 `conditionalConstraints`。 |
 | `multiple` | boolean | 是否为重复节点或多笔记录。 |
 | `hasChildren` | boolean | 是否存在子字段。 |
 | `occurs` | string/null | 原文或推导的出现次数。 |
 | `description` | string/null | 字段说明。 |
-| `conditionText` | string/null | 条件必填、枚举、平台校验和约束说明。 |
+| `conditionText` | string/null | 银行原始条件必填、枚举、平台校验和约束说明；不因已结构化而删除。 |
 | `sourceText` | string | 字段行级来源证据。 |
 | `evidence` | object | 来源类型和推导说明。 |
 | `confidence` | number | 0 到 1 的候选置信度。 |
@@ -78,6 +80,10 @@ DocIR 主表不展示完整 `Path`，避免人工 review 时被长路径淹没�
 | `reviewNote` | string/null | 面向 human reviewer 的补充说明。 |
 
 目标系统接口标准和模板配置不属于 SchemaIR 字段，分别由 InterfaceStandardIR 与 InterfaceTemplateIR 表达。
+
+SchemaIR message 可以包含 `conditionalConstraints[]`，用于保存银行文档明确且落在当前最小规则集内的跨字段条件。每条约束至少具有 controlling field path、operator、target field path、effect、sourceText/evidence 和 Review 信息。P0 不把目的系统业务 Condition 写入这里，也不执行条件。
+
+银行字段、路径、出现次数和约束以 raw-doc/Final SchemaIR 为准。正式导出中的 `@lang` 只保留为 observed evidence 和差异 Warning；b2e0061 Final Standard 保留 raw-doc 的 `@security`，排除 `vamflag`。这些投影决定不回写 P0-T2 审查前 Golden，而在 P0-T3 Standard 链路中落实。
 
 ## 5. evidence.kind
 
@@ -112,4 +118,4 @@ DocIR 主表不展示完整 `Path`，避免人工 review 时被长路径淹没�
 1. `必须确认`：影响字段是否存在、path、required、occurs、类型、版本和配置正确性的事项。
 2. `建议关注`：推导字段、长度冲突、平台/前置机约束差异。
 3. `低风险说明`：已保留但暂不影响 expected IR 的背景说明。
-4. `历史导出 JSON 对照`：仅记录差异或对照结论，不把导出 JSON 作为字段来源。
+4. `正式导出 JSON 对照`：记录差异或目标配置对照结论；导出不是 SchemaIR 字段来源，进入 Standard/Template 前仍需规则治理或人工确认。
