@@ -1,0 +1,472 @@
+[
+    {
+        "approvalStatus": "NOT_REQUIRED",
+        "businessCategory": "PAYMENT",
+        "channelCode": "SWIFT",
+        "configStatus": "ACTIVATED",
+        "deleteFlag": "N",
+        "formalApprovalStatus": "NOT_REQUIRED",
+        "formalConfigStatus": "ACTIVATED",
+        "lineList": [
+            {
+                "deleteFlag": "N",
+                "enableFlag": "Y",
+                "mappingSourceValue": "z",
+                "mappingTargetValue": "Z"
+            },
+            {
+                "deleteFlag": "N",
+                "enableFlag": "Y",
+                "mappingSourceValue": "y",
+                "mappingTargetValue": "Y"
+            },
+            {
+                "deleteFlag": "N",
+                "enableFlag": "Y",
+                "mappingSourceValue": "x",
+                "mappingTargetValue": "X"
+            },
+            {
+                "deleteFlag": "N",
+                "enableFlag": "Y",
+                "mappingSourceValue": "w",
+                "mappingTargetValue": "W"
+            },
+            {
+                "deleteFlag": "N",
+                "enableFlag": "Y",
+                "mappingSourceValue": "v",
+                "mappingTargetValue": "V"
+            },
+            {
+                "deleteFlag": "N",
+                "enableFlag": "Y",
+                "mappingSourceValue": "u",
+                "mappingTargetValue": "U"
+            },
+            {
+                "deleteFlag": "N",
+                "enableFlag": "Y",
+                "mappingSourceValue": "t",
+                "mappingTargetValue": "T"
+            },
+            {
+                "deleteFlag": "N",
+                "enableFlag": "Y",
+                "mappingSourceValue": "s",
+                "mappingTargetValue": "S"
+            },
+            {
+                "deleteFlag": "N",
+                "enableFlag": "Y",
+                "mappingSourceValue": "r",
+                "mappingTargetValue": "R"
+            },
+            {
+                "deleteFlag": "N",
+                "enableFlag": "Y",
+                "mappingSourceValue": "q",
+                "mappingTargetValue": "Q"
+            },
+            {
+                "deleteFlag": "N",
+                "enableFlag": "Y",
+                "mappingSourceValue": "p",
+                "mappingTargetValue": "P"
+            },
+            {
+                "deleteFlag": "N",
+                "enableFlag": "Y",
+                "mappingSourceValue": "o",
+                "mappingTargetValue": "O"
+            },
+            {
+                "deleteFlag": "N",
+                "enableFlag": "Y",
+                "mappingSourceValue": "n",
+                "mappingTargetValue": "N"
+            },
+            {
+                "deleteFlag": "N",
+                "enableFlag": "Y",
+                "mappingSourceValue": "m",
+                "mappingTargetValue": "M"
+            },
+            {
+                "deleteFlag": "N",
+                "enableFlag": "Y",
+                "mappingSourceValue": "l",
+                "mappingTargetValue": "L"
+            },
+            {
+                "deleteFlag": "N",
+                "enableFlag": "Y",
+                "mappingSourceValue": "k",
+                "mappingTargetValue": "K"
+            },
+            {
+                "deleteFlag": "N",
+                "enableFlag": "Y",
+                "mappingSourceValue": "j",
+                "mappingTargetValue": "J"
+            },
+            {
+                "deleteFlag": "N",
+                "enableFlag": "Y",
+                "mappingSourceValue": "i",
+                "mappingTargetValue": "I"
+            },
+            {
+                "deleteFlag": "N",
+                "enableFlag": "Y",
+                "mappingSourceValue": "h",
+                "mappingTargetValue": "H"
+            },
+            {
+                "deleteFlag": "N",
+                "enableFlag": "Y",
+                "mappingSourceValue": "g",
+                "mappingTargetValue": "G"
+            },
+            {
+                "deleteFlag": "N",
+                "enableFlag": "Y",
+                "mappingSourceValue": "f",
+                "mappingTargetValue": "F"
+            },
+            {
+                "deleteFlag": "N",
+                "enableFlag": "Y",
+                "mappingSourceValue": "e",
+                "mappingTargetValue": "E"
+            },
+            {
+                "deleteFlag": "N",
+                "enableFlag": "Y",
+                "mappingSourceValue": "d",
+                "mappingTargetValue": "D"
+            },
+            {
+                "deleteFlag": "N",
+                "enableFlag": "Y",
+                "mappingSourceValue": "c",
+                "mappingTargetValue": "C"
+            },
+            {
+                "deleteFlag": "N",
+                "enableFlag": "Y",
+                "mappingSourceValue": "b",
+                "mappingTargetValue": "B"
+            },
+            {
+                "deleteFlag": "N",
+                "enableFlag": "Y",
+                "mappingSourceValue": "a",
+                "mappingTargetValue": "A"
+            }
+        ],
+        "mappingRuleName": "Swift-Uppercase-List",
+        "mappingRuleRemark": "英文小写转大写"
+    }, {
+        "approvalStatus": "NOT_REQUIRED",
+        "businessCategory": "PAYMENT",
+        "configStatus": "ACTIVATED",
+        "deleteFlag": "N",
+        "formalApprovalStatus": "NOT_REQUIRED",
+        "formalConfigStatus": "ACTIVATED",
+        "lineList": [
+            {
+                "deleteFlag": "N",
+                "enableFlag": "Y",
+                "mappingSourceValue": "DEBT",
+                "mappingTargetValue": "OUR"
+            },
+            {
+                "deleteFlag": "N",
+                "enableFlag": "Y",
+                "mappingSourceValue": "CRED",
+                "mappingTargetValue": "BEN"
+            },
+            {
+                "deleteFlag": "N",
+                "enableFlag": "Y",
+                "mappingSourceValue": "SHAR",
+                "mappingTargetValue": "SHA"
+            }
+        ],
+        "mappingRuleName": "BDC-ChargeBearer-List",
+        "mappingRuleRemark": "手续费承担方式映射列表"
+    }, {
+        "approvalStatus": "NOT_REQUIRED",
+        "businessCategory": "PAYMENT",
+        "channelCode": "SWIFT",
+        "configStatus": "ACTIVATED",
+        "deleteFlag": "N",
+        "formalApprovalStatus": "NOT_REQUIRED",
+        "formalConfigStatus": "ACTIVATED",
+        "lineList": [
+            {
+                "deleteFlag": "N",
+                "enableFlag": "Y",
+                "mappingSourceValue": ")"
+            },
+            {
+                "deleteFlag": "N",
+                "enableFlag": "Y",
+                "mappingSourceValue": "@"
+            },
+            {
+                "deleteFlag": "N",
+                "enableFlag": "Y",
+                "mappingSourceValue": "#"
+            },
+            {
+                "deleteFlag": "N",
+                "enableFlag": "Y",
+                "mappingSourceValue": "$"
+            },
+            {
+                "deleteFlag": "N",
+                "enableFlag": "Y",
+                "mappingSourceValue": "！"
+            },
+            {
+                "deleteFlag": "N",
+                "enableFlag": "Y",
+                "mappingSourceValue": "“"
+            },
+            {
+                "deleteFlag": "N",
+                "enableFlag": "Y",
+                "mappingSourceValue": "”"
+            },
+            {
+                "deleteFlag": "N",
+                "enableFlag": "Y",
+                "mappingSourceValue": "‘"
+            },
+            {
+                "deleteFlag": "N",
+                "enableFlag": "Y",
+                "mappingSourceValue": "’"
+            },
+            {
+                "deleteFlag": "N",
+                "enableFlag": "Y",
+                "mappingSourceValue": "&"
+            },
+            {
+                "deleteFlag": "N",
+                "enableFlag": "Y",
+                "mappingSourceValue": "` "
+            },
+            {
+                "deleteFlag": "N",
+                "enableFlag": "Y",
+                "mappingSourceValue": "("
+            },
+            {
+                "deleteFlag": "N",
+                "enableFlag": "Y",
+                "mappingSourceValue": "{"
+            },
+            {
+                "deleteFlag": "N",
+                "enableFlag": "Y",
+                "mappingSourceValue": "}"
+            },
+            {
+                "deleteFlag": "N",
+                "enableFlag": "Y",
+                "mappingSourceValue": "*"
+            },
+            {
+                "deleteFlag": "N",
+                "enableFlag": "Y",
+                "mappingSourceValue": "^"
+            },
+            {
+                "deleteFlag": "N",
+                "enableFlag": "Y",
+                "mappingSourceValue": "_"
+            },
+            {
+                "deleteFlag": "N",
+                "enableFlag": "Y",
+                "mappingSourceValue": "["
+            },
+            {
+                "deleteFlag": "N",
+                "enableFlag": "Y",
+                "mappingSourceValue": "]"
+            },
+            {
+                "deleteFlag": "N",
+                "enableFlag": "Y",
+                "mappingSourceValue": "%"
+            },
+            {
+                "deleteFlag": "N",
+                "enableFlag": "Y",
+                "mappingSourceValue": "|"
+            },
+            {
+                "deleteFlag": "N",
+                "enableFlag": "Y",
+                "mappingSourceValue": "\\"
+            },
+            {
+                "deleteFlag": "N",
+                "enableFlag": "Y",
+                "mappingSourceValue": "+"
+            },
+            {
+                "deleteFlag": "N",
+                "enableFlag": "Y",
+                "mappingSourceValue": "="
+            },
+            {
+                "deleteFlag": "N",
+                "enableFlag": "Y",
+                "mappingSourceValue": "-"
+            },
+            {
+                "deleteFlag": "N",
+                "enableFlag": "Y",
+                "mappingSourceValue": "<"
+            },
+            {
+                "deleteFlag": "N",
+                "enableFlag": "Y",
+                "mappingSourceValue": ">"
+            },
+            {
+                "deleteFlag": "N",
+                "enableFlag": "Y",
+                "mappingSourceValue": ";"
+            },
+            {
+                "deleteFlag": "N",
+                "enableFlag": "Y",
+                "mappingSourceValue": "?"
+            }
+        ],
+        "mappingRuleName": "Swift_illegalCharacter_List_For_ING_Turkey",
+        "mappingRuleRemark": "非法字符列表(ING土耳其专用）"
+    }, {
+        "approvalStatus": "NOT_REQUIRED",
+        "businessCategory": "PAYMENT",
+        "channelCode": "SWIFT",
+        "configStatus": "ACTIVATED",
+        "deleteFlag": "N",
+        "formalApprovalStatus": "NOT_REQUIRED",
+        "formalConfigStatus": "ACTIVATED",
+        "lineList": [
+            {
+                "deleteFlag": "N",
+                "enableFlag": "Y",
+                "mappingSourceValue": "PRP",
+                "mappingSourceValueRemark": "转账付款(不区分境内外转账类型)",
+                "mappingTargetValue": "PMT"
+            },
+            {
+                "deleteFlag": "N",
+                "enableFlag": "Y",
+                "mappingSourceValue": "DFT",
+                "mappingSourceValueRemark": "境内转账",
+                "mappingTargetValue": "PMT"
+            },
+            {
+                "deleteFlag": "N",
+                "enableFlag": "Y",
+                "mappingSourceValue": "COS",
+                "mappingSourceValueRemark": "支票支付",
+                "mappingTargetValue": "PMT"
+            },
+            {
+                "deleteFlag": "N",
+                "enableFlag": "Y",
+                "mappingSourceValue": "BKT",
+                "mappingSourceValueRemark": "同行转账",
+                "mappingTargetValue": "PMT"
+            },
+            {
+                "deleteFlag": "N",
+                "enableFlag": "Y",
+                "mappingSourceValue": "ACH",
+                "mappingSourceValueRemark": "小额批量支付",
+                "mappingTargetValue": "PMT"
+            },
+            {
+                "deleteFlag": "N",
+                "enableFlag": "Y",
+                "mappingSourceValue": "RTGS",
+                "mappingSourceValueRemark": "境内大额转账",
+                "mappingTargetValue": "PMT"
+            },
+            {
+                "deleteFlag": "N",
+                "enableFlag": "Y",
+                "mappingSourceValue": "SEPA",
+                "mappingSourceValueRemark": "SPEA支付",
+                "mappingTargetValue": "TT"
+            },
+            {
+                "deleteFlag": "N",
+                "enableFlag": "Y",
+                "mappingSourceValue": "CBT",
+                "mappingSourceValueRemark": "跨境转账",
+                "mappingTargetValue": "TT"
+            }
+        ],
+        "mappingRuleName": "Swift-ClearingMethod-List",
+        "mappingRuleRemark": "清算方式映射列表"
+    }, {
+        "approvalStatus": "NOT_REQUIRED",
+        "businessCategory": "PAYMENT",
+        "channelCode": "BDC_BOC",
+        "configStatus": "ACTIVATED",
+        "deleteFlag": "N",
+        "formalApprovalStatus": "NOT_REQUIRED",
+        "formalConfigStatus": "ACTIVATED",
+        "lineList": [
+            {
+                "deleteFlag": "N",
+                "enableFlag": "Y",
+                "mappingSourceValue": "B054",
+                "mappingTargetValue": "SC_308"
+            },
+            {
+                "deleteFlag": "N",
+                "enableFlag": "Y",
+                "mappingSourceValue": "B010",
+                "mappingTargetValue": "SC_307"
+            },
+            {
+                "deleteFlag": "N",
+                "enableFlag": "Y",
+                "mappingSourceValue": "B009",
+                "mappingTargetValue": "SC_307"
+            },
+            {
+                "deleteFlag": "N",
+                "enableFlag": "Y",
+                "mappingSourceValue": "B008",
+                "mappingTargetValue": "SC_307"
+            },
+            {
+                "deleteFlag": "N",
+                "enableFlag": "Y",
+                "mappingSourceValue": "B007",
+                "mappingTargetValue": "SC_307"
+            },
+            {
+                "deleteFlag": "N",
+                "enableFlag": "Y",
+                "mappingSourceValue": "B006",
+                "mappingTargetValue": "SC_307"
+            }
+        ],
+        "mappingRuleName": "中行支付状态映射列表"
+    }
+]

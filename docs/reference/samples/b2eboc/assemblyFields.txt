@@ -1,0 +1,208 @@
+## 请求数据字段名与含义
+businessType 业务类型：AP Payment，Treasury Payment；Smartcom Payment
+paymentList (IT) 支付清单
+listNo 支付指令顺序号，单笔支付请报 1; 发薪支付发送每笔交易号不重复。
+paymentNo 交易代码，支付凭证号，原二层入参，以后支持多批付款，放第三层
+dealNo 交易号
+valueDate 实际支付日期，报送格式为 yyyy-mm-dd
+paymentMethod " 支付方式 CHK 支票付款，DD 坐扣，TRA 账户转账，TRF 信用转账 "
+individualSupplier 是否个体供应商
+paymentAmountUSD 美金金额，用于后续打包
+paymentCurrency 付款币种
+paymentAmount 付款金额
+chargeBearer 手续费承担方式
+clearingMethod 清算方式，RTGS/BKT/ACH/CBT/SEPA/COS/DFT/PRP/PAYROLL
+invoiceNum 发票号
+paymentPurpose 支付目的
+paymentPurposeCode 支付目的编码
+paymentPurposeInfo 支付目的 Info，后截取
+debtorAccountName 付款方账户名
+debtorAccountNo 付款账号
+debtorAccountCurrency 付款方币种
+debtorIban 付款方 IBAN 号
+debtorEbankAccount 付款方网银号
+debtorAccountNameLocal 付款账号中文名称
+debtorCountry 付款方所在国家
+debtorCountryCode 付款方所在国家简称
+debtorTown 付款方资金管理主体所在城镇
+debtorStreet 付款方所在街道
+debtorAddress 付款方地址
+debtorTaxId 付款方税码
+debtorBankAccountType 付款账户信息，华为公司用于支付的账户的类型
+debtorPostCode 付款方，公司邮编
+debtorProvince 付款方，公司省市名称
+multiCcyAccount 多币种账号
+debtorTaxType 纳税类型
+debtorBankName 付款银行名称
+debtorBankShortName 付款银行简称
+debtorBankBranchName 付款银行分行名称
+debtorBankCountry 付款银行所在国家
+debtorBankCountryCode 付款银行所在国家简称
+debtorBankCity 付款银行所在城市
+debtorBankBic 付款行 BIC
+debtorBankNo 付款行行号
+debtorBankBranchNo 付款行分行号
+instructDebtorAgentCode 给付款行的额外说明 Code，前截取
+instructDebtorAgentInfo 给付款行的额外说明描述信息，后截取
+intermediary1BankAccount 中转行，中转银行一账户
+intermediary1BankBic 中转行，中转银行一 bic
+intermediary1BankName 中转行，中转银行一名称
+intermediary2BankAccount 中转行，中转银行二账户
+intermediary2BankBic 中转行，中转银行二 bic
+intermediary2BankName 中转行，中转银行二名称
+creditorAccountName 收款方账户名
+creditorAccountNo 收款账号
+creditorAccountCurrency 收款方币种
+creditorIban 收款方 IBAN 号
+creditorEbankAccount 收款方网银号
+creditorSpecialAccount 收款方特殊账号
+creditorAccountNameLocal 收款账号中文名称
+creditorAccountNameEn 收款账号英文名称
+creditorCountry 收款主体所在国家
+creditorCountryCode 收款方所在国家简称
+creditorTown 收款方所在城市
+creditorStreet 收款方所在街道
+creditorAddress 收款方地址
+creditorPhone 收款人电话
+creditorTaxId 收款方税码
+creditorCode 供应商编码，员工报销场景下是员工编码
+creditorName 收款方名称，即供应商名称，员工报销场景无值（华为场景使用员工编码，其他场景可能有值）
+ultimateCreditorName 最终收款方账户名称，代收代付 / 统一托收场景
+creditorBankAccountType 收款账户，供应商的帐户类型
+creditorElectronicAddress 收款方，电子汇票地址
+creditorPostCode 收款方，供应商邮编
+creditorProvince 收款方，供应商省市
+creditorTaxNo 收款方，收款方税务登记号
+associateFlag 关联交易标志
+proprietaryIdentification 收款方唯一标志
+domesticFlag 是否境内，境内为 Y，跨境为 N
+creditorAccountDescription 收款方账户描述
+creditorAccOthersDescription 收款方账户其他描述
+creditorBankName 收款账号开户行
+creditorBankShortName 收款银行简称
+creditorBankBranchName 收款银行分行名称
+creditorBankCountry 收款银行所在国家
+creditorBankCountryCode 收款银行所在国家简称
+creditorBankCity 收款银行所在城市
+creditorBankAddress 收款方开户行地址
+creditorBankNo 收款行行号
+creditorBankBranchNo 收款行分行号
+creditorBankTaxId 收款银行的税码
+creditorBankBic 收款方开户行代码
+creditorBankSortCode 收款行 SortCode
+clearingSystemIdCode 收款银行，清算系统代码
+creditorBankPostCode 收款银行，收款方邮编
+creditorBankProvince 收款银行，收款银行省市
+creditorBankStreet 收款银行，收款银行街道 
+creditorBankSchemeCode erp cny code
+creditorBranchDescription 支行描述
+creditorBranchCategory 支行类别
+creditorBankCategory 银行类别
+creditorBankXmlMsgEmail 邮箱
+remittanceLocationAddressLine 汇款地点地址行
+remittanceLocationName 汇款地点名称
+remittanceLocationCountry 汇款地点国家 / 地区
+remittanceLocationPostal 汇款地点邮政
+instructCreditorAgent 指令收款代理信息（仅 TMC 用）
+instructCreditorAgentCode 交易数据，instructionforcreditoragencode 编码
+instructCreditorAgentInfo 交易数据，描述信息
+postscript 附言
+remark 银行间的附加信息
+regulatoryReportingCode 国家附言 CODE 信息
+regulatoryReportingInfo 国家附言详细信息
+categoryPurpose 支付属性
+clearingChannel 本地清算要素信息，清算类型
+busType 业务种类
+payType 汇款方式
+payeeIdType 收款人证件类型
+payeeIdNum 收款人证件号
+bookCurrency 交易数据，帐套对应的币种，记账币种
+paymentDocumentName 交易数据，支付文档名称
+taxPayDescription 交易数据，纳税描述
+printLocation 交易数据，付款相关的说明
+deliveryMethodCode 交易数据，支票投送方式
+checkType 交易数据，支票类型
+taxReferenceNumber 交易数据，税务参考号
+vatAmount 交易数据，增值税金
+vatAmountCurrency 交易数据，增值税金币种
+rateType 交易数据，汇率类型
+serviceLevel 支付通道
+serviceLevelPrtry 支付通道（描述）
+structuredReferredDocno 境外付款支付结构文档号
+referredDocumentNumber 单据唯一标志
+referredDocRelatedDate 单据相关日期
+referredDocAdjustmentAmount 单据相关金额
+referredDocAdjustmentCurrency 单据相关币种
+referredDocTypeProprietary 汇款单据类型的专有标志
+referredDocTypeIssuer 单据类型签发人标志
+privateTaxID 个人税码
+pmtCategoryPurposeCode 付款方用途代码
+pmtCategoryPurpose 付款方用途
+batchBooking 是否批处理
+taxType 纳税类型
+localInstrumentProprietary 本地仪表专有
+exchangeRate 非原币询价汇率
+inquiryFlag 询价标识
+contractNo 合同号
+exchangeType 购汇、结汇类型代码
+exchangePurpose 结售汇用途代码
+exchangePurposeDetail 结售汇详细用途
+creditorTaxType 供应商税码类型 - 收款方税码类型
+socialSecurityNumber 员工税码类型 - 收款方税码类型
+creditorReference 收款方参考信息
+creditorRefTypeProprietary 收款方专有引用类型
+localInstrumentCode 本地代码
+debtorPhoneNumber 付款方电话号码
+administrationZone 管理区
+referenceNumber 参考编号
+taxMethod 税金方式
+taxFromDate 计税开始日期
+taxToDate 计税结束日期
+taxCategory 税金类别
+debtorTaxIdOfCreditor 付款方税码
+branchAccountNumber 收款方分行银行账号
+debtorTaxIdentification 出款行税金账号
+duePayableAmount 到期应付金额
+duePayableAmountCurrency 到期应付币种
+remittanceLocationMethod 汇款位置方式
+chequeInstructionPriority 支票指令优先级
+privateProprietaryId 私有专有标识
+additionalRemittanceInfo 附加汇款信息
+applyType 支付业务类型，ERP：AP/SE，TMC：TR；
+instructionId 支付 id，原二层入参，以后支持多批付款，放第三层
+cashier 业务结算人员
+companyCode 公司编码，多批付款仅允许相同付款方国家
+unitCode 管理单元编码
+managementEntityCode (IT) 管理主体编码 - ME0056
+debtorAccountNameEn 付款账号英文名称
+approveAmount 权签金额
+endToEndId 交易数据，支付号
+accountantDescription 交易数据，支付会计的描述
+adjstmntAddtlInf 附加汇款信息
+categoryPurposeCode 用途目的
+cashFlowId 交易数据，tms 现金流 id
+paymentCreationDate 支付创建日期
+instructionPriority 紧急程度
+paymentAmountDetail 发票金额汇总
+invoiceAmount 发票金额
+fromBatchNo 慧通 erp 批次号
+debtorCity 付款方所在城市
+debtorAddress1 付款方地址
+debtorAddress2 付款方地址
+debtorAddress3 付款方地址
+localAccountName 本地语言的账号名称
+creditorAddress1 收款方地址
+creditorAddress2 收款方地址
+creditorAddress3 收款方地址
+creditorAddress4 收款方地址
+inquiryNumber 询价编号
+creditorAccountTaxPayerId 收款方账户层面的税码
+taxClassification 税收分类
+creditorNationality 个体的国籍
+creditorAccountType 收款方账号类型
+billAccountNumber 手续费账号
+referredDocAdjustmentReason 单据调整原因
+clearingCode 清算编码
+debtorBankCodeType 付款银行行号类型
+debtorBankAddress 付款银行所在地址
+creditorBankTown 收款银行城镇

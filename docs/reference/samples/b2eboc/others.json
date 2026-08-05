@@ -1,0 +1,54 @@
+{
+  "charSizeType": "STANDARD_4",
+  "deleteFlag": "N",
+  "emptyValueProcessType": "BLANK",
+  "enableFlag": "Y",
+  "fieldDataType": "STRING",
+  "fieldName": "Nm",
+  "fullPath": "Root.Document.pain.001.001.02.GrpHdr.InitgPty.Nm",
+  "lengthLimit": 70,
+  "lengthProcessType": "INTERCEPT",
+  "mappingConfig": {
+    "approvalStatus": "NOT_REQUIRED",
+    "channelCode": "SWIFT",
+    "configStatus": "ACTIVATED",
+    "deleteFlag": "N",
+    "formalApprovalStatus": "NOT_REQUIRED",
+    "formalConfigStatus": "ACTIVATED",
+    "lineList": [
+      {
+        "deleteFlag": "N",
+        "enableFlag": "Y",
+        "mappingSourceValue": "ATTIJARI",
+        "mappingTargetValue": "<REDACTED>"
+      },
+      {
+        "deleteFlag": "N",
+        "enableFlag": "Y",
+        "mappingSourceValue": "OTP",
+        "mappingTargetValue": "<REDACTED>"
+      },
+      {
+        "deleteFlag": "N",
+        "enableFlag": "Y",
+        "mappingSourceValue": "SICO",
+        "mappingTargetValue": "<REDACTED>"
+      }
+    ],
+    "mappingRuleName": "Swift-CompanyName-List",
+    "mappingRuleRemark": "银行映射公司名称"
+  },
+  "maxRowLimit": 1,
+  "parentPath": "Root.Document.pain.001.001.02.GrpHdr.InitgPty",
+  "parseFieldDataType": "STRING",
+  "parseFieldName": "Nm",
+  "requiredFlag": "N",
+  "standardLengthLimit": 70,
+  "standardLineType": "STANDARD_LINE",
+  "standardRequiredFlag": "N",
+  "templateLineSequence": 10,
+  "templateLineType": "COMMON",
+  "templateLineValue": "debtorBankShortName",
+  "templateValueType": "MAPPING",
+  "xMLStandardLine": false
+}
