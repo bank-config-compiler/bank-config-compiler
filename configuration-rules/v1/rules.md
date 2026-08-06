@@ -2,7 +2,7 @@
 
 ## Status
 
-Draft.
+Released.
 
 ## 1. 权威边界
 

@@ -2,7 +2,7 @@
 
 ## Status
 
-Draft. DocIR / SchemaIR golden baseline exists; `configuration-rules/v1` Draft and formal Standard/Template exports are available, so InterfaceStandardIR / InterfaceTemplateIR and Configuration Workbook golden work is now P0-T3 in progress.
+Draft. DocIR / SchemaIR golden baseline exists; `configuration-rules/v1` is released and formal Standard/Template exports are available, so InterfaceStandardIR / InterfaceTemplateIR and Configuration Workbook golden work is now P0-T3 in progress.
 
 ## 1. 目的
 
@@ -129,10 +129,10 @@ Legend
 
 ## 8. 当前执行边界
 
-`configuration-rules/v1` Draft 已建立，P0-T3 可以开始以下工作：
+`configuration-rules/v1` 已发布并冻结，P0-T3 可以继续以下工作：
 
 - Final InterfaceStandardIR / InterfaceTemplateIR fixture；
 - Standard / Template Validator expected result；
 - expected Configuration Workbook 和相关 assertions。
 
-这些资产必须按 SchemaIR wire amendment → Standard → Template → Workbook 顺序补齐。现有 P0-T2 DocIR、SchemaIR 和 review-notes expected artifacts 是审查前 Golden，本批次不改写；其 README 指向 ADR-0008。b2e0061 两个方向的 `xmlEncoding` 已由 Human 与银行线下确认为 `UTF-8`，后续 P0-T3 fixture 必须落实该结论；未来银行文档冲突必须 Warning 并阻塞 Final，直到 Human Review。规则包仍为 Draft；正式导出观察到的 5 个 Function、String 类型、字符长度默认 `STANDARD_1`、MAPPING 和 Replacement 契约必须进入专项 golden，但不得把 Function 或 Mapping 子集扩张成全量 catalog。P0-T3 完成后才可把规则包和相关 Final fixture 冻结。
+这些资产必须按 SchemaIR wire amendment → Standard → Template → Workbook 顺序补齐。现有 P0-T2 DocIR、SchemaIR 和 review-notes expected artifacts 是审查前 Golden，本批次不改写；其 README 指向 ADR-0008。b2e0061 两个方向的 `xmlEncoding` 已由 Human 与银行线下确认为 `UTF-8`，后续 P0-T3 fixture 必须落实该结论；未来银行文档冲突必须 Warning 并阻塞 Final，直到 Human Review。规则包 v1 已冻结；正式导出观察到的 5 个 Function、String 类型、字符长度默认 `STANDARD_1`、MAPPING 和 Replacement 契约必须进入专项 golden，但不得把 Function 或 Mapping 子集扩张成全量 catalog。P0-T3 完成后再冻结相关 Final fixture。

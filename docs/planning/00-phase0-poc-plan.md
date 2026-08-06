@@ -2,7 +2,7 @@
 
 ## Status
 
-Active. P0-T3 is In Progress. The rule-package loader/validator and revised BKL-subset Draft candidate regression are implemented; the next gate is maintainer/business-reviewer confirmation of the new candidate before `configuration-rules/v1` can be released.
+Active. P0-T3 is In Progress. The rule-package loader/validator is implemented and `configuration-rules/v1` was released from double-signed candidate `60c3ca18665cc0e3c85bb7f1c6f2212bba1d4c4d` on 2026-08-06; SchemaIR v2 is the next executable batch.
 
 ## 1. 目标与边界
 
@@ -31,7 +31,7 @@ Phase0 不实现 UI、JSON 银行报文、目标系统 Import JSON/API、Excel �
 | P0-T0：Bootstrap | Done | 无 | 无 | `ingest`、扁平 workspace artifact 协议和 `check --profile raw\|phase0a` 已实现；该 legacy profile 将在 P0-T3 SchemaIR v2 批次中迁移。 |
 | P0-T1：`b2e0061` IR candidate / Review | Done | P0-T0 | 无 | Candidate DocIR / SchemaIR 经 Human Review 更新，正式 IR 设计和 reference 边界清晰。 |
 | P0-T2：Review Golden sample boundary | Done | P0-T1 | 无 | Expected DocIR、修订前 expected SchemaIR、expected review notes 和 v1 validation result 已冻结为审查前 Golden。 |
-| P0-T3：Trusted chain | In Progress | P0-T2、`configuration-rules/v1` Draft | 规则运行时已完成；v1 尚待双 reviewer 发布确认，存量 SchemaIR/workspace 尚未迁移，Standard/Template/Workbook 尚未实现 | 发布规则包，完成 SchemaIR v2、两个配置 IR/Validator、Workbook 和完整 trusted-chain regression。 |
+| P0-T3：Trusted chain | In Progress | P0-T2、`configuration-rules/v1` RELEASED | 规则运行时和 v1 发布已完成；存量 SchemaIR/workspace 尚未迁移，Standard/Template/Workbook 尚未实现 | 完成 SchemaIR v2、两个配置 IR/Validator、Workbook 和完整 trusted-chain regression。 |
 | P0-T4：Draft generators | Blocked | P0-T3 | 三个 Final contract、Validator 和 trusted-chain 尚未冻结 | Provider-neutral generator interface 与四类确定性 stub 可运行，且无法绕过 Validator/Human Review 写入 Final。 |
 
 状态定义：
@@ -48,11 +48,11 @@ Phase0 不实现 UI、JSON 银行报文、目标系统 Import JSON/API、Excel �
 - `samples/golden/b2eboc-b2e0061/review-notes.expected.md`
 - `samples/golden/b2eboc-b2e0061/schemair-validation.expected.json`
 - SchemaIR Validator v1 及自动化测试
-- `configuration-rules/v1` Draft、规则解释和 Review 记录
-- 规则包 safe loader、严格 schema/semantic validator、聚合错误与 Draft candidate 正反向测试
+- `configuration-rules/v1` RELEASED、规则解释、双 reviewer 确认和 Review 记录
+- 规则包 safe loader、严格 schema/semantic validator、聚合错误与 RELEASED/DRAFT 正反向测试
 - PR #12 / merge commit `2de9f69`：最新 requirements、design、ADR amendment、reference 边界和规则事实收束
 
-这些证据证明 DocIR/SchemaIR 的修订前 Review boundary、legacy SchemaIR Validator、P0-T3 资料契约和 Draft 规则运行时；不证明规则包已经 RELEASED，也不证明最新 SchemaIR wire、InterfaceStandardIR、InterfaceTemplateIR、Configuration Workbook 或完整可信链路已经实现。
+这些证据证明 DocIR/SchemaIR 的修订前 Review boundary、legacy SchemaIR Validator、P0-T3 资料契约、规则运行时和 v1 发布；不证明最新 SchemaIR wire、InterfaceStandardIR、InterfaceTemplateIR、Configuration Workbook 或完整可信链路已经实现。
 
 ### 2.3 存量代码差距
 
@@ -62,12 +62,12 @@ Phase0 不实现 UI、JSON 银行报文、目标系统 Import JSON/API、Excel �
 | SchemaIR validation result | 保存 summary、coverage 和 issues | 无法证明结果与当前 Final SchemaIR 内容一致；Review 修改后旧结果仍可能被误用 | P0-T3 SchemaIR v2 |
 | `workspace.py` | 六个扁平 artifact；固定 `raw | phase0a` profile | 不支持分方向、版本化 Standard/Template、三个 validation result 或 Workbook | P0-T3 SchemaIR v2 起逐步迁移 |
 | `cli.py` | `ingest` 和只检查文件/JSON 可解析性的 `check` | `phase0a` 命名已过期，无法验证完整 Phase0 trusted-chain | P0-T3 SchemaIR v2 / Workbook |
-| 规则资产 | BKL 子集 YAML Draft、safe loader、严格 schema/semantic validator、聚合错误和正反向测试已实现 | 修订后的准确候选尚待 maintainer 与 business reviewer 重新确认发布日期和 RELEASED 结论 | P0-T3 规则发布门禁 |
+| 规则资产 | BKL 子集 YAML v1 已于 2026-08-06 发布；safe loader、严格 schema/semantic validator、聚合错误和正反向测试已实现 | 无；v1 已冻结，后续语义或影响内容哈希的修订必须创建新版本 | 已完成 |
 | Standard / Template | 只有逻辑设计和正式导出证据 | 无 machine wire contract、Validator、Final fixture 或 validation result | P0-T3 Standard / Template |
 | Workbook | 只有七个 sheet 和来源矩阵设计 | 无 openpyxl Generator、回读 assertions 或确定性 regression | P0-T3 Workbook |
 | Draft generators | 未实现 | 四类核心 IR 仍依赖人工 fixture，Phase0 通过条件未满足 | P0-T4 |
 
-当前测试通过说明 legacy baseline 与 Draft 规则运行时稳定，不能作为规则已经发布或其余 P0-T3 需求已经实现的证据。
+当前测试和双签发布记录说明 legacy baseline、规则运行时与 `configuration-rules/v1` 发布状态稳定，不能作为其余 P0-T3 需求已经实现的证据。
 
 ## 3. 已确认迁移原则
 
@@ -117,7 +117,7 @@ Phase0 不实现 UI、JSON 银行报文、目标系统 Import JSON/API、Excel �
 
 ### 4.1 规则包 loader/validator 与 RELEASED
 
-**状态：In Progress。loader/validator 与修订后的 BKL 子集契约已完成；RELEASED 双 reviewer 门禁待重新确认。**
+**状态：Done。loader/validator 与 BKL 子集契约已完成；双 reviewer 已确认候选 `60c3ca18665cc0e3c85bb7f1c6f2212bba1d4c4d`，v1 于 2026-08-06 切换为 `RELEASED` 并冻结。**
 
 **边界**
 
@@ -311,7 +311,7 @@ Final SchemaIR v2、匹配 validation result 和 Human Review 记录已冻结；
 
 ## 6. 逻辑 Commit Plan
 
-以下 commit 是未来实施边界，不要求本计划更新预先创建对应分支或 worktree。每个实施批次开始时再从最新 `master` 建立一个普通开发分支，并通过 PR 合入。
+以下 commit 同时记录已完成边界与后续实施边界。Commit 1/2 位于同一隔离分支；后续批次开始时再按当时基线建立所需开发分支，并通过 PR 合入。
 
 ### 已完成：P0-T3 文档与规则事实契约
 
@@ -319,23 +319,25 @@ Final SchemaIR v2、匹配 validation result 和 Human Review 记录已冻结；
 - Scope：requirements、design、ADR amendments、phase/planning、reference 和 `configuration-rules/v1` Draft。
 - Completion signal：最新银行事实投影、Standard 镜像、结构绑定、Mapping/Replacement、processing policy、Human Review 和脱敏边界已一致记录；后续修订将 v1 收束为接口无关的 BKL 子集。
 
-### Current Commit 1：DRAFT 规则包运行时
+### 已完成 Commit 1：DRAFT 规则包运行时
 
 - Suggested message：`feat: add configuration rule package validation`
+- Evidence：候选 `60c3ca18665cc0e3c85bb7f1c6f2212bba1d4c4d`，机器校验与完整回归通过。
 - Scope/Files：safe loader、严格 schema/semantic validator、聚合错误、日志保护、BKL 子集 scope、正式导出 function、业务确认 String、字符长度默认 `STANDARD_1`、tests、PyYAML dependency 和 docs-sync；v1 保持 DRAFT。
 - Completion signal：Draft 候选的机器校验与完整回归通过，默认加载仍拒绝非 RELEASED 版本。
 - Verification：规则正反向测试、完整 pytest、build、BOM、diff、敏感信息和引用闭合检查。
 - Next starts when：向 maintainer 与 business reviewer 展示准确 commit、机器结果和候选 diff。
 
-### Future Commit 2：发布 `configuration-rules/v1`
+### 已完成 Commit 2：发布 `configuration-rules/v1`
 
 - Suggested message：`chore: release configuration rules v1`
+- Evidence：`deng` 与 `configuration-reviewer` 于 2026-08-06 对候选 `60c3ca18665cc0e3c85bb7f1c6f2212bba1d4c4d` 明确确认发布。
 - Scope/Files：四份 YAML status、确认日期、Review/README/phase/planning 状态和 RELEASED 模式测试；不增加规则事实。
 - Completion signal：双 reviewer 对准确 Draft 候选确认，v1 切换为不可变 RELEASED，默认 loader 验证通过。
 - Verification：RELEASED 正反向测试、完整 pytest、build、docs-sync、BOM、diff 和敏感信息检查。
 - Next starts when：RELEASED v1 可以被 Final IR 精确引用。
 
-### Future Commit 3：SchemaIR v2 与 Phase0 workspace
+### Next Commit 3：SchemaIR v2 与 Phase0 workspace
 
 - Suggested message：`refactor: align SchemaIR with the XML-only contract`
 - Scope/Files：SchemaIR v2、validation result/hash、workspace/CLI、P0-T3 Schema fixtures、tests 和 docs-sync。

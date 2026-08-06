@@ -185,7 +185,7 @@ Phase0 可以用受控 fixture 或命令流程表达人工确认；Phase1 才提
 
 规则版本一旦发布不可原地覆盖。InterfaceStandardIR、InterfaceTemplateIR、Validator result 和 Configuration Workbook 必须记录实际使用的精确规则版本及 Rule ID。标准和后续模板可以使用不同规则版本，但模板对标准 artifact 的绑定不因此改变。
 
-`configuration-rules/v1` Draft 已提供，两个目标配置 IR 的 wire contract、Validator、golden fixture 和 Workbook Generator 已进入 P0-T3 实现。规则包 `RELEASED` 前不得形成 Final IR；正式导出只能作为经治理的目标配置证据，不能直接代替 IR 或 Generator 输入。
+`configuration-rules/v1` 已发布并冻结，两个目标配置 IR 的 wire contract、Validator、golden fixture 和 Workbook Generator 已进入 P0-T3 实现。Final IR 必须精确引用该 `RELEASED` 版本；正式导出只能作为经治理的目标配置证据，不能直接代替 IR 或 Generator 输入。
 
 ## 4. 候选任务状态
 
@@ -230,7 +230,7 @@ workspace/{taskId}/
     └── configuration-workbook.xlsx
 ```
 
-这是候选 artifact 结构，不是已经实现的完整协议。当前 bootstrap 只实现根 README 中列出的 artifact；规则包 Draft 已具备，但具体 wire 和命名仍需在 P0-T3 后续代码 commit 中冻结。
+这是候选 artifact 结构，不是已经实现的完整协议。当前 bootstrap 只实现根 README 中列出的 artifact；规则包 v1 已发布，但具体 IR wire 和命名仍需在 P0-T3 后续代码 commit 中冻结。
 
 ## 6. 分阶段交付
 

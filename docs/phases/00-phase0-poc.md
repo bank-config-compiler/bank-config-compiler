@@ -35,12 +35,12 @@ LLM、Agent 或 workflow 可以生成 Draft，但不能替代 Validator、人工
 
 - 四类 IR Draft generator。
 - SchemaIR Validator 的 XML-only 枚举对齐。
-- `configuration-rules/v1` Draft 已收束为接口无关、非全量的 BKL configuration rules 子集，并具有仓库内 safe loader、严格 schema/semantic validator 和引用闭合测试；默认加载拒绝非 RELEASED 版本，修订候选的双 reviewer 发布确认尚未完成。
+- `configuration-rules/v1` 已收束为接口无关、非全量的 BKL configuration rules 子集，并具有仓库内 safe loader、严格 schema/semantic validator 和引用闭合测试；双 reviewer 已确认候选并于 2026-08-06 发布，默认 loader 可直接加载该 `RELEASED` 版本。
 - InterfaceStandardIR / InterfaceTemplateIR machine wire contract、人工确认 fixture 和 Validator。
 - Configuration Workbook Generator、expected workbook 和结构化 assertions。
 - 覆盖完整可信链路的 golden regression。
 
-`configuration-rules/v1` Draft 已根据正式导出、字段清单、Mapping 样例、`bkl.md` 和业务确认建立为 BKL 子集，不包含接口专属规则。Function catalog 只保留正式导出观察到的 5 个条目，类型统一为 String；字符长度默认值确认为 `STANDARD_1`。两个目标配置 IR 与 Configuration Workbook 可以进入实现；规则包发布前不得形成 Final IR，目的系统业务 Condition 继续 fail closed。详细任务状态见 `docs/planning/00-phase0-poc-plan.md`。
+`configuration-rules/v1` 已根据正式导出、字段清单、Mapping 样例、`bkl.md` 和业务确认建立为 BKL 子集，不包含接口专属规则。Function catalog 只保留正式导出观察到的 5 个条目，类型统一为 String；字符长度默认值确认为 `STANDARD_1`。该版本已发布并冻结，两个目标配置 IR 与 Configuration Workbook 可以继续实现；目的系统业务 Condition 继续 fail closed。详细任务状态见 `docs/planning/00-phase0-poc-plan.md`。
 
 ## 3. In Scope
 
