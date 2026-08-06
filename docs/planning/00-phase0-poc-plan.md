@@ -2,35 +2,37 @@
 
 ## Status
 
-Active. P0-T3 is In Progress; the source-material blocker is resolved and `configuration-rules/v1` Draft is available.
+Active. P0-T3 is In Progress. The source-material blocker is resolved, the requirements/design contract and `configuration-rules/v1` Draft have been merged, and the next implementation point is the rule-package loader/validator.
 
 ## 1. 目标与边界
 
-Phase0-PoC 证明一条无 UI、可重复运行、可回归的可信链路：
+Phase0-PoC 证明一条无 UI、可重复运行、可校验、可人工确认、可回归的可信链路：
 
 ```text
 Raw Docs
-→ Final DocIR
-→ SchemaIR Draft / Validator / Final SchemaIR
-→ InterfaceStandardIR Draft / Validator / Final Standard
-→ InterfaceTemplateIR Draft / Validator / Final Template
-→ Configuration Workbook
-→ golden regression
+→ DocIR Draft / Human Review / Final DocIR
+→ SchemaIR Draft / Validator / Human Review / Final SchemaIR
+→ InterfaceStandardIR Draft / Validator / Human Review / Final Standard
+→ InterfaceTemplateIR Draft / Validator / Human Review / Final Template
+→ deterministic Configuration Workbook
+→ structured golden regression
 ```
 
-LLM 只生成 Draft。Template 必须基于精确绑定的 Final Standard。Workbook Generator 只消费三份 Final 模型、三份通过校验结果、精确规则版本和调用者显式指定的 Standard Action。
+LLM、Agent 或 workflow 只能生成 Draft。Validator 负责结构、引用和确定性 invariant，Human Review 负责业务判断并决定 Final；Validator 通过不能自动把 Draft 提升为 Final。Workbook Generator 只消费三份 Final 模型、三份与 Final 内容匹配的通过校验结果、精确规则版本和调用者显式指定的 Standard Action。
 
-Phase0a 不再作为独立 active phase。已完成 CLI、`ingest`、workspace artifact 协议和 `check` 统一记录为 Phase0 bootstrap。
+Phase0 不实现 UI、JSON 银行报文、目标系统 Import JSON/API、Excel 反向导入、目的系统业务 Condition、多目标行选择或生产集成。PARSE 固定输出对象中的 `List` 不扩大银行报文格式范围。
 
-## 2. 当前状态
+## 2. 当前状态与真实实现基线
 
-| TASK | 状态 | 依赖 | 阻塞点 | 完成标志 |
+### 2.1 Task 状态
+
+| TASK | 状态 | 依赖 | 当前阻塞点 | 完成标志 |
 |---|---|---|---|---|
-| P0-T0：Bootstrap | Done | 无 | 无 | CLI 可导入 raw doc，workspace artifact 协议和 `check --profile raw\|phase0a` 可用。 |
+| P0-T0：Bootstrap | Done | 无 | 无 | `ingest`、扁平 workspace artifact 协议和 `check --profile raw\|phase0a` 已实现；该 legacy profile 将在 P0-T3 SchemaIR v2 批次中迁移。 |
 | P0-T1：`b2e0061` IR candidate / Review | Done | P0-T0 | 无 | Candidate DocIR / SchemaIR 经 Human Review 更新，正式 IR 设计和 reference 边界清晰。 |
-| P0-T2：Review Golden sample boundary | Done | P0-T1 | 无 | Expected DocIR、expected SchemaIR 和 expected review notes 已冻结。 |
-| P0-T3：Trusted chain | In Progress | P0-T2、`configuration-rules/v1` Draft | 无启动 blocker；规则包仍需提交 loader/validator 并发布，两个配置 IR/Validator/Workbook 尚未实现 | 保留已完成 SchemaIR Validator；发布规则包，完成两个配置 IR contract/fixture/Validator、Workbook 和完整 regression。 |
-| P0-T4：Draft generators | Blocked | P0-T3 | trusted chain 未完成 | DocIR、SchemaIR、Standard、Template 四个 stub 与 LLM Draft generator 可运行，且 LLM 不进入可信边界。 |
+| P0-T2：Review Golden sample boundary | Done | P0-T1 | 无 | Expected DocIR、修订前 expected SchemaIR、expected review notes 和 v1 validation result 已冻结为审查前 Golden。 |
+| P0-T3：Trusted chain | In Progress | P0-T2、`configuration-rules/v1` Draft | 无启动 blocker；规则包尚未 RELEASED，存量 SchemaIR/workspace 尚未迁移，Standard/Template/Workbook 尚未实现 | 发布规则包，完成 SchemaIR v2、两个配置 IR/Validator、Workbook 和完整 trusted-chain regression。 |
+| P0-T4：Draft generators | Blocked | P0-T3 | 三个 Final contract、Validator 和 trusted-chain 尚未冻结 | Provider-neutral generator interface 与四类确定性 stub 可运行，且无法绕过 Validator/Human Review 写入 Final。 |
 
 状态定义：
 
@@ -39,244 +41,350 @@ Phase0a 不再作为独立 active phase。已完成 CLI、`ingest`、workspace a
 - `Next`：依赖已满足，应优先执行。
 - `Blocked`：存在明确前置条件，不能开始或继续关键工作。
 
-## 3. 已完成证据
+### 2.2 已完成证据
 
 - `samples/golden/b2eboc-b2e0061/docir.expected.md`
 - `samples/golden/b2eboc-b2e0061/schemair.expected.json`
 - `samples/golden/b2eboc-b2e0061/review-notes.expected.md`
 - `samples/golden/b2eboc-b2e0061/schemair-validation.expected.json`
 - SchemaIR Validator v1 及自动化测试
+- `configuration-rules/v1` Draft、规则解释和 Review 记录
+- PR #12 / merge commit `2de9f69`：最新 requirements、design、ADR amendment、reference 边界和规则事实收束
 
-这些证据只证明 DocIR / SchemaIR Review boundary 和 SchemaIR Validator，不证明规则包、InterfaceStandardIR、InterfaceTemplateIR、Configuration Workbook 或完整可信链路已实现。
+这些证据只证明 DocIR/SchemaIR 的修订前 Review boundary、legacy SchemaIR Validator 和 P0-T3 资料契约，不证明最新 SchemaIR wire、规则运行时、InterfaceStandardIR、InterfaceTemplateIR、Configuration Workbook 或完整可信链路已经实现。
 
-SchemaIR Validator 当前仍接受 legacy JSON 枚举。这是待修实现差距，不是 JSON 银行报文支持证据。
+### 2.3 存量代码差距
 
-## 4. P0-T3：Trusted chain
+| 组件 | 当前实现 | 与最新契约的差距 | 迁移批次 |
+|---|---|---|---|
+| `schemair_validator.py` | `schemair-validation-result/v1`；接受 `XML | JSON` 和 JSON node kinds | 产品应为 XML-only；缺少 `messages[].xmlEncoding`、结构化银行 Condition、完整层级/type/occurs invariant 和输入内容 hash | P0-T3 SchemaIR v2 |
+| SchemaIR validation result | 保存 summary、coverage 和 issues | 无法证明结果与当前 Final SchemaIR 内容一致；Review 修改后旧结果仍可能被误用 | P0-T3 SchemaIR v2 |
+| `workspace.py` | 六个扁平 artifact；固定 `raw | phase0a` profile | 不支持分方向、版本化 Standard/Template、三个 validation result 或 Workbook | P0-T3 SchemaIR v2 起逐步迁移 |
+| `cli.py` | `ingest` 和只检查文件/JSON 可解析性的 `check` | `phase0a` 命名已过期，无法验证完整 Phase0 trusted-chain | P0-T3 SchemaIR v2 / Workbook |
+| 规则资产 | YAML Draft 已存在，一次性检查已通过 | 仓库内没有 safe loader、schema/semantic validator 或 RELEASED 冻结门禁 | P0-T3 规则运行时 |
+| Standard / Template | 只有逻辑设计和正式导出证据 | 无 machine wire contract、Validator、Final fixture 或 validation result | P0-T3 Standard / Template |
+| Workbook | 只有七个 sheet 和来源矩阵设计 | 无 openpyxl Generator、回读 assertions 或确定性 regression | P0-T3 Workbook |
+| Draft generators | 未实现 | 四类核心 IR 仍依赖人工 fixture，Phase0 通过条件未满足 | P0-T4 |
 
-### 4.1 已解除的资料 blocker 与剩余边界
+当前测试通过只说明上述 legacy baseline 稳定，不能作为最新需求已经实现的证据。
 
-以下输入已经提供并形成 `configuration-rules/v1` Draft：
+## 3. 已确认迁移原则
 
-- `bkl.md` 的 Value Mode、function 声明和数据类型；
-- ASSEMBLY/PARSE 方向字段清单；
-- b2e0061 正式 Standard/Template 双向导出；
-- 银行文档及 `obssid` 等明确条件约束；
-- 维护人 `deng` 与业务 reviewer `configuration-reviewer`；
-- PARSE 固定对象、Condition、MAPPING、Replacement、完整 processing policy 和脱敏边界的业务确认；
-- `mapping.txt` 预设规则样例子集与 `others.json` MAPPING Template 行。
+### 3.1 SchemaIR 与 validation result v2
 
-因此 P0-T3 可以开始实现。以下未知项不阻止 P0，但不得被实现者推断：
+- 后续运行路径升级为 SchemaIR/validation-result v2，不维护 legacy v1 runtime。
+- `messageFormat` 只允许 `XML`；SchemaIR node kind 只允许 `XML_ELEMENT`、`XML_ATTRIBUTE`、`SCALAR`。
+- 每个 message 保存经 Review 的 `xmlEncoding`；证据冲突可以保留在 Draft/Review 材料中，但未确认 encoding 阻止 Final SchemaIR。
+- 银行文档中明确且落在 P0 子集内的条件使用结构化 `conditionalConstraints`；复杂条件继续保留 `conditionText` 和 evidence，不强行转换。
+- 三类 validation result 都必须保存被校验 artifact 的稳定 identity/contract version 和内容 hash。Hash 使用 canonical UTF-8 JSON 的 SHA-256；三个 Validator 和 Workbook Generator 复用同一实现，禁止各自定义序列化口径。
+- Validator 只返回是否满足结构和 Final eligibility 的机器结论，不负责写入 Final artifact 或伪造 Human Review。
 
-- 相近 function code 的 alias 关系；
-- processing policy 的系统默认值；P0 必须显式保存选择；
-- 目标系统全量 Mapping catalog；v1 只覆盖已提供样例子集。
+### 3.2 Golden 迁移
 
-MAPPING 与 Replacement 已纳入 P0 IR/Validator/Workbook/专项 golden；目的系统业务 Condition 仍明确排除，不得为关闭测试覆盖而补猜。
+- P0-T2 的 `docir.expected.md`、`schemair.expected.json`、`schemair-validation.expected.json` 和 `review-notes.expected.md` 保持原样，继续证明修订前 Review baseline。
+- P0-T3 在独立 trusted-chain fixture 边界内新增经 Human Review 的 Final SchemaIR v2、双向 Standard/Template、三个 validation result、Workbook 和 assertions。
+- Legacy fixture 不再作为当前 SchemaIR v2 Validator 的 expected output；必须增加明确拒绝 legacy contract 的测试。
+- 正式 Standard/Template 导出继续只作证据，不直接成为 IR、Validator 或 Generator 输入。
 
-### 4.2 规则包 v1
+### 3.3 Workspace 与 CLI
 
-输入条件：已满足；真实资料和治理身份已提供。
+- 后续代码批次直接以 `phase0` profile 替换 `phase0a`，不提供兼容别名；`raw` profile 继续保留。
+- `phase0` workspace 支持 SchemaIR、按 direction/version 保存的 Standard、按 direction/template/version 保存的 Template、三个 validation result 和 Workbook。
+- artifact 协议随对应运行时批次增量实现，不能等到 Workbook 阶段再一次性补齐所有路径。
+- 发生 CLI 命令、artifact、配置或验证方式变化时，同一实现 commit 必须同步根 `README.md` 和相关设计说明。
 
-```text
-configuration-rules/v1/
-├── README.md
-├── rules.md
-├── rules.yaml
-├── fields.yaml
-├── functions.yaml
-├── mappings.yaml
-└── review.md
-```
+### 3.4 Human Review 是 Final 门禁
 
-完成标志：
+- 规则包：`deng` 与 `configuration-reviewer` 对机器校验通过的准确版本确认发布日期和 RELEASED 结论。
+- SchemaIR：Review 两方向 encoding、银行字段/约束、observed evidence 和结构化 Condition。
+- Standard：Review 路径、类型、XML Keys、三态约束、银行 Condition 以及 SchemaIR/Standard 差异。
+- Template：Review function、Mapping/Replacement、processing policy、方向性绑定和 ASSEMBLY omissions。
+- 任一 Draft 在人工修改后必须重新运行对应 Validator；内容 hash 不匹配的旧结果失效。
+- encoding 或其他证据冲突不阻止 loader、contract 和 Validator 开发；它只阻止相关 candidate 被确认为 Final。
 
-- Standard 结构映射、方向性 Template 表达式和已观察 processing policy 均有来源。
-- 每条可引用规则具有稳定唯一 Rule ID。
-- FIELD/function catalog 区分 BKL 声明与正式导出观察，不合并相似标识；Function 类型统一为 String。
-- Mapping catalog 名称全局唯一，String entries、MAPPING unmatched error 与 Replacement 片段语义可校验。
-- YAML 可安全加载，引用闭合，review checks 完成。
-- v1 由 `deng` 和 `configuration-reviewer` 确认，切换到 RELEASED 后不可原地覆盖。
+### 3.5 敏感信息边界
 
-### 4.3 SchemaIR Validator XML-only 对齐
+- reference 中已脱敏的固定值和 Mapping target 不得还原。
+- `<REDACTED>` 只证明结构，不得成为 LITERAL、Mapping 可执行 target、fixture 或 Workbook Generator 输入。
+- Final Template 使用 `FIXED_VALUE + SECURE_INPUT_REF` 保存安全引用标识，不保存或展示真实值。
+- Mapping catalog 中 `redacted: true` 的规则只能用于结构/Workbook 专项验证，Final Template 必须拒绝引用。
+- 每个 fixture、Workbook 和发布 PR 在提交前执行高置信 secret 与敏感固定值扫描。
 
-后续实现批次必须：
+## 4. P0-T3：Trusted chain 实施批次
 
-- 将 `messageFormat` 产品值收紧为 XML；
-- 在 `messages[].xmlEncoding` 保存方向级 Final encoding，冲突证据必须 Review；
-- 移除当前产品路径中的 JSON_OBJECT / JSON_ARRAY；
-- 增加拒绝 legacy JSON 枚举的测试；
-- 保持现有 XML golden validation 通过。
+以下是未来逻辑实施和 Review 门禁，不表示本计划更新会预先创建分支或 worktree。每个批次只在前置条件满足后开始，并按当时最新 `master` 创建所需开发分支。
 
-### 4.4 InterfaceStandardIR contract 与 fixture
+### 4.1 规则包 loader/validator 与 RELEASED
 
-输入条件：`configuration-rules/v1` 已确认。
+**状态：Next**
 
-涉及范围：
+**边界**
 
-- 冻结 machine JSON contract；
-- 为 b2e0061 的 ASSEMBLY/PARSE 形成经人工确认的 expected Standard；
-- 覆盖 stable identity、version、SchemaIR content hash；
-- 覆盖 fieldId、sequence、parentPath/fullPath；
-- 覆盖 Node/Object/标量和 XML Keys；
-- 覆盖 VALUE、NO_CONSTRAINT、UNKNOWN；
-- 覆盖 SchemaIR/Standard 差异、原因、Rule ID 和人工结论。
-- 覆盖基础 Required 与银行文档条件 Required 分离，包括 `transtype=2 => obssid required`。
-- 以 raw-doc/Final SchemaIR 为银行事实权威：b2e0061 保留 `@security`、排除 `vamflag`，`@lang` 仅作 observed evidence/difference Warning。
-- `b2e0061-rq`、`b2e0061-rs` 按 `0..1000` 为 Node；raw-doc 未写约束时为 `NO_CONSTRAINT`，冲突或无法判定时为 `UNKNOWN`。
+- 加入 PyYAML，唯一允许 `yaml.safe_load` 和标准 YAML 类型。
+- 加载 `rules.yaml`、`fields.yaml`、`functions.yaml`、`mappings.yaml`，校验 version/status/治理 metadata 一致。
+- 校验 Rule ID、FIELD、function code 和 `mappingRuleName` 的唯一性、类型、基数和值域。
+- 校验所有 Rule Reference 和 catalog 引用闭合；拒绝未知引用、重复 source、非法参数位置和不安全 YAML tag。
+- loader 不解释银行 raw-doc，不补 alias、默认值或全量 catalog。
 
-完成标志：所有配置与 Rule ID 可追溯；UNKNOWN 和未确认差异保持显式；fixture 经业务负责人确认。
+**涉及模块**
 
-### 4.5 Standard Validator
+- `configuration-rules/v1/*`
+- 新规则 loader/validator 模块及 tests
+- `pyproject.toml`、`uv.lock` 和必要 docs-sync
 
-涉及范围：
+**完成标志**
 
-- identity/version/source hash；
-- field/path/sequence/hierarchy；
-- XML type 和 List 拒绝；
-- XML Keys 与 SchemaIR attributes；
-- constraint states 和 difference Review；
-- 银行条件的 field reference、operator/effect、literal、evidence 与 Review；
-- Final 条件。
+- v1 可由仓库代码确定性安全加载并通过正反向测试。
+- 27 个 Rule ID、221 个方向 FIELD、10 个 function 和 6 个 Mapping 可解析，实际数量以发布候选机器结果为准并在 Review 中记录。
+- 所有 Release Checks 关闭，`deng` 与 `configuration-reviewer` 确认日期和结论，v1 切换为 `RELEASED` 并冻结。
 
-完成标志：返回可定位到 direction、fieldId、path 和 Rule ID 的错误，不以程序判断替代业务 Review。
+**验证**
 
-### 4.6 InterfaceTemplateIR contract 与 fixture
+- unsafe YAML、重复标识、metadata 不一致、未知引用、错误类型、非法 Mapping source 的失败测试。
+- 完整 pytest、YAML safe-load、Rule ID/引用闭合、BOM 和 docs-sync。
 
-输入条件：Final Standard fixtures 与 v1 catalog 已确认。
+**下一批次开始条件**
 
-涉及范围：
+规则包 v1 已 RELEASED，且样例所需规则不存在实现者猜测值。
 
-- 冻结 machine JSON contract；
-- 精确 Standard ID/version/content hash 绑定；
-- 每个 field config 显式保存 `standardProjection.required/length/dataType`；
-- `VALUE | STRUCTURE_ONLY | COLLECTION_ITEM`，包括 `b2e0061-rs(Node) -> paymentLineList(List)`；
-- ASSEMBLY target Standard Field；PARSE target Parse Field，表达式内 FIELD_REF 引用绑定 Standard；
-- ASSEMBLY 标量 fieldConfigs 与 omissions 分离，Node/Object 不参加 coverage；PARSE 未配置 field 不生成 omission；
-- 六种 Value Mode；MAPPING 使用一个 String FIELD_REF 和一个 `mappingRuleName`；
-- 标量字段值与 XML Key expressions，Node/Object 不包含字段值表达式；
-- 完整 empty/overlength、正整数 row limit、`STANDARD_1..6` 和单一 Replacement rule；
-- omission reason 与 Review disposition。
-- FIXED_VALUE 的 `LITERAL | SECURE_INPUT_REF` payload；安全输入只保存引用标识。
+### 4.2 SchemaIR v2 与 workspace/CLI 迁移
 
-完成标志：未确认 ASSEMBLY omission 阻止 Final；确认 omission 可 Final 且仍生成 Warning；PARSE 只校验实际配置目标；omission、EMPTY、Empty Handling 不混淆。
+**依赖：P0-T3 规则包发布可并行准备；Final Standard 前必须完成。**
 
-### 4.7 Template Validator
+**边界**
 
-涉及范围：
+- 将现有 SchemaIR Validator 升级到 v2，删除 legacy JSON 产品枚举。
+- 增加 `messages[].xmlEncoding`、结构化银行 Condition、字段层级和相容性校验。
+- 增加共享 canonical JSON SHA-256 和 validation-result 内容绑定。
+- 保留 P0-T2 artifacts，新增独立 P0-T3 SchemaIR v2 candidate、validation result 和 Human Review 记录。
+- 将 CLI/workspace 的 `phase0a` profile 迁移为 `phase0`，首先支持 SchemaIR v2 artifact 和 validation result；保留 `raw`。
 
-- Standard 版本和 hash 精确匹配；
-- `standardProjection.required/length/dataType` 与 Standard 完全一致；
-- binding kind 与方向、Standard 类型和 Parse target 相容；
-- ASSEMBLY target standardFieldRef 存在且不重复；
-- PARSE target parseFieldRef 存在、path/datatype 相容，表达式内 standardFieldRef 存在；
-- 标量字段值/XML Key expression tree 和 catalog/Rule ID 引用；
-- Function String 类型、MAPPING 完整值匹配/未匹配 error、Replacement 片段替换/删除/保留；
-- 标量字段必须有字段值表达式，Node/Object 不得有字段值表达式；
-- XML Key expression 完整性；
-- ASSEMBLY 标量 omission coverage 与人工结论；Node/Object 不参加 coverage，有 XML Key/结构需求时必须使用适用结构绑定；PARSE 不做 catalog coverage 推断；
-- SECURE_INPUT_REF 不携带真实值；
-- Final 条件。
+**涉及模块**
 
-完成标志：返回可定位到 templateId、source/target fieldRef、expression/XML Key 和 Rule ID 的错误，不代替 function、mapping、目的系统业务 Condition 或 omission 业务 Review。
+- SchemaIR contract/validator 与共享 identity/hash helper
+- workspace/CLI、P0-T3 fixtures 和 tests
+- README 与相关设计文档同步
 
-### 4.8 Configuration Workbook 与 regression
+**完成标志**
 
-涉及范围：
+- JSON message format/node kind 和 legacy result 被明确拒绝。
+- Validation result 能检测输入内容被修改、旧结果失效。
+- b2e0061 两方向 SchemaIR v2 candidate 通过 Validator，并由 Human Review 确认 Final `xmlEncoding`、银行 Condition 和 observed evidence。
+- `check --profile phase0a` 被移除，`check --profile phase0` 按新 artifact 协议工作。
 
-- 固定七个 sheet；
-- 一份方向标准 + 一份绑定模板；
-- Standard Action CREATE/REUSE/UPDATE；
-- Standard 完整快照与 Template 方向性 source/target 绑定；
-- Overview 展示方向级 XML encoding；Template 将 Standard 快照、Template 镜像、Parse target 和 Value Expression 分列；
-- `VALUE | STRUCTURE_ONLY | COLLECTION_ITEM`，包括 Node 到 Parse List 元素的结构绑定；
-- 标量字段/XML Key Value Expressions 展开，Node/Object 不生成 FIELD_VALUE 节点；
-- MAPPING/Replacement `mappingRuleName` 展示且不复制 entries；
-- 银行条件、ASSEMBLY omissions、差异、Warnings 与 Rule References；
-- `workbook-assertions.expected.json`；
-- 完整 trusted-chain golden regression。
+**验证**
 
-完成标志：
+- 缺失/非法 encoding、JSON enum、非法父子路径、type/children/multiple 冲突、Condition 引用失败和 hash mismatch 测试。
+- P0-T2 fixture 内容不变检查、新 P0-T3 golden equality、CLI 回归和完整 pytest。
 
-- 相同三份 Final、三份校验结果、规则版本和 Standard Action 可重复生成相同结构化内容。
-- ASSEMBLY 标量 omission 不制造虚假行，已确认 omission 在 Warnings 可追溯；Node/Object 不制造 omission，未配置 Parse Field 不制造 Warning。
-- 六种 Value Mode、Replacement、Node/Object 无字段值表达式、XML Key expression、银行条件和 REUSE 状态均有断言。
-- Standard 镜像、两端 datatype、SECURE_INPUT_REF 不泄露真实值和 direction-level encoding 均有断言。
+**下一批次开始条件**
 
-### 4.9 Implementation commit plan
+Final SchemaIR v2、匹配 validation result 和 Human Review 记录已冻结；修改内容必须产生新 hash 并重新 Review。
 
-#### Commit 1：冻结 P0-T3 文档契约
+### 4.3 InterfaceStandardIR contract、Validator 与双向 fixture
 
-- 建议提交信息：`docs: finalize P0-T3 configuration contract`。
-- 边界：只同步 requirements、active design、ADR amendment、phase/planning、各级 README、reference 说明和 `configuration-rules/v1` Draft 事实；不实现代码，不修改正式导出或 P0-T2 expected artifacts。
-- 涉及文件：`README.md`、`docs/01-requirements.md`、`docs/{adr,design,phases,planning,reference}/**/*.md`、`configuration-rules/{README.md,v1/*}` 和 `samples/golden/b2eboc-b2e0061/README.md`。
-- 完成标志：银行事实投影、direction-level encoding、Standard 镜像、三种 binding kind、容器 coverage、PARSE 两端列和 SECURE_INPUT_REF 在所有 active contract 中一致；规则包仍为 `DRAFT`，P0-T3 仍为 `In Progress`。
-- 下次开始条件：文档 diff 经确认；maintainer/business reviewer 未正式发布前不得把 v1 改为 `RELEASED`。
+**依赖：RELEASED v1、Final SchemaIR v2。**
 
-#### Commit 2：发布规则包并实现 loader/validator
+**边界**
 
-- 边界：加入 PyYAML safe loader、规则包 schema/validator、Rule ID/字段/function/Mapping 引用测试；不实现 Standard/Template IR。
-- 涉及文件：`configuration-rules/v1/*`、规则 loader/validator 模块、对应 tests、`pyproject.toml`、`uv.lock` 和必要文档同步。
-- 完成标志：YAML 安全加载、Rule ID 唯一且引用闭合、b2e0061 所需 catalog 可解析，v1 Review checks 经 `deng` 与 `configuration-reviewer` 正式确认并切换到 `RELEASED`。
-- 下次开始条件：规则版本冻结，样例必需值不存在实现者猜测。
+- 冻结 InterfaceStandardIR 和 Standard validation-result machine contract。
+- 实现 stable identity/version、SchemaIR hash、方向、fieldId、sequence、parent/full path、类型和 XML Keys。
+- 实现 `VALUE | NO_CONSTRAINT | UNKNOWN`、银行条件、差异、Rule References 和 Final eligibility。
+- 生成人工确认的 ASSEMBLY/PARSE expected Standard，不直接复制正式导出 ID、状态或冲突事实。
 
-#### Commit 3：完成 XML-only SchemaIR 与 InterfaceStandardIR 链路
+**涉及模块**
 
-- 边界：收紧 SchemaIR XML 枚举并增加 `messages[].xmlEncoding`；实现 Standard contract/validator、银行条件最小结构和双向 expected Standard。
-- 涉及文件：SchemaIR/Standard contract 与 validator 模块、b2e0061 Standard fixtures/tests、对应设计文档。
-- 完成标志：identity/hash、path/sequence、类型、XML Keys、三态约束、银行条件、encoding、`@security`/`vamflag`/`@lang` 差异和 Rule References 通过校验并经人工确认。
-- 下次开始条件：两份 Final Standard fixture 冻结，修改会产生新 version/hash。
+- Standard contract/validator、shared validation helpers 和 tests
+- 双向 Standard fixtures、validation results 和 Review 记录
+- workspace artifact 支持和必要 docs-sync
 
-#### Commit 4：完成 InterfaceTemplateIR 链路
+**完成标志**
 
-- 边界：实现 Standard 镜像、三种 binding kind、方向性 source/target、FIELD/function 参数、递归 CONCATENATE、MAPPING、Replacement、processing policy、XML Key expressions、SECURE_INPUT_REF 和 ASSEMBLY 标量 omissions；Template Condition 继续 fail closed。
-- 涉及文件：Template contract/validator、双向 expected Template、validation results、tests 和对应设计文档。
-- 完成标志：ASSEMBLY 标量配置或 omission 完整，Node/Object coverage 正确，PARSE collection/target 引用合法，MAPPING/Replacement catalog 和执行约束通过，未知引用和越界能力 fail closed。
-- 下次开始条件：两份 Final Template fixture 及 validation result 冻结。
+- `@security` 进入 Final Standard XML Keys；`vamflag` 被排除；`@lang` 只保留为 observed evidence/difference Warning。
+- `b2e0061-rq`、`b2e0061-rs` 按 raw-doc `0..1000` 为 `Node`。
+- `obssid` 基础 Required 与 `transtype == "2"` 条件 Required 分离。
+- `UNKNOWN`、未确认差异或未完成 Human Review 阻止 Final。
+- 两方向 Final Standard 和匹配 validation result 经人工确认后冻结。
 
-#### Commit 5：生成 Configuration Workbook 并闭合 golden regression
+**验证**
 
-- 边界：使用 openpyxl 生成固定七个 sheet，扩展 workspace artifact/CLI，加入来源矩阵、结构化 workbook assertions 和完整 trusted-chain regression。
-- 涉及文件：Workbook generator、workspace/CLI 边界、golden workbook assertions、tests、README 和相关文档。
-- 完成标志：相同 Final 输入、校验结果、规则版本和 Standard Action 产生相同结构化内容；encoding、Standard 镜像、两端 datatype、三种 binding、银行条件、SECURE_INPUT_REF、MAPPING/Replacement、Warnings、Rule References 和 REUSE 状态可回读断言。
-- 下次开始条件：全部 P0-T3 验收通过后改为 Done，P0-T4 才解除依赖。
+- identity/hash、path/sequence、List 拒绝、XML Keys、三态约束、Condition 引用、差异 Review 和 Rule Reference 测试。
+- 双向 golden equality、字段级 issue 定位和完整 pytest。
 
-## 5. P0-T4：Draft generators
+**下一批次开始条件**
 
-P0-T3 完成后接入四个 Draft generator：
+两份 Final Standard identity/version/hash 稳定并可供 Template 精确绑定。
 
-- Raw Docs → DocIR Draft；
-- Final DocIR → SchemaIR Draft；
-- Final SchemaIR + 指定规则版本 → InterfaceStandardIR Draft；
-- Final Standard + 指定规则版本 → InterfaceTemplateIR Draft。
+### 4.4 InterfaceTemplateIR contract、Validator 与双向 fixture
 
-涉及范围：确定性 stub、OpenAI-compatible adapter、输出结构校验、缺配置错误和敏感日志约束。
+**依赖：Final Standard fixtures、可用的 v1 FIELD/function/Mapping catalog。**
 
-完成标志：
+**边界**
 
-- LLM 只能生成 Draft，不能直接写 Final。
-- Stub 输出稳定并可用于测试。
-- Template generator 拒绝非 Final 或版本/hash 不匹配的 Standard。
-- 缺 catalog 时 Standard/Template Draft generation fail closed。
-- 日志不输出完整银行原文、规则敏感内容或 secret。
+- 冻结 Template 和 Template validation-result contract。
+- 实现 Standard identity/version/hash 精确绑定与 `standardProjection.required/length/dataType` 镜像。
+- 实现 `VALUE | STRUCTURE_ONLY | COLLECTION_ITEM`、方向性 source/target、六种 Value Mode 和 XML Key expressions。
+- 实现 function String 参数、递归 CONCATENATE、MAPPING、Replacement 和完整 processing policies。
+- 实现 ASSEMBLY 标量 omission coverage；Node/Object 不产生 omission，PARSE 只校验实际配置 target。
+- `FIXED_VALUE` payload 只允许 `LITERAL | SECURE_INPUT_REF`；Template Condition 继续 fail closed。
 
-## 6. 验证要求
+**涉及模块**
 
-当前文档批次：
+- Template contract/validator、expression/processing helpers 和 tests
+- 双向 Template fixtures、validation results、omission Review 和专项受控 fixtures
+- workspace artifact 支持和必要 docs-sync
 
+**完成标志**
+
+- `b2e0061-rs(Node) → paymentLineList(List)` 使用 `COLLECTION_ITEM`，两端类型独立保存。
+- 标量字段必须有字段值表达式，Node/Object 不得有字段值表达式。
+- 未确认 omission、未知 catalog 引用、镜像漂移、缺失 XML Key、redacted Mapping Final 引用和重复 target 均 fail closed。
+- Function、Mapping/Replacement、processing policy 和 omissions 经 Human Review。
+- 两方向 Final Template 与匹配 validation result 冻结。
+
+**验证**
+
+- 六种 Value Mode、递归/非法递归、function 参数、MAPPING unmatched error、Replacement 片段语义和 secure ref 测试。
+- omission/EMPTY/Empty Handling、容器 coverage、PARSE configured targets、Standard hash mismatch 和双向 golden regression。
+
+**下一批次开始条件**
+
+三份 Final 模型、三份匹配校验结果和精确规则版本均已冻结。
+
+### 4.5 Configuration Workbook 与 trusted-chain regression
+
+**依赖：Final SchemaIR、Final Standard、Final Template 及匹配 validation results。**
+
+**边界**
+
+- 使用 openpyxl 为一个 `interfaceCode + direction + templateId + templateVersion` 生成一份 Workbook。
+- 固定七个 sheet：`Overview`、`Interface Standard`、`Interface Template`、`Value Expressions`、`Warnings`、`Rule References`、`Legend`。
+- Generator 输入增加显式 `Standard Action = CREATE | REUSE | UPDATE`，不得连接目标系统自行判断。
+- 扩展 workspace/CLI 的完整 `phase0` artifact 检查和 Workbook 生成入口。
+- 为 ASSEMBLY/PARSE 分别生成 Golden Workbook，并使用 openpyxl 回读结构化 assertions。
+
+**涉及模块**
+
+- Workbook generator、workspace/CLI 和 tests
+- 双方向 workbook assertions 与 trusted-chain regression
+- openpyxl 依赖、README 和相关 docs-sync
+
+**完成标志**
+
+- Standard 快照、Template 镜像、PARSE target、三种 binding 和两端 datatype 分列可还原。
+- encoding、银行 Condition、SchemaIR/Standard 差异、已确认 omissions、Validator issues 和 Rule References 不被静默丢失。
+- Value Expressions 可还原标量字段值与 XML Key expression tree；Node/Object 不产生 FIELD_VALUE 节点。
+- MAPPING/Replacement 只展示 rule name，不复制 entries；SECURE_INPUT_REF 不泄露真实值。
+- 相同 Final 输入、校验结果、规则版本和 Standard Action 生成相同结构化业务内容。
+- P0-T3 全部验收通过后改为 `Done`，P0-T4 解锁。
+
+**验证**
+
+- 七个 sheet、列顺序、关键单元格/样式、Warnings、REUSE 状态和表达式树回读断言。
+- Generator 对非 Final、hash mismatch、DRAFT rules、缺失 Standard Action 和敏感占位值 fail closed。
+- 完整 pytest、golden regression、docs-sync、BOM、diff 和敏感信息扫描。
+
+## 5. P0-T4：Provider-neutral Draft generators
+
+### 5.1 技术边界
+
+- 定义 provider-neutral Draft Generator interface，不在 Phase0 绑定 OpenAI-specific API、网络配置或模型实现。
+- 为 DocIR、SchemaIR、InterfaceStandardIR、InterfaceTemplateIR 提供四个确定性 stub，用受控输入稳定生成合法 Draft。
+- Provider 和 stub 只能写 Draft artifact；不得写 Final、构造 Human Review 结论或调用 Workbook Generator 绕过可信链路。
+- SchemaIR generator 只输出 XML；Standard generator 必须接收 Final SchemaIR 与明确规则版本；Template generator 必须接收精确 Final Standard identity/version/hash 和规则版本。
+- 外部 provider response 在信任边界处校验；缺配置、未知 catalog 或不合法输出 fail closed。
+- 日志只记录 task/artifact identifier、provider、contract version 和 outcome，不记录完整银行原文、生成内容、secret 或安全固定值。
+
+### 5.2 完成标志
+
+- 四类 Draft generator 均可通过同一 provider contract 调用，stub 输出确定且通过对应结构校验。
+- LLM/provider 输出无法直接形成 Final；人工修改后必须重新 Validator。
+- Standard/Template generator 在规则版本不存在、Standard 非 Final 或 hash 不匹配时拒绝运行。
+- 完整 Phase0 回归能从受控 Draft 输入经过 Validator/Human Review fixtures 生成双方向 Workbook。
+- P0-T4 改为 `Done` 后，Phase0-PoC 才满足通过条件。
+
+### 5.3 验证
+
+- 四类 stub golden、provider error translation、非法输出、缺配置、Final 写入拒绝和敏感日志测试。
+- 完整 pytest、Draft-to-Workbook regression、docs-sync 和用户命令 smoke test。
+
+## 6. 逻辑 Commit Plan
+
+以下 commit 是未来实施边界，不要求本计划更新预先创建对应分支或 worktree。每个实施批次开始时再从最新 `master` 建立一个普通开发分支，并通过 PR 合入。
+
+### 已完成：P0-T3 文档与规则事实契约
+
+- Evidence：PR #12 / merge commit `2de9f69`。
+- Scope：requirements、design、ADR amendments、phase/planning、reference 和 `configuration-rules/v1` Draft。
+- Completion signal：最新银行事实投影、Standard 镜像、结构绑定、Mapping/Replacement、processing policy、Human Review 和脱敏边界已一致记录。
+
+### Future Commit 1：规则包运行时与发布
+
+- Suggested message：`feat: validate and release configuration rules v1`
+- Scope/Files：规则 loader/validator、规则资产、tests、PyYAML dependency 和 docs-sync。
+- Completion signal：机器校验与双 reviewer 发布确认完成，v1 为不可变 RELEASED。
+- Verification：规则正反向测试、完整 pytest、BOM、diff 和引用闭合检查。
+- Next starts when：RELEASED v1 可以被 Final IR 精确引用。
+
+### Future Commit 2：SchemaIR v2 与 Phase0 workspace
+
+- Suggested message：`refactor: align SchemaIR with the XML-only contract`
+- Scope/Files：SchemaIR v2、validation result/hash、workspace/CLI、P0-T3 Schema fixtures、tests 和 docs-sync。
+- Completion signal：legacy runtime/profile 被替换，Final SchemaIR v2 经 Human Review 冻结。
+- Verification：SchemaIR/CLI/golden/compatibility rejection tests 和完整 pytest。
+- Next starts when：Final SchemaIR identity/hash/encoding 和匹配结果稳定。
+
+### Future Commit 3：InterfaceStandardIR trusted chain
+
+- Suggested message：`feat: add InterfaceStandardIR validation chain`
+- Scope/Files：Standard contract/validator、双向 fixtures/results、workspace support、tests 和 docs-sync。
+- Completion signal：双向 Final Standard 经 Human Review 冻结。
+- Verification：Standard UT、golden equality、字段级 issues 和完整 pytest。
+- Next starts when：Template 可以精确绑定两份 Final Standard。
+
+### Future Commit 4：InterfaceTemplateIR trusted chain
+
+- Suggested message：`feat: add InterfaceTemplateIR validation chain`
+- Scope/Files：Template/expression/processing contract、validator、双向 fixtures/results、tests 和 docs-sync。
+- Completion signal：双向 Final Template、omissions 和专项 Mapping/Replacement evidence 经 Human Review 冻结。
+- Verification：Template UT、专项 fixtures、双向 golden 和完整 pytest。
+- Next starts when：Workbook 所需三份 Final 与三份结果完整。
+
+### Future Commit 5：Configuration Workbook 与完整 regression
+
+- Suggested message：`feat: generate configuration workbooks`
+- Scope/Files：openpyxl Generator、workspace/CLI、双方向 Workbook assertions、tests、dependencies 和 docs-sync。
+- Completion signal：P0-T3 trusted-chain regression 完成并改为 Done。
+- Verification：Workbook 回读、完整 regression、CLI smoke、pytest、BOM、diff 和敏感信息检查。
+- Next starts when：P0-T4 解锁。
+
+### Future Commit 6：四类 Draft generators
+
+- Suggested message：`feat: add provider-neutral IR draft generators`
+- Scope/Files：provider contract、四类 deterministic stub、workspace/CLI entrypoints、tests 和 docs-sync。
+- Completion signal：Draft 生成不会绕过可信边界，完整 Phase0 验收闭合。
+- Verification：stub/provider/错误路径/敏感日志测试和 Draft-to-Workbook regression。
+- Next starts when：Phase0-PoC 满足全部通过条件，可进入 Phase1 planning。
+
+## 7. 整体验收与验证要求
+
+### 7.1 每个实现批次
+
+- 对应模块的字段级/引用级正反向 UT。
+- `uv --cache-dir .uv-cache run --group dev pytest -q -p no:cacheprovider --basetemp .pytest-p0`
 - `git diff --check`
-- UTF-8 no BOM 检查
-- 活动文档旧产品术语搜索
-- Markdown 本地路径存在性检查
-- `yaml.safe_load` 和 Rule ID/引用闭合检查
-- README、phase、planning、design、ADR 和规则资产交叉核对
-- `uv --cache-dir .uv-cache run --group dev pytest -q -p no:cacheprovider --basetemp .pytest-docs`
+- UTF-8 no BOM 检查。
+- Rule ID、内部链接和 artifact reference 检查。
+- 真实/脱敏 fixture 与高置信 secret 扫描。
+- code、tests 和已知文档同步在同一逻辑 commit；完成后运行 docs-sync。
+- 用户可见命令、artifact、配置、验证方式或阶段状态变化时强制检查根 `README.md`。
 
-后续实现批次：
+### 7.2 Phase0 最终门禁
 
-- `uv --cache-dir .uv-cache run --group dev pytest -q -p no:cacheprovider --basetemp .pytest-p0t3`
-- SchemaIR / Standard / Template Validator 字段级错误测试
-- Workbook 结构化 assertions
-- 完整 golden regression
-- 代码变更后的 docs-sync
-
-只要用户可见命令、artifact、配置、验证方式或阶段状态变化，必须检查根 `README.md`。
+- `configuration-rules/v1` 为 RELEASED 且不可变。
+- SchemaIR/Standard/Template machine contract 和 validation result contract 已冻结。
+- 三份 Final artifact 均具有 Human Review 证据和匹配 validation result。
+- ASSEMBLY/PARSE 的 Standard、Template 和 Workbook 均有 golden regression。
+- 六种 Value Mode、MAPPING/Replacement、三种 binding、Standard 镜像、银行 Condition、XML Key expression、omission 和 secure input 均被覆盖。
+- 四类 deterministic Draft generator 可运行且不能产生 Final。
+- 完整链路可重复执行，不依赖未确认业务默认值、历史导出 ID 或模型常识。
