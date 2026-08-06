@@ -8,14 +8,14 @@ Draft.
 
 本规则包保存目标系统规则和已确认的方向性 catalog。它不替代银行文档或 SchemaIR：
 
-- 银行 XML 结构、银行 required、长度和条件来自 `b2e0061.md` 及人工确认后的 SchemaIR。
-- 目标系统 Standard/Template 形态和 b2e0061 实际策略代码来自正式导出。
+- 银行 XML 结构、银行 required、长度、条件和 direction-level encoding 来自人工确认后的 Final SchemaIR。
+- 目标系统 Standard/Template 形态、实际策略代码和 function 来自正式导出或明确业务确认。
 - 两侧冲突时使用 `STD.DIFFERENCE.PRESERVE` 同时保留，不用一侧覆盖另一侧。
 - 导出 JSON 是证据，不是 Generator 输入或项目目标输出。
 
-在当前已人工确认的 b2e0061 raw-doc 范围内，“原文没有写该约束”表示 `NO_CONSTRAINT`；只有证据冲突或仍无法判断时才使用 `UNKNOWN`。b2e0061 Final Standard 保留 raw-doc 定义的 `@security` XML Key、排除导出独有的 `vamflag`；样例中观察到的 `@lang` 留在 SchemaIR 与差异 Warning 中，不进入 Final Standard。
+在当前人工确认的银行文档范围内，“原文没有写该约束”表示 `NO_CONSTRAINT`；只有证据冲突或仍无法判断时才使用 `UNKNOWN`。来源路径中的接口标识只用于 provenance，规则包不保存接口专属结构、字段或条件实例。
 
-方向级 XML declaration encoding 保存为 SchemaIR `messages[].xmlEncoding`，冲突值必须人工 Review。它只展示在 Workbook `Overview`，不属于 Standard Field 或 XML Key。
+方向级 XML declaration encoding 保存为 SchemaIR `messages[].xmlEncoding`。后续银行文档与已确认值冲突时必须产生 Warning 并阻止 Final，直到 Human Review 给出新结论。encoding 只展示在 Workbook `Overview`，不属于 Standard Field 或 XML Key。
 
 ## 2. Interface Standard 规则
 
@@ -44,19 +44,7 @@ Length、Illegal Characters 和 Regex 等可空约束必须区分：
 
 银行文档明确且能无歧义转换为受支持谓词的条件，作为 Standard 的结构化条件约束保存，不能压缩成单一 `required` 布尔值。
 
-b2e0061 的 `obssid` 基础 required 为 `false`，同时保存：
-
-```text
-transtype EQUALS "2" => obssid REQUIRED
-```
-
-`tobknm` 同样可以保存：
-
-```text
-toibkn IS_EMPTY => tobknm REQUIRED
-```
-
-P0 只支持 `EQUALS`、`IS_EMPTY` 和 `REQUIRED` 效果。无法可靠结构化的复合业务规则继续保留 `conditionText`、原文证据和人工 Review，不得强行转换。
+当前通用契约只接受 `EQUALS`、`IS_EMPTY` 和 `REQUIRED` 效果。具体接口条件属于对应 SchemaIR 与 Human Review，不得写入 BKL 规则包。无法可靠结构化的复合业务规则继续保留 `conditionText`、原文证据和人工 Review，不得强行转换。
 
 ## 3. Interface Template 方向
 
@@ -89,8 +77,6 @@ ASSEMBLY catalog 的每个 code 必须有来源描述。PARSE catalog 原样保�
 - `COLLECTION_ITEM`：每个重复 Standard Node 创建 Parse List 的一个元素，子字段在当前元素内解析。
 
 ASSEMBLY omission coverage 只适用于应配置值的标量 Standard Field。Node/Object 不产生 omission；具有 XML Key 的容器必须存在适用结构绑定并提供完整 key expressions。普通容器使用 `STRUCTURE_ONLY`；同时承担 Parse collection source 时由 `COLLECTION_ITEM` 行承载。
-
-b2e0061 的 `b2e0061-rq` 与 `b2e0061-rs` 根据 raw-doc `0..1000` 均为 `Node`。PARSE 使用 `COLLECTION_ITEM` 将 `b2e0061-rs` 映射为 `paymentLineList(List)` 的一个元素；正式导出的 `Object` 只作为差异证据。
 
 ## 4. Value Expression
 
@@ -128,7 +114,7 @@ Replacement 与 MAPPING 使用同一个预设 Mapping catalog，但执行语义�
 
 ## 5. Processing Policy
 
-完整值域如下；系统默认值仍未确认，因此 IR 必须显式保存选择：
+完整值域如下。字符长度默认使用 `STANDARD_1`；其他 processing policy 默认值仍未知，因此 IR 必须显式保存选择：
 
 | Policy | 值 | 含义 |
 |---|---|---|
@@ -151,13 +137,11 @@ Replacement 与 MAPPING 使用同一个预设 Mapping catalog，但执行语义�
 | `STANDARD_5` | 1 | 2 | 1 |
 | `STANDARD_6` | 1 | 2 | 3 |
 
-所有未由资料确认的默认值都保持 `UNKNOWN`。
+除已确认的字符长度 `STANDARD_1` 外，未由资料确认的默认值保持 `UNKNOWN`。
 
 ## 6. Condition 能力边界
 
-正式 Template 导出证明目标系统存在 Condition，并包含多行同目标字段和组合谓词。但这些条件多来自具体业务选择，仅凭系统字段与银行文档无法判断是否应该配置。
-
-因此 P0：
+正式 Template 导出证明目标系统存在 Condition，并包含多行同目标字段和组合谓词。但这些条件来自具体业务选择，仅凭系统字段与银行文档无法判断是否应该配置。
 
 - 只在仓库文档中记录目的系统具有业务 Condition 能力；
 - 不从正式导出的业务 Condition 反推通用规则；
@@ -170,7 +154,7 @@ Replacement 与 MAPPING 使用同一个预设 Mapping catalog，但执行语义�
 
 - Rule ID 或 catalog 引用不存在；
 - Standard 的约束状态为 `UNKNOWN`；
-- 银行条件引用未知字段、缺少原文证据或超出 P0 支持谓词却被当作结构化条件；
+- 银行条件引用未知字段、缺少原文证据或超出受支持谓词却被当作结构化条件；
 - FIELD 引用使用错误方向 catalog；
 - Template Standard projection 的 required、length 或 dataType 与绑定 Standard 不一致；
 - binding kind 与 Standard/Parse Field 结构不相容，或 `COLLECTION_ITEM` 的 target 不是 List；
@@ -181,4 +165,4 @@ Replacement 与 MAPPING 使用同一个预设 Mapping catalog，但执行语义�
 - MAPPING 使用非 FIELD_REF 输入、配置多个规则或完整值未匹配；
 - Replacement 配置多个规则或没有在 Value Expression 后执行；
 - `FIXED_VALUE` 同时配置 LITERAL 与 SECURE_INPUT_REF、缺少 payload，或安全引用携带真实值；
-- 实现者为未知 processing policy 默认值或 Parse Field coverage 添加默认值。
+- 实现者为除已确认 `STANDARD_1` 之外的未知 processing policy 或 Parse Field coverage 添加默认值。

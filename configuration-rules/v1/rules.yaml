@@ -5,7 +5,7 @@ package:
   maintainer: deng
   businessReviewer: configuration-reviewer
   confirmationDate: null
-  scope: B2E0061_PHASE0_MINIMUM
+  scope: BKL_CONFIGURATION_RULES_SUBSET
 
 ruleReference:
   requiredFields:
@@ -131,7 +131,7 @@ rules:
   - id: TPL.CONDITION.CAPABILITY_ONLY
     domain: TEMPLATE
     implementationStatus: DOCUMENTED_ONLY
-    summary: 目标系统存在业务 Condition；P0 不推断、不建模、不执行该能力。
+    summary: 目标系统存在业务 Condition；规则包只记录通用能力边界，不保存、推断或执行接口专属条件。
 
 valueExpressions:
   modes:
@@ -212,7 +212,7 @@ processingPolicies:
         alphabetNumberHalfWidthPunctuation: 1
         fullWidthPunctuation: 2
         otherCharacters: 3
-    default: UNKNOWN
+    default: STANDARD_1
   replacement:
     valueType: MAPPING_RULE_NAME
     catalogFile: mappings.yaml
@@ -224,7 +224,6 @@ processingPolicies:
     default: UNKNOWN
 
 bankDocumentConditions:
-  implementationStatus: P0_STRUCTURED_CONSTRAINT
   source: BANK_DOCUMENT
   supportedOperators:
     - EQUALS
@@ -236,19 +235,8 @@ bankDocumentConditions:
     - targetFieldRef must resolve inside the same direction SchemaIR or InterfaceStandardIR.
     - literal must be compatible with the controlling field data type when a literal is used.
     - sourceText, evidence and human review are required.
-  b2e0061Examples:
-    - controllingField: transtype
-      operator: EQUALS
-      literal: "2"
-      targetField: obssid
-      effect: REQUIRED
-    - controllingField: toibkn
-      operator: IS_EMPTY
-      targetField: tobknm
-      effect: REQUIRED
 
 mapping:
-  implementationStatus: P0
   storage: CATALOG_REFERENCE
   catalogFile: mappings.yaml
   presetCatalog: true

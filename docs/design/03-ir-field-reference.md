@@ -51,7 +51,7 @@ DocIR 主表不展示完整 `Path`，避免人工 review 时被长路径淹没�
 | `envelope` | object | 可复用 BOCB2E envelope/head/trans 模型。 |
 | `messages` | array | 交易消息集合，当前按 `ASSEMBLY` / `PARSE` 区分。 |
 
-每个 `messages[]` 还保存方向级 `xmlEncoding`。它来自 raw-doc/XML 声明等银行证据；证据冲突时必须 Review，Final 值展示在 Workbook `Overview`，不投影成 Standard Field。
+每个 `messages[]` 还保存方向级 `xmlEncoding`。它来自银行文档证据和 Human Review；证据与已确认值冲突时必须产生 Warning 并阻止 Final，直到 Human Review 给出新结论。Final 值展示在 Workbook `Overview`，不投影成 Standard Field。b2e0061 的 ASSEMBLY、PARSE 两个方向已确认均为 `UTF-8`。
 
 ## 4. SchemaIR 字段对象
 

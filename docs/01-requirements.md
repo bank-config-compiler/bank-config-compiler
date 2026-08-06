@@ -47,7 +47,7 @@ IR 是 Intermediate Representation（中间表示）。它把来源不同、结�
 
 银行字段、path、出现次数和约束以 raw-doc 经人工确认形成的 Final SchemaIR 为准；正式 Standard/Template 导出只证明目标系统表示方式和已观察配置，不能覆盖银行事实。b2e0061 Final Standard 因此保留 raw-doc 定义的 `@security` XML Key、排除只存在于正式导出的 `vamflag`，并将样例中观察到但协议说明未定义的 `@lang` 保留在 SchemaIR 和差异 Warning 中而不进入 Final Standard。
 
-每个 SchemaIR message 使用 `xmlEncoding` 保存当前方向 XML declaration 的 encoding。协议建议值、报文示例值或其他证据冲突时必须进入人工 Review；Final 值只作为报文级元数据展示在 Workbook `Overview`，不生成 Interface Standard 字段或 XML Key。
+每个 SchemaIR message 使用 `xmlEncoding` 保存当前方向 XML declaration 的 encoding。b2e0061 的 ASSEMBLY、PARSE 两个方向已由 Human 与银行线下确认均为 `UTF-8`。后续协议建议值、报文示例值或其他银行文档证据与已确认值冲突时，Validator 必须产生 Warning 并阻止 Final，直到 Human Review 给出新结论。Final 值只作为报文级元数据展示在 Workbook `Overview`，不生成 Interface Standard 字段或 XML Key。
 
 一个方向标准可以被多份同方向模板复用。模板必须绑定不可变的 `standardId + standardVersion + contentHash`，不能仅凭 `interfaceCode` 自动跟随最新标准。标准升级后，已有模板仍指向原版本；迁移必须重新校验和 Review。
 
@@ -180,7 +180,7 @@ Replacement 在 Value Expression 完成后引用一个 `mappingRuleName` 处理�
 - 一个 Replacement `mappingRuleName`；
 - Rule References、confidence、不确定原因和人工 Review 结论。
 
-Processing policy 的 P0 值域为：Empty Handling `BLANK | DELETE`；Overlength `INTERCEPT | TRUNCATE_FRONT | OVERLONG_LINE_BREAK | TRUNCATE_BACK`；Row Limit 为正整数；字符长度使用 `STANDARD_1..6`。具体语义和字符权重以 `configuration-rules/v1/rules.yaml` 为准，系统默认值未知，不能省略后由实现者猜测。
+Processing policy 的 P0 值域为：Empty Handling `BLANK | DELETE`；Overlength `INTERCEPT | TRUNCATE_FRONT | OVERLONG_LINE_BREAK | TRUNCATE_BACK`；Row Limit 为正整数；字符长度使用 `STANDARD_1..6`，默认值为 `STANDARD_1`。具体语义和字符权重以 `configuration-rules/v1/rules.yaml` 为准；其他仍未知的默认值不能由实现者补猜。
 
 ASSEMBLY 中，表达式描述系统请求字段如何转换为银行 Standard Field；PARSE 中，表达式描述银行响应 Standard Field 如何转换为固定 Parse Field。
 
@@ -196,7 +196,7 @@ InterfaceStandardIR 与 InterfaceTemplateIR 的权威目标系统规则来源位
 
 规则包采用版本目录；`DRAFT` 可补充，`RELEASED` 后不可变。每条可被 IR 引用的规则使用稳定 Rule ID；字段、function 和 Mapping catalog 保存有来源的原始标识。MAPPING 与 Replacement 使用预设 catalog 的全局唯一 `mappingRuleName`，不在 IR 内联 entries。每个 Final IR 记录自己实际使用的精确规则版本，不要求标准和后续模板必须使用同一版本。
 
-`configuration-rules/v1` Draft 已根据正式导出、`bkl.md`、ASSEMBLY/PARSE 字段清单、Mapping 样例和业务确认建立。Draft 可用于 P0 实现，但只有 `RELEASED` 版本可被 Final IR 引用。Function String 类型、MAPPING/Replacement 和 processing policy 值域已确认；仍未知的系统默认值必须保持 `UNKNOWN`，不得从相近概念推断。
+`configuration-rules/v1` Draft 是根据正式导出、`bkl.md`、ASSEMBLY/PARSE 字段清单、Mapping 样例和业务确认建立的 BKL configuration rules 子集，不绑定具体银行接口，也不声称覆盖全量 catalog。Function catalog 只包含正式导出中实际观察到的条目，不使用 `bkl.md` 的 function 内容；Function 类型统一为 String。Draft 可用于 P0 实现，但只有 `RELEASED` 版本可被 Final IR 引用。字符长度默认值已确认为 `STANDARD_1`；其他仍未知的系统默认值必须保持 `UNKNOWN`，不得从相近概念推断。
 
 ## 8. 可信流程
 
@@ -304,7 +304,7 @@ flowchart TD
 - String/Boolean/Date/Number 标量模板行必须有字段值表达式，Node/Object 模板行不得有字段值表达式。
 - 存在模板行时，每个 XML Key 都具有独立表达式；未知或缺失 Key 是错误。
 - 银行文档明确条件在 SchemaIR/InterfaceStandardIR/Workbook 可追溯，基础 Required 不覆盖条件 Required。
-- `messages[].xmlEncoding` 经人工 Review 后进入 Workbook Overview，不生成 Standard 字段。
+- `messages[].xmlEncoding` 经人工 Review 后进入 Workbook Overview，不生成 Standard 字段；银行文档证据冲突时 Warning 并阻止 Final，直到 Human Review。
 - ASSEMBLY 与 PARSE 使用同一表达结构但具有相反 source/target 端点。
 - `Value Expressions` 能还原标量字段值和 XML Key 的递归表达式树。
 - 当前 XML Standard 拒绝 `List`；Parse Field Catalog 可以使用 `List`。

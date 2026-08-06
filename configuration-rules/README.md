@@ -2,7 +2,7 @@
 
 ## Status
 
-Active. `v1` is Draft and is not yet an immutable released package.
+Active. `v1` is an interface-independent BKL rules subset in Draft and is not yet an immutable released package.
 
 ## Purpose
 
@@ -45,6 +45,12 @@ Active. `v1` is Draft and is not yet an immutable released package.
 - YAML loader 必须使用 `yaml.safe_load`，只接受标准 YAML 类型，再执行项目自己的结构、唯一性和引用校验。
 - 参考资料缺失时必须保留 `UNKNOWN` 或维持功能未支持状态，禁止从相近名称、历史经验或模型常识补齐。
 
+## Runtime Validation
+
+`bank_config_compiler.configuration_rules.load_rule_package(package_dir)` 读取显式指定的版本目录。它固定加载四份 YAML，聚合返回可定位到 file/path 的结构、类型、唯一性、值域、redaction 与引用错误；不读取银行 raw-doc、正式导出或隐式默认路径。
+
+默认调用只接受 `RELEASED` 规则包。发布前的 Draft 候选检查必须显式调用 `load_rule_package(package_dir, require_released=False)`；该参数只允许验证候选，不允许 Draft 支撑 Final IR。
+
 ## Source Requirements
 
 允许来源：
@@ -65,4 +71,4 @@ Active. `v1` is Draft and is not yet an immutable released package.
 
 ## Available Versions
 
-- [`v1/`](v1/README.md)：b2e0061 Phase0 所需最小规则集，当前为 Draft。
+- [`v1/`](v1/README.md)：接口无关、非全量的 BKL configuration rules 子集，当前为 Draft。

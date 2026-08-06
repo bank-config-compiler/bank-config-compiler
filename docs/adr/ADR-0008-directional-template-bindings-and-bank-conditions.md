@@ -38,7 +38,7 @@ Parse Field 具有独立 name、path 和 datatype，由高代码固定维护，�
 - b2e0061 Final Standard 保留 raw-doc 定义的 `@security` XML Key，排除只存在于正式导出的 `vamflag`。
 - raw-doc 样例中的 `@lang` 继续保留在 SchemaIR 作为 observed evidence，并形成 `SCHEMA_STANDARD_DIFFERENCE` Warning；协议说明未定义它，因此不进入 Final Standard。
 
-SchemaIR 每个 direction message 使用 `xmlEncoding` 保存 XML declaration encoding。建议值与示例值冲突时必须人工 Review；Final 值显示在 Workbook `Overview`，不形成 Standard Field 或 XML Key。
+SchemaIR 每个 direction message 使用 `xmlEncoding` 保存 XML declaration encoding。b2e0061 的 ASSEMBLY、PARSE 两个方向已由 Human 与银行线下确认均为 `UTF-8`。后续银行文档证据与已确认值冲突时，Validator 必须产生 Warning 并阻止 Final，直到 Human Review 给出新结论。Final 值显示在 Workbook `Overview`，不形成 Standard Field 或 XML Key。
 
 ### Directional Template Binding
 

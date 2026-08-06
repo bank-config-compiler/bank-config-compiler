@@ -35,12 +35,12 @@ LLM、Agent 或 workflow 可以生成 Draft，但不能替代 Validator、人工
 
 - 四类 IR Draft generator。
 - SchemaIR Validator 的 XML-only 枚举对齐。
-- `configuration-rules/v1` 已有 Draft并通过一次性安全加载/引用检查，尚未实现仓库内 loader/validator 和 RELEASED 冻结。
+- `configuration-rules/v1` Draft 已收束为接口无关、非全量的 BKL configuration rules 子集，并具有仓库内 safe loader、严格 schema/semantic validator 和引用闭合测试；默认加载拒绝非 RELEASED 版本，修订候选的双 reviewer 发布确认尚未完成。
 - InterfaceStandardIR / InterfaceTemplateIR machine wire contract、人工确认 fixture 和 Validator。
 - Configuration Workbook Generator、expected workbook 和结构化 assertions。
 - 覆盖完整可信链路的 golden regression。
 
-`configuration-rules/v1` Draft 已根据正式导出、字段清单、Mapping 样例、`bkl.md` 和业务确认建立，两个目标配置 IR 与 Configuration Workbook 可以进入实现。Function String 类型、MAPPING/Replacement 和完整 processing policy 值域已确认；规则包发布前不得形成 Final IR，目的系统业务 Condition 继续 fail closed。详细任务状态见 `docs/planning/00-phase0-poc-plan.md`。
+`configuration-rules/v1` Draft 已根据正式导出、字段清单、Mapping 样例、`bkl.md` 和业务确认建立为 BKL 子集，不包含接口专属规则。Function catalog 只保留正式导出观察到的 5 个条目，类型统一为 String；字符长度默认值确认为 `STANDARD_1`。两个目标配置 IR 与 Configuration Workbook 可以进入实现；规则包发布前不得形成 Final IR，目的系统业务 Condition 继续 fail closed。详细任务状态见 `docs/planning/00-phase0-poc-plan.md`。
 
 ## 3. In Scope
 
@@ -81,11 +81,11 @@ LLM、Agent 或 workflow 可以生成 Draft，但不能替代 Validator、人工
 
 DocIR Draft 至少保留接口编码、XML 格式、ASSEMBLY/PARSE、字段表、章节、XML 示例、条件、来源证据、冲突和不确定项。人工确认后形成 Final DocIR。
 
-SchemaIR Draft 保存银行 XML element、attribute、完整 path、父子层级、类型、required、length、occurs、condition、方向级 `xmlEncoding` 和 evidence。SchemaIR Validator 必须提供字段级错误；人工修改后必须重新校验，确认后形成 Final SchemaIR。encoding 证据冲突必须 Review，Final 值不生成 Standard 字段。
+SchemaIR Draft 保存银行 XML element、attribute、完整 path、父子层级、类型、required、length、occurs、condition、方向级 `xmlEncoding` 和 evidence。SchemaIR Validator 必须提供字段级错误；人工修改后必须重新校验，确认后形成 Final SchemaIR。b2e0061 两个方向已由 Human 与银行线下确认为 `UTF-8`；以后银行文档证据冲突必须产生 Warning 并阻止 Final，直到 Human Review。Final encoding 不生成 Standard 字段。
 
 ### 5.2 规则包
 
-Phase0 必须使用业务负责人确认的版本化 `configuration-rules/v1`；Draft 用于实现，Final IR 只能引用发布后不可变的 RELEASED 版本。规则包包含：
+Phase0 必须使用业务负责人确认的版本化 `configuration-rules/v1`；它是接口无关、非全量的 BKL configuration rules 子集。Draft 用于实现，Final IR 只能引用发布后不可变的 RELEASED 版本。规则包包含：
 
 - Interface Standard 的路径、类型和约束映射规则；
 - 六种 Value Mode 和模板处理策略；

@@ -55,7 +55,7 @@ Phase1-MVP 将 Phase0-PoC 链路产品化为最小可用的轻量 Review Tool。
 
 - 以表格查看 SchemaIR 和字段级 Validator issue；
 - 修改 path、fieldName、nodeKind、dataType、required、multiple、description、condition、uncertain 和 review note；
-- Review 每个方向的 XML encoding 证据、冲突与 Final 值；
+- Review 每个方向的 XML encoding 证据、冲突与 Final 值；冲突产生 Warning 并阻止 Final，直到 Human Review；
 - 修改后重新校验；
 - 确认 Final SchemaIR。
 

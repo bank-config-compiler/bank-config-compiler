@@ -143,7 +143,7 @@ Generator 只展示调用者提供的 Action，不连接目标系统验证它是
 | `Empty Handling` | InterfaceTemplateIR | 源值为空时的处理策略。 |
 | `Overlength Handling` | InterfaceTemplateIR | 校验失败、保留前部、超长换行或保留后部。 |
 | `Row Limit` | InterfaceTemplateIR | 该栏位允许出现的行数，必须为正整数。 |
-| `Chinese Character Length` | InterfaceTemplateIR | `STANDARD_1..6` 字符长度权重。 |
+| `Chinese Character Length` | InterfaceTemplateIR | `STANDARD_1..6` 字符长度权重；规则包默认值为 `STANDARD_1`。 |
 | `Replacement Rule Name` | InterfaceTemplateIR | Value Expression 后执行的单一预设规则。 |
 
 ASSEMBLY Template Sheet 只列出实际配置的 Standard target；未配置标量 Standard Field 的 omission 进入 `Warnings`。PARSE Template Sheet 只列出实际配置的 Parse Field target；未配置 Parse Field 不自动生成 omission 或 warning。`b2e0061-rs(Node) -> paymentLineList(List)` 必须以 `COLLECTION_ITEM` 行分别展示 Standard source 与 Parse target，不能用单一 Data Type 列混合两端。

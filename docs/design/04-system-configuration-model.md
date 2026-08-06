@@ -76,7 +76,7 @@ InterfaceStandardIR
 
 这些字段描述逻辑契约，不是已经冻结的 JSON wire schema。
 
-方向级 XML encoding 保存在 Final SchemaIR `messages[].xmlEncoding`。InterfaceStandardIR 只保存可追溯引用，Workbook `Overview` 展示确认值；encoding 不生成 Standard Field。证据值冲突时必须 Review，不能由 Generator 选择。
+方向级 XML encoding 保存在 Final SchemaIR `messages[].xmlEncoding`。InterfaceStandardIR 只保存可追溯引用，Workbook `Overview` 展示确认值；encoding 不生成 Standard Field。银行文档证据与已确认值冲突时，Validator 必须产生 Warning 并阻止 Final，不能由 Generator 选择；Human Review 给出新结论后才能继续。
 
 ### 3.2 Path 与层级
 
@@ -247,7 +247,7 @@ xmlKeyExpressions:
 
 Template 不覆盖 Standard 约束；但每个配置行必须以 `standardProjection` 显式镜像绑定 Standard 的 Required、Length Limit 和 Data Type，用于确定性校验与 Workbook 展示。Illegal Characters 与 Regex 仍只保存在 InterfaceStandardIR。
 
-Empty Handling 支持 `BLANK`（空值报送）与 `DELETE`（删除栏位）。Overlength 支持 `INTERCEPT`（校验失败）、`TRUNCATE_FRONT`（保留前部）、`OVERLONG_LINE_BREAK`（超长换行）和 `TRUNCATE_BACK`（保留后部）。Row Limit 是该栏位允许出现的行数，必须为正整数。Chinese Character Length 使用 `STANDARD_1..6`，具体字符权重来自规则包。
+Empty Handling 支持 `BLANK`（空值报送）与 `DELETE`（删除栏位）。Overlength 支持 `INTERCEPT`（校验失败）、`TRUNCATE_FRONT`（保留前部）、`OVERLONG_LINE_BREAK`（超长换行）和 `TRUNCATE_BACK`（保留后部）。Row Limit 是该栏位允许出现的行数，必须为正整数。Chinese Character Length 使用 `STANDARD_1..6`，默认值为 `STANDARD_1`，具体字符权重来自规则包。
 
 Replacement 在 Value Expression 后处理结果 String：每个 field config 最多引用一个全局唯一 `mappingRuleName`；命中片段替换为 target，空 target 删除片段，未命中内容保留。MAPPING 与 Replacement 共用 `mappings.yaml`，但匹配边界与 unmatched 行为不同。
 
