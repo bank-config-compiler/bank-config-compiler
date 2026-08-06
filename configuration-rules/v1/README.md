@@ -2,7 +2,7 @@
 
 ## Status
 
-Draft.
+Released.
 
 ## Scope
 
@@ -32,15 +32,15 @@ Draft.
 |---|---|
 | Package | `configuration-rules` |
 | Version | `v1` |
-| Status | `DRAFT` |
+| Status | `RELEASED` |
 | Maintainer | `deng` |
 | Business reviewer | `configuration-reviewer` |
-| Confirmation date | Pending reviewer sign-off |
+| Confirmation date | `2026-08-06` |
 | Target | BKL configuration rules subset |
 
-`DRAFT` 表示内容已经可以作为实现输入，但尚不能被 Final IR 引用。只有 `review.md` 中的发布检查全部关闭、YAML 机器校验通过后，才能切换为 `RELEASED` 并冻结。
+本版本已完成 `review.md` 中的发布检查和双 reviewer 确认，并切换为 `RELEASED`。目录内容自发布起冻结；任何语义或影响内容哈希的修订都必须创建新版本。
 
-仓库内 loader/validator 已可使用 `require_released=False` 对本 Draft 候选执行安全加载、严格 schema/semantic 校验和引用闭合检查。默认加载继续拒绝本版本，直至 maintainer 与 business reviewer 完成发布确认。
+仓库内 loader/validator 默认接受本 `RELEASED` 版本，并执行安全加载、严格 schema/semantic 校验和引用闭合检查。`require_released=False` 只用于验证未来尚未发布的候选，不改变 Final IR 只能引用 `RELEASED` 版本的边界。
 
 ## Files
 

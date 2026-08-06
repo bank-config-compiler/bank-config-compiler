@@ -196,7 +196,7 @@ InterfaceStandardIR 与 InterfaceTemplateIR 的权威目标系统规则来源位
 
 规则包采用版本目录；`DRAFT` 可补充，`RELEASED` 后不可变。每条可被 IR 引用的规则使用稳定 Rule ID；字段、function 和 Mapping catalog 保存有来源的原始标识。MAPPING 与 Replacement 使用预设 catalog 的全局唯一 `mappingRuleName`，不在 IR 内联 entries。每个 Final IR 记录自己实际使用的精确规则版本，不要求标准和后续模板必须使用同一版本。
 
-`configuration-rules/v1` Draft 是根据正式导出、`bkl.md`、ASSEMBLY/PARSE 字段清单、Mapping 样例和业务确认建立的 BKL configuration rules 子集，不绑定具体银行接口，也不声称覆盖全量 catalog。Function catalog 只包含正式导出中实际观察到的条目，不使用 `bkl.md` 的 function 内容；Function 类型统一为 String。Draft 可用于 P0 实现，但只有 `RELEASED` 版本可被 Final IR 引用。字符长度默认值已确认为 `STANDARD_1`；其他仍未知的系统默认值必须保持 `UNKNOWN`，不得从相近概念推断。
+`configuration-rules/v1` 是根据正式导出、`bkl.md`、ASSEMBLY/PARSE 字段清单、Mapping 样例和业务确认建立的 BKL configuration rules 子集，不绑定具体银行接口，也不声称覆盖全量 catalog。Function catalog 只包含正式导出中实际观察到的条目，不使用 `bkl.md` 的 function 内容；Function 类型统一为 String。v1 已于 2026-08-06 发布为不可变的 `RELEASED` 版本，可以被 Final IR 精确引用。字符长度默认值已确认为 `STANDARD_1`；其他仍未知的系统默认值必须保持 `UNKNOWN`，不得从相近概念推断。
 
 ## 8. 可信流程
 

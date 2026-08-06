@@ -1,10 +1,10 @@
 package:
   name: configuration-rules
   version: v1
-  status: DRAFT
+  status: RELEASED
   maintainer: deng
   businessReviewer: configuration-reviewer
-  confirmationDate: null
+  confirmationDate: "2026-08-06"
   scope: BKL_CONFIGURATION_RULES_SUBSET
 
 ruleReference:

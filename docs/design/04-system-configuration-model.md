@@ -2,7 +2,7 @@
 
 ## Status
 
-Draft. Logical contract confirmed; `configuration-rules/v1` Draft is available and machine wire schemas are now P0-T3 implementation work.
+Draft. Logical contract confirmed; `configuration-rules/v1` is released and immutable, and machine wire schemas are now P0-T3 implementation work.
 
 ## 1. 目的与边界
 

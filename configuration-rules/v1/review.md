@@ -2,14 +2,21 @@
 
 ## Status
 
-Draft Review Record.
+Released Review Record.
 
 ## Governance
 
 - Maintainer：`deng`
 - Business reviewer：`configuration-reviewer`
-- Confirmation date：待 maintainer 与 business reviewer 对修订后的准确候选完成发布确认后填写。
-- Release disposition：`DRAFT`；完成机器校验和下述 release checks 后才能改为 `RELEASED`。
+- Confirmation date：`2026-08-06`（Asia/Shanghai）。
+- Release disposition：`RELEASED`；v1 内容冻结。
+
+## Release Confirmation
+
+- Candidate：`60c3ca18665cc0e3c85bb7f1c6f2212bba1d4c4d`
+- Maintainer `deng`：确认该准确候选可以发布为 `configuration-rules/v1 RELEASED`。
+- Business reviewer `configuration-reviewer`：确认该准确候选可以发布为 `configuration-rules/v1 RELEASED`。
+- 发布转换只修改生命周期 metadata、发布记录、状态文档和 RELEASED 模式测试，不增加或修改规则事实。
 
 ## Confirmed Decisions
 
@@ -84,4 +91,4 @@ Draft Review Record.
 - [x] Standard 镜像、结构绑定、容器 coverage 和 secure fixed value 边界已确认。
 - [x] v1 只包含接口无关的 BKL 规则事实；接口标识只存在于 provenance 路径。
 - [x] Standard/Template/Workbook 文档与本规则包无冲突。
-- [ ] Maintainer 与 business reviewer 对修订后的准确候选确认发布。
+- [x] Maintainer 与 business reviewer 对候选 `60c3ca18665cc0e3c85bb7f1c6f2212bba1d4c4d` 确认发布。

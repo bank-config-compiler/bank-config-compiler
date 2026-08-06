@@ -2,7 +2,7 @@
 
 ## Status
 
-Draft. Product contract confirmed; `configuration-rules/v1` Draft is available. Generation remains pending P0-T3 Final InterfaceStandardIR / InterfaceTemplateIR fixtures and validators.
+Draft. Product contract confirmed; `configuration-rules/v1` is released and immutable. Generation remains pending P0-T3 Final InterfaceStandardIR / InterfaceTemplateIR fixtures and validators.
 
 ## 1. 目的与粒度
 

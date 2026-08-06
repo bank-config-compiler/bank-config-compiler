@@ -2,7 +2,7 @@
 
 ## Status
 
-Active. `v1` is an interface-independent BKL rules subset in Draft and is not yet an immutable released package.
+Active. `v1` is an interface-independent, immutable, released BKL rules subset.
 
 ## Purpose
 
@@ -71,4 +71,4 @@ Active. `v1` is an interface-independent BKL rules subset in Draft and is not ye
 
 ## Available Versions
 
-- [`v1/`](v1/README.md)：接口无关、非全量的 BKL configuration rules 子集，当前为 Draft。
+- [`v1/`](v1/README.md)：接口无关、非全量的 BKL configuration rules 子集，已于 2026-08-06 发布并冻结。

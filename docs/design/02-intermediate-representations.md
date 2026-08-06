@@ -2,7 +2,7 @@
 
 ## Status
 
-Draft. DocIR / SchemaIR 的 P0-T2 baseline 已反映在 b2e0061 Review Golden sample；`configuration-rules/v1` Draft 已提供，InterfaceStandardIR / InterfaceTemplateIR wire schema 进入 P0-T3 实现但尚未冻结。
+Draft. DocIR / SchemaIR 的 P0-T2 baseline 已反映在 b2e0061 Review Golden sample；`configuration-rules/v1` 已发布并冻结，InterfaceStandardIR / InterfaceTemplateIR wire schema 进入 P0-T3 实现但尚未冻结。
 
 ## 1. 设计原则
 

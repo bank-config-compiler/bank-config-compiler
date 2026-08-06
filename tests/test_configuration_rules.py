@@ -48,11 +48,11 @@ def validation_codes(error: RulePackageValidationError) -> set[str]:
     return {issue["code"] for issue in error.issues}
 
 
-def test_loads_current_draft_rule_package_and_builds_indexes() -> None:
-    package = load_rule_package(RULE_PACKAGE_DIR, require_released=False)
+def test_loads_current_released_rule_package_and_builds_indexes() -> None:
+    package = load_rule_package(RULE_PACKAGE_DIR)
 
     assert package.version == "v1"
-    assert package.status == "DRAFT"
+    assert package.status == "RELEASED"
     assert len(package.rules_by_id) == 27
     assert {direction: len(fields) for direction, fields in package.fields_by_direction.items()} == {
         "ASSEMBLY": 207,
@@ -115,9 +115,12 @@ def test_rejects_unapproved_function_sources(tmp_path: Path) -> None:
     assert {"INVALID_ENUM_VALUE", "INVALID_CONTRACT_VALUE"} <= validation_codes(captured.value)
 
 
-def test_rejects_draft_package_by_default() -> None:
+def test_rejects_draft_package_by_default(tmp_path: Path) -> None:
+    package_dir = copy_rule_package(tmp_path)
+    set_package_status(package_dir, "DRAFT", None)
+
     with pytest.raises(RulePackageValidationError) as captured:
-        load_rule_package(RULE_PACKAGE_DIR)
+        load_rule_package(package_dir)
 
     assert validation_codes(captured.value) == {"RULE_PACKAGE_NOT_RELEASED"}
     assert captured.value.issues[0]["path"] == "package.status"
@@ -191,7 +194,11 @@ def test_rejects_version_status_and_confirmation_date_mismatches(tmp_path: Path)
     package_dir = copy_rule_package(tmp_path, version="v2")
     rules = read_yaml(package_dir, "rules.yaml")
     rules["package"]["status"] = "RELEASED"
+    rules["package"]["confirmationDate"] = None
     write_yaml(package_dir, "rules.yaml", rules)
+    fields = read_yaml(package_dir, "fields.yaml")
+    fields["status"] = "DRAFT"
+    write_yaml(package_dir, "fields.yaml", fields)
 
     with pytest.raises(RulePackageValidationError) as captured:
         load_rule_package(package_dir, require_released=False)
