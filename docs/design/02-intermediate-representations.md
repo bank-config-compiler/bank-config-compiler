@@ -171,7 +171,7 @@ SchemaIR 使用 JSON。`Final SchemaIR` 是银行 XML 报文结构与银行原�
 
 当前 `messageFormat` 只允许 `XML`。JSON 银行报文属于未验证的 future candidate。
 
-`messages[].xmlEncoding` 保存该方向 XML 报文的 Final encoding。raw-doc、XML 声明或其他证据出现冲突时必须进入 Review；确认值只展示在 Workbook `Overview`，不得伪造一个 Interface Standard 字段。上例的 `UTF-8` 仅说明 wire 形态；b2e0061 raw-doc 同时出现 UTF-8 建议和 GB2312 示例，两个方向的 Final 值必须在后续 SchemaIR fixture Review 时分别确认。
+`messages[].xmlEncoding` 保存该方向 XML 报文的 Final encoding。b2e0061 的 ASSEMBLY、PARSE 两个方向已由 Human 与银行线下确认均为 `UTF-8`。后续 raw-doc、XML 声明或其他银行文档证据与已确认值冲突时，Validator 必须产生 Warning 并阻止 Final，直到 Human Review 给出新结论。确认值只展示在 Workbook `Overview`，不得伪造一个 Interface Standard 字段。
 
 实现同步说明：当前已实现的 SchemaIR Validator v1 仍接受早期 `JSON` 和 JSON node kind 枚举。该行为不构成产品能力，后续代码批次必须按本契约收紧；本次文档调整不修改代码或测试。
 

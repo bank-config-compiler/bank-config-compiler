@@ -52,7 +52,7 @@ Golden 至少覆盖：
 - `transtype EQUALS "2" => obssid REQUIRED` 等银行文档条件与基础 Required 分离；
 - 当前 XML 流程拒绝 JSON-only List。
 - b2e0061 `b2e0061-rq` 与 `b2e0061-rs` 按 `0..1000` 为 Node；`@security` 保留、`vamflag` 排除，`@lang` 仅作为 observed evidence/difference Warning。
-- 方向级 `messages[].xmlEncoding` 冲突 Review 与 Workbook Overview 展示。
+- 方向级 `messages[].xmlEncoding` 冲突 Warning、Final 阻塞、Human Review 与 Workbook Overview 展示。
 
 具体样例无法自然覆盖的类型或差异，应使用最小受控 fixture 补充，不能污染真实 golden 事实。
 
@@ -135,4 +135,4 @@ Legend
 - Standard / Template Validator expected result；
 - expected Configuration Workbook 和相关 assertions。
 
-这些资产必须按 SchemaIR wire amendment → Standard → Template → Workbook 顺序补齐。现有 P0-T2 DocIR、SchemaIR 和 review-notes expected artifacts 是审查前 Golden，本批次不改写；其 README 指向 ADR-0008，后续 P0-T3 fixture 才迁移 `xmlEncoding`、Standard 镜像和结构绑定。规则包仍为 Draft；已确认的 Function String、processing policy、MAPPING 和 Replacement 契约必须进入专项 golden，但不得把 Mapping 样例子集扩张成全量 catalog。P0-T3 完成后才可把规则包和相关 Final fixture 冻结。
+这些资产必须按 SchemaIR wire amendment → Standard → Template → Workbook 顺序补齐。现有 P0-T2 DocIR、SchemaIR 和 review-notes expected artifacts 是审查前 Golden，本批次不改写；其 README 指向 ADR-0008。b2e0061 两个方向的 `xmlEncoding` 已由 Human 与银行线下确认为 `UTF-8`，后续 P0-T3 fixture 必须落实该结论；未来银行文档冲突必须 Warning 并阻塞 Final，直到 Human Review。规则包仍为 Draft；正式导出观察到的 5 个 Function、String 类型、字符长度默认 `STANDARD_1`、MAPPING 和 Replacement 契约必须进入专项 golden，但不得把 Function 或 Mapping 子集扩张成全量 catalog。P0-T3 完成后才可把规则包和相关 Final fixture 冻结。

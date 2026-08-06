@@ -1,8 +1,8 @@
 # Function 条目模板；注释用于说明字段，不会被 yaml.safe_load 解析为 catalog 数据。
 # - code: <唯一函数代码>                 # Template 中保存和引用的稳定标识。
 #   name: <函数名称>                     # 面向配置人员的显示名称。
-#   source: <事实来源>                   # BKL_REFERENCE 或 TARGET_SYSTEM_FORMAL_EXPORT。
-#   contractStatus: <契约状态>           # 已声明但不完整或已在正式导出观察。
+#   source: TARGET_SYSTEM_FORMAL_EXPORT  # Function catalog 只接受正式导出中实际观察到的条目。
+#   contractStatus: OBSERVED             # 当前 v1 只保存已在正式导出观察到的 function。
 #   description: <函数说明>              # 业务用途，不用于推断执行逻辑。
 #   parameters:                          # 按 position 从 1 连续排列。
 #     - position: 1                      # 参数位置。
@@ -18,15 +18,13 @@ packageVersion: v1
 status: DRAFT
 
 evidenceSources:
-  - source: BKL_REFERENCE
-    paths:
-      - docs/reference/samples/bkl.md
   - source: TARGET_SYSTEM_FORMAL_EXPORT
     paths:
       - docs/reference/samples/b2eboc/b2e0061-assembly-template.json
       - docs/reference/samples/b2eboc/b2e0061-parse-template.json
 
 dataTypeContract:
+  source: BUSINESS_CONFIRMATION
   fieldReferenceInput: String
   literalInput: String
   parameter: String
@@ -39,80 +37,6 @@ argumentKinds:
   - LITERAL
 
 functions:
-  - code: TotalNum
-    name: 计算总条数
-    source: BKL_REFERENCE
-    contractStatus: DECLARED_INCOMPLETE
-    description: 计算上游传递的支付指令里的支付条数。
-    parameters: []
-    resultDataType: String
-  - code: CurrentDate
-    name: 获取当前日期
-    source: BKL_REFERENCE
-    contractStatus: DECLARED_INCOMPLETE
-    description: 获取系统当前日期。
-    parameters:
-      - position: 1
-        name: format
-        required: false
-        default: yyyyMMdd
-        allowedArgumentKinds:
-          - LITERAL
-        dataType: String
-    resultDataType: String
-  - code: CurrentDateTime
-    name: 获取当前日期时间
-    source: BKL_REFERENCE
-    contractStatus: DECLARED_INCOMPLETE
-    description: 获取系统当前日期时间。
-    parameters:
-      - position: 1
-        name: format
-        required: false
-        default: yyyyMMddHHmmss
-        allowedArgumentKinds:
-          - LITERAL
-        dataType: String
-    resultDataType: String
-  - code: SequenceNumber
-    name: 生成序列号
-    source: BKL_REFERENCE
-    contractStatus: DECLARED_INCOMPLETE
-    description: 生成不重复的序列号。
-    parameters:
-      - position: 1
-        name: digits
-        required: false
-        default: 4
-        allowedArgumentKinds:
-          - LITERAL
-        dataType: String
-    resultDataType: String
-  - code: FormatDate
-    name: 日期格式转换
-    source: BKL_REFERENCE
-    contractStatus: DECLARED_INCOMPLETE
-    description: 将日期字段从源格式转换为目标格式。
-    parameters:
-      - position: 1
-        name: source
-        required: true
-        allowedArgumentKinds:
-          - FIELD_REF
-        dataType: String
-      - position: 2
-        name: from_format
-        required: true
-        allowedArgumentKinds:
-          - LITERAL
-        dataType: String
-      - position: 3
-        name: to_format
-        required: true
-        allowedArgumentKinds:
-          - LITERAL
-        dataType: String
-    resultDataType: String
   - code: SystemDateFormat
     name: 当前日期-定义格式
     source: TARGET_SYSTEM_FORMAL_EXPORT

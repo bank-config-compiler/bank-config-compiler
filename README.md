@@ -17,9 +17,10 @@ LLM / Agent 只能生成 DocIR、SchemaIR、InterfaceStandardIR 和 InterfaceTem
 - CLI 可以从 `.md` / `.txt` 输入创建 workspace，并保存 `raw-doc.md`。
 - CLI 可以检查固定 artifact 名称、UTF-8 no BOM 编码和 JSON 可解析性。
 - SchemaIR Validator v1 已作为库和自动化测试实现，并具有 b2e0061 expected validation result。现有实现仍接受 legacy JSON 枚举；这不代表产品支持 JSON 银行报文。
-- DocIR / SchemaIR Review Golden sample 已落地；`configuration-rules/v1` Draft 已包含方向字段、String Function、预设 Mapping catalog 样例、MAPPING/Replacement、完整 processing policy、Standard 镜像、结构绑定和安全固定值契约。方向级 XML encoding、银行 Condition、PARSE collection binding 与 Workbook 双端列的设计已收束；对应 wire contract、Validator、Workbook 和完整 trusted chain 尚未实现。
+- DocIR / SchemaIR Review Golden sample 已落地；`configuration-rules/v1` Draft 是接口无关、非全量的 BKL configuration rules 子集，包含方向字段、正式导出观察到的 5 个 String Function、预设 Mapping catalog 样例、MAPPING/Replacement、processing policy、Standard 镜像、结构绑定和安全固定值契约；字符长度默认值为 `STANDARD_1`。
+- 规则包 loader/validator 已作为库实现：只使用 `yaml.safe_load`，校验 UTF-8 no BOM、严格结构、生命周期、唯一性、值域、redaction 和跨文件引用。默认加载只接受 `RELEASED`；Draft 发布候选必须显式使用 `require_released=False`。
 
-P0-T3 的资料缺失 blocker 已解除并为 `In Progress`；规则包仍为 `DRAFT`，尚不能支撑 Final IR。本轮只冻结文档和规则事实，不表示相关代码已经实现。详细状态和后续执行边界见 [Phase0-PoC 执行计划](docs/planning/00-phase0-poc-plan.md)。
+P0-T3 的资料缺失 blocker 已解除并为 `In Progress`；规则包运行时已经完成，但修订后的 v1 仍为 `DRAFT`，在 maintainer 与 business reviewer 对准确候选重新双签发布前不能支撑 Final IR。b2e0061 两个方向的 XML encoding 已由 Human 与银行线下确认为 `UTF-8`；对应 SchemaIR v2 wire contract、Validator、Standard/Template、Workbook 和完整 trusted chain 尚未实现。详细状态和后续执行边界见 [Phase0-PoC 执行计划](docs/planning/00-phase0-poc-plan.md)。
 
 ## 快速开始
 

@@ -4,7 +4,9 @@ version = "0.1.0"
 description = "Phase0a PoC CLI for bank configuration compiler workspace artifacts."
 readme = "README.md"
 requires-python = ">=3.12"
-dependencies = []
+dependencies = [
+    "pyyaml>=6.0.3,<7",
+]
 
 [project.scripts]
 bank-config-compiler = "bank_config_compiler.cli:main"
