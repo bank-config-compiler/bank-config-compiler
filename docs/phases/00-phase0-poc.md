@@ -2,7 +2,7 @@
 
 ## Status
 
-Draft. Trusted-chain work is partially implemented; the rule runtime and reviewed Final SchemaIR v2 fixture are complete. InterfaceStandardIR, InterfaceTemplateIR and Configuration Workbook remain P0-T3 work.
+Draft. Trusted-chain work is partially implemented; the rule runtime, reviewed Final SchemaIR v2 fixture, InterfaceStandardIR runtime and two machine-validated Standard Drafts are complete. Final Standard Human Review, InterfaceTemplateIR and Configuration Workbook remain P0-T3 work.
 
 ## 1. 阶段目标
 
@@ -31,11 +31,13 @@ LLM、Agent 或 workflow 可以生成 Draft，但不能替代 Validator、人工
 - 经人工 Review 的 expected DocIR、expected SchemaIR 和 expected review notes。
 - SchemaIR v2 XML-only Validator、canonical hash/result contract、encoding evidence、结构化条件和已冻结的 49-field b2e0061 Final fixture；准确 hash 已由 `deng` 确认，当前结果为 0 ERROR、0 WARNING、0 blocking issue，`finalEligible=true`。
 - `configuration-rules/v1` 已收束为接口无关、非全量的 BKL configuration rules 子集，并具有仓库内 safe loader、严格 schema/semantic validator 和引用闭合测试；双 reviewer 已确认候选并于 2026-08-06 发布，默认 loader 可直接加载该 `RELEASED` 版本。
+- `interface-standard/v1` 与 `interface-standard-validation-result/v1`、Standard Validator 及双方向 b2e0061 Draft fixture；两个候选均为 0 ERROR，且精确绑定 Final SchemaIR 与 `configuration-rules/v1`。
 
 尚未完成：
 
 - 四类 IR Draft generator。
-- InterfaceStandardIR / InterfaceTemplateIR machine wire contract、人工确认 fixture 和 Validator。
+- 两份 InterfaceStandardIR 的 Human Review 与 Final fixture；ASSEMBLY 仍需确认 email Regex，PARSE 仍需确认四条 `rspcod/rspmsg` 默认长度差异。
+- InterfaceTemplateIR machine wire contract、人工确认 fixture 和 Validator。
 - Configuration Workbook Generator、expected workbook 和结构化 assertions。
 - 覆盖完整可信链路的 golden regression。
 

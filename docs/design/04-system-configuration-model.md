@@ -2,7 +2,7 @@
 
 ## Status
 
-Draft. Logical contract confirmed; `configuration-rules/v1` is released and immutable, and machine wire schemas are now P0-T3 implementation work.
+Draft. Logical contract confirmed; `configuration-rules/v1` is released and immutable. InterfaceStandardIR machine wire/Validator and two Standard Drafts are implemented; Final Standard Human Review and InterfaceTemplateIR machine wire remain P0-T3 work.
 
 ## 1. 目的与边界
 
@@ -55,30 +55,39 @@ stateDiagram-v2
 
 ```text
 InterfaceStandardIR
+├── contractVersion             # interface-standard/v1
 ├── standardId
 ├── interfaceCode
 ├── direction
 ├── standardVersion
-├── schemaIrReference + schemaIrContentHash
+├── status / review
+├── schemaIrRef
+│   ├── schemaId
+│   ├── schemaVersion
+│   ├── contractVersion
+│   └── contentHash
 ├── rulePackageVersion
-├── xmlEncodingReference         # 指向 SchemaIR message；不是 Standard Field
+├── xmlEncodingRef
+│   ├── functionType
+│   └── value                    # 指向 SchemaIR message；不是 Standard Field
 ├── fields[]
 │   ├── fieldId
 │   ├── sequence
 │   ├── fieldName / fieldDescription
+│   ├── conditionText
 │   ├── parentPath / fullPath
 │   ├── required
-│   ├── lengthLimit
-│   ├── illegalCharacters
-│   ├── xmlKeys[]
-│   ├── regex
+│   ├── lengthLimit              # state / min / max / precision / scale
+│   ├── illegalCharacters        # state / value
+│   ├── xmlKeys[]                # name / schemaIrFieldPath
+│   ├── regex                    # state / value
 │   ├── dataType
 │   ├── conditionalConstraints[]
-│   └── evidence / differences / review
-└── review
+│   ├── schemaIrFieldPath / ruleReferences
+│   └── evidence / differences / confidence / uncertainty / reviewNote
 ```
 
-这些字段描述逻辑契约，不是已经冻结的 JSON wire schema。
+以上字段对应已冻结的 `interface-standard/v1` JSON wire；未知或缺失属性 fail closed。匹配结果使用 `interface-standard-validation-result/v1` 并以 canonical content hash 绑定完整 Standard 内容。
 
 方向级 XML encoding 和显式 evidence 保存在 Final SchemaIR message。InterfaceStandardIR 只保存可追溯引用，Workbook `Overview` 展示确认值；encoding 不生成 Standard Field。`UNRESOLVED_CONFLICT` 必须产生 blocking Warning，不能由 Generator 选择；Human Review 处置 evidence 或给出新确认值并重新复验后才能继续。
 

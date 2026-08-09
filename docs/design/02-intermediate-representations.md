@@ -2,7 +2,7 @@
 
 ## Status
 
-Draft. DocIR / SchemaIR 的 P0-T2 baseline 继续作为不可变 Review Golden；SchemaIR v2 wire、Validator 和已评审 Final fixture 已实现。`configuration-rules/v1` 已发布并冻结，InterfaceStandardIR / InterfaceTemplateIR wire schema 尚未冻结。
+Draft. DocIR / SchemaIR 的 P0-T2 baseline 继续作为不可变 Review Golden；SchemaIR v2 wire、Validator 和已评审 Final fixture 已实现。`configuration-rules/v1` 已发布并冻结；InterfaceStandardIR wire/Validator 和双方向 Draft fixture 已实现，Final Standard 等待 Human Review。InterfaceTemplateIR wire schema 尚未冻结。
 
 ## 1. 设计原则
 
@@ -318,9 +318,9 @@ InterfaceStandardIR 回答“目标系统如何定义这个方向的报文字段
 - InterfaceStandardIR 保存目标系统实际 parent path、Node/Object 类型、XML Keys 和配置约束。
 - 两侧值不得相互覆盖；差异必须记录原因、Rule ID 和人工 Review 结论。
 
-### 4.2 候选顶层结构
+### 4.2 顶层结构
 
-下例只表达逻辑契约，不是已冻结 wire schema：
+`interface-standard/v1` 顶层 wire 已冻结为：
 
 ```json
 {
@@ -328,22 +328,30 @@ InterfaceStandardIR 回答“目标系统如何定义这个方向的报文字段
   "standardId": "internal-stable-id",
   "standardVersion": "v1",
   "status": "DRAFT",
-  "interfaceCode": "b2e0061",
-  "direction": "ASSEMBLY",
-  "schemaIrRef": "schemair-final.json",
-  "schemaIrContentHash": "content-hash",
-  "rulePackageVersion": "published-version",
-  "fields": [],
   "review": {
     "status": "PENDING",
     "reviewer": null,
     "reviewedAt": null,
     "note": null
-  }
+  },
+  "interfaceCode": "b2e0061",
+  "direction": "ASSEMBLY",
+  "schemaIrRef": {
+    "schemaId": "b2eboc-b2e0061-schema",
+    "schemaVersion": "v1",
+    "contractVersion": "schemair/v2",
+    "contentHash": "sha256:..."
+  },
+  "rulePackageVersion": "v1",
+  "xmlEncodingRef": {
+    "functionType": "ASSEMBLY",
+    "value": "UTF-8"
+  },
+  "fields": []
 }
 ```
 
-每个方向拥有独立标准。Final Standard 版本不可原地覆盖；`interfaceCode` 只用于关联，不能替代 `standardId`、`standardVersion` 和 content hash。
+每个方向拥有独立标准。Final Standard 版本不可原地覆盖；`interfaceCode` 只用于关联，不能替代 `standardId`、`standardVersion` 和 content hash。`schemaIrRef` 必须精确绑定一个通过 v2 Validator 的 Final SchemaIR；`xmlEncodingRef` 必须与所选方向的 SchemaIR message 一致，encoding 不生成 Standard 字段。
 
 ### 4.3 标准字段
 
@@ -352,15 +360,16 @@ InterfaceStandardIR 回答“目标系统如何定义这个方向的报文字段
 - stable `fieldId`；
 - `sequence`；
 - `fieldName`、`fieldDescription`；
+- 原样保留的 `conditionText`；
 - `parentPath`、`fullPath`；
 - Required、Length Limit；
 - Illegal Characters；
 - XML Keys；
 - Regex；
 - Data Type；
-- SchemaIR source reference、Rule References、Difference Reason；
+- `schemaIrFieldPath`、Rule References、differences 与 evidence；
 - 银行文档结构化条件约束及其 evidence；
-- confidence、uncertain、uncertainReason 和人工 Review 结论。
+- confidence、uncertain、uncertainReason、`reviewNote` 和人工 Review 结论。
 
 目标系统 Path 表示父路径。`fullPath` 由 parent path 与当前字段身份构成，用于唯一定位和模板引用。XML attribute 继续存在于 SchemaIR，但在接口标准中作为所属 element 行的 XML Keys，不单独生成标准行。
 
@@ -375,11 +384,25 @@ XML 目标类型为 `String`、`Boolean`、`Date`、`Number`、`Node`、`Object`
 - 有值叶子使用四种标量类型；
 - JSON-only `List` 不得进入当前 XML Final Standard。
 
-Length、Illegal Characters、Regex 等可能缺失的约束必须区分 `VALUE`、`NO_CONSTRAINT` 和 `UNKNOWN`。`UNKNOWN` 阻止 Final；人工确认无约束后使用 `NO_CONSTRAINT`，不能以普通 null 混淆两者。
+`lengthLimit` 固定保存 `state/min/max/precision/scale`；`illegalCharacters` 与 `regex` 固定保存 `state/value`。这些可能缺失的约束必须区分 `VALUE`、`NO_CONSTRAINT` 和 `UNKNOWN`。`UNKNOWN` 阻止 Final；人工确认无约束后使用 `NO_CONSTRAINT`，不能以普通 null 混淆两者。Validator 还拒绝 bool 冒充整数、未知属性和 JSON-only `List`。
 
 在当前已确认范围内，raw-doc 没有写某项约束表示该项为 `NO_CONSTRAINT`；只有证据冲突或无法判定时才使用 `UNKNOWN`。不得从正式导出覆盖银行字段、路径、出现次数或约束事实。
 
 基础 `required` 与条件 `required` 分开保存。例如 `obssid.required=false` 不覆盖 `transtype EQUALS "2" => obssid REQUIRED`。Standard Validator 校验条件引用、受支持 operator/effect、literal 类型和 evidence，不执行银行业务条件。
+
+### 4.5 Validation Result 与 Final 门禁
+
+`interface-standard-validation-result/v1` 保存 Standard kind、identity/version/contract、canonical content hash、`status`、`finalEligible`、summary、coverage 和稳定排序的 issues。Validator 严格校验：
+
+- Final SchemaIR 与 `RELEASED` 规则包的 identity/version/hash；
+- 所选方向全部 XML element 的完整且唯一投影，以及 XML attribute 到所属字段 `xmlKeys` 的精确投影；
+- stable field ID、parent/full path、同级连续 sequence、数据类型、约束状态和 Rule Reference 闭合；
+- SchemaIR required/length/data type 的逐值投影；任何差异必须以准确双方值、原因、Rule ID 和 Human Review 明示；
+- `conditionText`、结构化银行条件和 evidence 的完整保留。
+
+当前 v1 只允许为可从 SchemaIR 确定性计算源值的 `required`、`lengthLimit`、`dataType` 记录 difference。Regex、Illegal Characters 和 XML Keys 不接受任意 `schemaIrValue` 伪装成已验证差异；前两者由 Standard 约束状态与 Human Review 决定，XML Keys 必须精确投影 SchemaIR attribute。未来若要支持其他差异属性，必须先定义可机器核对的源值投影并发布新 contract。
+
+`UNKNOWN`、`uncertain=true`、未批准差异、未批准顶层 Review 或 DRAFT lifecycle 均产生 blocking Warning 并令 `finalEligible=false`。Validator 不写回 Standard，也不自动提升为 Final。
 
 ## 5. InterfaceTemplateIR
 

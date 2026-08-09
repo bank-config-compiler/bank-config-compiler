@@ -17,11 +17,12 @@ LLM / Agent 只能生成 DocIR、SchemaIR、InterfaceStandardIR 和 InterfaceTem
 - CLI 可以从 `.md` / `.txt` 输入创建 workspace，并保存 `raw-doc.md`。
 - CLI 当前只公开 `raw` profile，检查 `raw-doc.md` 的 UTF-8 no BOM 文件协议；完整 `phase0` profile 将在 Workbook trusted chain 完成时启用。
 - SchemaIR v2 Validator 已作为库实现：只接受 `schemair/v2` 与 XML 节点，严格校验 artifact identity/lifecycle、字段层级、方向级 encoding evidence、最小结构化银行条件和 Final eligibility，并以 canonical JSON SHA-256 将结果绑定到完整输入内容。
+- InterfaceStandardIR Validator 已作为库实现：严格绑定 Final SchemaIR identity/hash、方向与 `RELEASED` 规则包，校验字段覆盖、路径/顺序、XML Keys、三态约束、银行条件、差异 Review、Rule References 和 Final eligibility，并生成 `interface-standard-validation-result/v1`。
 - workspace 库支持受 workspace 边界保护的嵌套 JSON artifact，拒绝 BOM、非 UTF-8、重复属性、非 object 根节点、NaN/Infinity 和路径逃逸。
 - DocIR / SchemaIR Review Golden sample 已落地；`configuration-rules/v1` 已发布为接口无关、非全量且不可变的 BKL configuration rules 子集，包含方向字段、正式导出观察到的 5 个 String Function、预设 Mapping catalog 样例、MAPPING/Replacement、processing policy、Standard 镜像、结构绑定和安全固定值契约；字符长度默认值为 `STANDARD_1`。
 - 规则包 loader/validator 已作为库实现：只使用 `yaml.safe_load`，校验 UTF-8 no BOM、严格结构、生命周期、唯一性、值域、redaction 和跨文件引用。默认加载已接受 `RELEASED` v1；未来 Draft 候选检查必须显式使用 `require_released=False`。
 
-P0-T3 为 `In Progress`：规则包运行时和 SchemaIR v2 runtime 已完成，`configuration-rules/v1` 经 maintainer 与 business reviewer 对候选 `60c3ca18665cc0e3c85bb7f1c6f2212bba1d4c4d` 双签，于 2026-08-06 发布为 `RELEASED`。b2e0061 已冻结 49-field Final SchemaIR v2、匹配 validation result 和 Human Review 记录，hash 为 `sha256:4729131ad59fd29899895b1149a476c1f95b71f304cb43bd17749985f19e7162`；该样例不定义接口专用 runtime 规则。Standard/Template、Workbook 和完整 trusted chain 尚未实现。详细状态和门禁见 [Phase0-PoC 执行计划](docs/planning/00-phase0-poc-plan.md)。
+P0-T3 为 `In Progress`：规则包、SchemaIR v2 和 InterfaceStandardIR runtime 已完成。b2e0061 已冻结 49-field Final SchemaIR v2，hash 为 `sha256:4729131ad59fd29899895b1149a476c1f95b71f304cb43bd17749985f19e7162`；双方向 Standard Draft 也已通过机器校验并绑定该 hash。ASSEMBLY 候选为 `sha256:34691505230a063e7b0c92798f6bd81b7fc41c5a988b0476195fcc23ec778af4`，PARSE 候选为 `sha256:28dfde20c7190d5eccc93558d0726e7675656c4e6029b77f3018e76807fcacb2`；二者仍因 email Regex、四条响应长度差异和顶层 Human Review 未关闭而保持 DRAFT。Final Standard、Template、Workbook 和完整 trusted chain 尚未实现；该样例不定义接口专用 runtime 规则。详细状态和门禁见 [Phase0-PoC 执行计划](docs/planning/00-phase0-poc-plan.md)。
 
 ## 快速开始
 
@@ -61,7 +62,7 @@ uv run python -m bank_config_compiler ingest --input docs/reference/samples/b2eb
 |---|---|---|
 | `raw-doc.md` | Markdown / text | 由 `ingest` 从外部输入导入，作为后续生成命令的输入。 |
 
-库级 JSON artifact I/O 可以安全读写 workspace 内的相对嵌套路径。P0-T3 Final SchemaIR、机器结果和 Review 记录位于 `samples/trusted-chain/b2eboc-b2e0061/`；它们是通用链路的开发 fixture，不是 CLI 自动生成的 artifact。所有 artifact 必须使用 UTF-8 with no BOM。
+库级 JSON artifact I/O 可以安全读写 workspace 内的相对嵌套路径。P0-T3 Final SchemaIR、Standard Draft、机器结果和 Review 记录位于 `samples/trusted-chain/b2eboc-b2e0061/`；它们是通用链路的开发 fixture，不是 CLI 自动生成的 artifact。所有 artifact 必须使用 UTF-8 with no BOM。
 
 ## 详细文档
 

@@ -1,0 +1,75 @@
+{
+  "contractVersion": "interface-standard-validation-result/v1",
+  "validatedArtifact": {
+    "kind": "InterfaceStandardIR",
+    "artifactId": "b2e0061-parse-standard",
+    "artifactVersion": "v1",
+    "artifactContractVersion": "interface-standard/v1",
+    "contentHash": "sha256:28dfde20c7190d5eccc93558d0726e7675656c4e6029b77f3018e76807fcacb2"
+  },
+  "status": "passed_with_warnings",
+  "finalEligible": false,
+  "summary": {
+    "standardId": "b2e0061-parse-standard",
+    "interfaceCode": "b2e0061",
+    "direction": "PARSE",
+    "rulePackageVersion": "v1",
+    "fieldCount": 19,
+    "errorCount": 0,
+    "warningCount": 6,
+    "infoCount": 0,
+    "blockingCount": 6
+  },
+  "coverage": {
+    "scalarFieldCount": 12,
+    "containerFieldCount": 7,
+    "xmlKeyCount": 3,
+    "conditionalConstraintCount": 0,
+    "differenceCount": 4,
+    "uncertainFieldCount": 0
+  },
+  "issues": [
+    {
+      "severity": "WARNING",
+      "blocking": true,
+      "code": "DIFFERENCE_REVIEW_NOT_APPROVED",
+      "path": "b2e0061-parse-bocb2e-trans-trn-b2e0061-rs-b2e0061-rs-status-rspcod.differences[0].review.status",
+      "message": "SchemaIR-to-Standard differences require Human Review."
+    },
+    {
+      "severity": "WARNING",
+      "blocking": true,
+      "code": "DIFFERENCE_REVIEW_NOT_APPROVED",
+      "path": "b2e0061-parse-bocb2e-trans-trn-b2e0061-rs-b2e0061-rs-status-rspmsg.differences[0].review.status",
+      "message": "SchemaIR-to-Standard differences require Human Review."
+    },
+    {
+      "severity": "WARNING",
+      "blocking": true,
+      "code": "DIFFERENCE_REVIEW_NOT_APPROVED",
+      "path": "b2e0061-parse-bocb2e-trans-trn-b2e0061-rs-status-rspcod.differences[0].review.status",
+      "message": "SchemaIR-to-Standard differences require Human Review."
+    },
+    {
+      "severity": "WARNING",
+      "blocking": true,
+      "code": "DIFFERENCE_REVIEW_NOT_APPROVED",
+      "path": "b2e0061-parse-bocb2e-trans-trn-b2e0061-rs-status-rspmsg.differences[0].review.status",
+      "message": "SchemaIR-to-Standard differences require Human Review."
+    },
+    {
+      "severity": "WARNING",
+      "blocking": true,
+      "code": "REVIEW_NOT_APPROVED",
+      "path": "review.status",
+      "message": "Human Review must be approved before Final use."
+    },
+    {
+      "severity": "WARNING",
+      "blocking": true,
+      "code": "ARTIFACT_NOT_FINAL",
+      "path": "status",
+      "message": "Draft artifacts are not eligible for the trusted chain."
+    }
+  ]
+}

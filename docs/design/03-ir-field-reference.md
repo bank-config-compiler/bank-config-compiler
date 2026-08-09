@@ -88,7 +88,7 @@ DocIR 主表不展示完整 `Path`，避免人工 review 时被长路径淹没�
 
 SchemaIR message 可以包含 `conditionalConstraints[]`，用于保存银行文档明确且落在当前最小规则集内的跨字段条件。每条约束至少具有 controlling field path、operator、target field path、effect、sourceText/evidence 和 Review 信息。P0 不把目的系统业务 Condition 写入这里，也不执行条件。
 
-银行字段、路径、出现次数和约束以 raw-doc/Final SchemaIR 为准。正式导出中的 observed `@lang` 只保留在来源和 Review 证据中，不作为 Final SchemaIR 或 Standard 字段；b2e0061 Final Standard 保留 raw-doc 的 `@security`，排除 `vamflag`。这些投影决定不回写 P0-T2 审查前 Golden，而在 P0-T3 Standard 链路中落实。
+银行字段、路径、出现次数和约束以 raw-doc/Final SchemaIR 为准。正式导出中的 observed `@lang` 只保留在来源和 Review 证据中，不作为 Final SchemaIR 或 Standard 字段；b2e0061 Standard Draft 已保留 raw-doc 的 `@security` 并排除 `vamflag`。这些投影决定不回写 P0-T2 审查前 Golden，而在 P0-T3 Standard Draft 中落实，待 Human Review 后才能成为 Final。
 
 ## 5. evidence.kind
 

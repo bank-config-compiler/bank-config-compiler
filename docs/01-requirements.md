@@ -115,7 +115,7 @@ XML attribute 不形成独立接口标准行，而作为所属 element 标准行
 
 银行文档明确、无歧义且落在规则包支持子集内的条件必须结构化保存，不能只压缩为基础 Required。例如 b2e0061 的 `obssid` 基础 Required 为 `false`，同时保存 `transtype EQUALS "2" => obssid REQUIRED`。
 
-P0 只支持 `EQUALS`、`IS_EMPTY` 谓词和 `REQUIRED` 效果。条件必须引用同方向已存在字段，并保留银行原文 evidence 与人工 Review。复杂或无法可靠结构化的约束继续保存为 `conditionText` 和 Review 提示，不得丢失或猜测。
+P0 只支持 `EQUALS`、`IS_EMPTY` 谓词和 `REQUIRED` 效果。条件必须引用同方向已存在字段，并保留银行原文 evidence 与人工 Review。复杂或无法可靠结构化的约束继续在 SchemaIR 与其 Standard 字段投影中保存为 `conditionText` 和 Review 提示，不得丢失或猜测。
 
 ## 6. InterfaceTemplateIR 能力
 
