@@ -23,7 +23,7 @@ LLM / Agent 只能生成 DocIR、SchemaIR、InterfaceStandardIR 和 InterfaceTem
 - DocIR / SchemaIR Review Golden sample 已落地；`configuration-rules/v1` 与 `configuration-rules/v2` 均已发布并冻结为接口无关、非全量的 BKL configuration rules 子集。v2 保持 v1 的 27/207/14/5/6 catalog，只修订方向相关 Standard projection：ASSEMBLY 显式镜像 target，PARSE 从精确绑定的 Final Standard 解析表达式/collection source。
 - 规则包 loader/validator 已作为库实现：只使用 `yaml.safe_load`，校验 UTF-8 no BOM、严格结构、生命周期、唯一性、值域、redaction 和跨文件引用。调用方显式选择 v1 或 v2 后，默认加载接受相应 `RELEASED` 版本；不会自动选择最新版本或迁移已有 Final IR。
 
-P0-T3 为 `In Progress`：SchemaIR v2、InterfaceStandardIR runtime/Final fixtures 和 InterfaceTemplateIR Draft runtime 已完成。b2e0061 的 ASSEMBLY/PARSE Template Draft 候选 hash 分别为 `sha256:356b83c1aff90d83d82fa3bbc14f7fe8277c34605a3d5edb4cb99abd71c49957`、`sha256:33cd4f7ae02701d6ab19cf46628398354590dba3d612f91e43b06f78d1356621`，当前仍是 `DRAFT/PENDING`，需 Human Review 后才能冻结为 Final；Workbook 和完整 trusted chain 尚未实现。详细状态见 [Phase0-PoC 执行计划](docs/planning/00-phase0-poc-plan.md)。
+P0-T3 为 `In Progress`：SchemaIR v2、InterfaceStandardIR 和 InterfaceTemplateIR 的 runtime、双方向 Final fixtures 与匹配 validation results 均已完成并经 Human Review 冻结。b2e0061 的 ASSEMBLY/PARSE Final Template hash 分别为 `sha256:b9966a449ddc29e08fa29c6cf7838273ce3cab91e00dbb38092767d21af2f561`、`sha256:16eb305b6ac3944f28cb1060b943fdfc2d471f69e6bf8ea52ce059c797fb22f9`；ASSEMBLY 的四条已接受 omission 保留为非阻塞 Warning。Workbook 和完整 trusted chain 尚未实现。详细状态见 [Phase0-PoC 执行计划](docs/planning/00-phase0-poc-plan.md)。
 
 ## 快速开始
 
@@ -63,7 +63,7 @@ uv run python -m bank_config_compiler ingest --input docs/reference/samples/b2eb
 |---|---|---|
 | `raw-doc.md` | Markdown / text | 由 `ingest` 从外部输入导入，作为后续生成命令的输入。 |
 
-库级 JSON artifact I/O 可以安全读写 workspace 内的相对嵌套路径。P0-T3 Final SchemaIR、双方向 Final Standard、机器结果和 Review 记录位于 `samples/trusted-chain/b2eboc-b2e0061/`；它们是通用链路的开发 fixture，不是 CLI 自动生成的 artifact。所有 artifact 必须使用 UTF-8 with no BOM。
+库级 JSON artifact I/O 可以安全读写 workspace 内的相对嵌套路径。P0-T3 Final SchemaIR、双方向 Final Standard/Template、机器结果和 Review 记录位于 `samples/trusted-chain/b2eboc-b2e0061/`；它们是通用链路的开发 fixture，不是 CLI 自动生成的 artifact。所有 artifact 必须使用 UTF-8 with no BOM。
 
 ## 详细文档
 

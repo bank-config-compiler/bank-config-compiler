@@ -5,10 +5,10 @@
     "artifactId": "b2e0061-parse-common",
     "artifactVersion": "v1",
     "artifactContractVersion": "interface-template/v1",
-    "contentHash": "sha256:33cd4f7ae02701d6ab19cf46628398354590dba3d612f91e43b06f78d1356621"
+    "contentHash": "sha256:16eb305b6ac3944f28cb1060b943fdfc2d471f69e6bf8ea52ce059c797fb22f9"
   },
-  "status": "passed_with_warnings",
-  "finalEligible": false,
+  "status": "passed",
+  "finalEligible": true,
   "summary": {
     "templateId": "b2e0061-parse-common",
     "interfaceCode": "b2e0061",
@@ -16,9 +16,9 @@
     "rulePackageVersion": "v2",
     "fieldConfigCount": 8,
     "errorCount": 0,
-    "warningCount": 2,
+    "warningCount": 0,
     "infoCount": 0,
-    "blockingCount": 2
+    "blockingCount": 0
   },
   "coverage": {
     "valueBindingCount": 7,
@@ -33,20 +33,5 @@
     "mappingExpressionCount": 0,
     "replacementCount": 0
   },
-  "issues": [
-    {
-      "severity": "WARNING",
-      "blocking": true,
-      "code": "REVIEW_NOT_APPROVED",
-      "path": "review.status",
-      "message": "Human Review must approve the complete Template before Final use."
-    },
-    {
-      "severity": "WARNING",
-      "blocking": true,
-      "code": "ARTIFACT_NOT_FINAL",
-      "path": "status",
-      "message": "Draft artifacts are not eligible for the trusted chain."
-    }
-  ]
+  "issues": []
 }

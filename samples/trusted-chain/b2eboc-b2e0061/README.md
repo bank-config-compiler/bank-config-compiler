@@ -10,9 +10,14 @@
 - `standards/assembly/v1/`：ASSEMBLY Final InterfaceStandardIR 与匹配 validation result；
 - `standards/parse/v1/`：PARSE Final InterfaceStandardIR 与匹配 validation result；
 - `standards/standard-review.md`：双方向 Standard 的准确 hash 确认与 Human Review 记录。
+- `templates/assembly/v1/`：ASSEMBLY Final InterfaceTemplateIR 与匹配 validation result；
+- `templates/parse/v1/`：PARSE Final InterfaceTemplateIR 与匹配 validation result；
+- `templates/template-review.md`：双方向 Template 的 Draft candidate 确认、Final hash 和 Human Review 记录。
 
 Final hash 为 `sha256:4729131ad59fd29899895b1149a476c1f95b71f304cb43bd17749985f19e7162`。当前结果为 0 ERROR、0 WARNING、34 INFO、0 blocking issue、`finalEligible=true`；两方向 XML encoding 均保存 Human 与银行线下确认的 `UTF-8` evidence。
 
 `deng` 已确认该准确 hash。任何 SchemaIR JSON 语义值变化都会使 Review 和 validation result 同时失效，必须重新复验和确认。
 
 两份 Final Standard 均为 0 ERROR、0 WARNING、0 blocking issue、`finalEligible=true`。ASSEMBLY hash 为 `sha256:9c77e0e92447907fa89d6ef705501dc0947d695998b80bb154476f696e9b982e`；PARSE hash 为 `sha256:33efa544460ac19f216734712c1e6ae2610321ea17eb750eff35493ecca9d57e`。`deng` 已确认两个准确 hash，可供后续 Template 精确绑定。
+
+两份 Final Template 均精确绑定对应 Final Standard 与 `configuration-rules/v2`。ASSEMBLY hash 为 `sha256:b9966a449ddc29e08fa29c6cf7838273ce3cab91e00dbb38092767d21af2f561`，保留 4 个经接受的 omission 和 4 个非阻塞 Warning；PARSE hash 为 `sha256:16eb305b6ac3944f28cb1060b943fdfc2d471f69e6bf8ea52ce059c797fb22f9`，结果为 0 WARNING。两者均为 0 ERROR、0 blocking issue、`finalEligible=true`，并经 `deng` 对准确 Draft 候选确认后冻结。

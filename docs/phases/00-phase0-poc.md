@@ -2,7 +2,7 @@
 
 ## Status
 
-Draft. Trusted-chain work is partially implemented; the rule runtime, reviewed Final SchemaIR v2 fixture, InterfaceStandardIR runtime/two reviewed Final Standards, and InterfaceTemplateIR Draft runtime/candidates are complete. Final InterfaceTemplateIR and Configuration Workbook remain P0-T3 work.
+Draft. Trusted-chain work is partially implemented; the rule runtime and reviewed Final fixtures/results for SchemaIR v2, InterfaceStandardIR and InterfaceTemplateIR are complete. Configuration Workbook remains P0-T3 work.
 
 ## 1. 阶段目标
 
@@ -33,16 +33,15 @@ LLM、Agent 或 workflow 可以生成 Draft，但不能替代 Validator、人工
 - `configuration-rules/v1` 已收束为接口无关、非全量的 BKL configuration rules 子集，并具有仓库内 safe loader、严格 schema/semantic validator 和引用闭合测试；双 reviewer 已确认候选并于 2026-08-06 发布，默认 loader 可直接加载该 `RELEASED` 版本。
 - `configuration-rules/v2` 继承 v1 的全部 catalog，只修订方向相关 Standard projection；maintainer 与 business reviewer 已确认准确候选，并于 2026-08-09 发布为 `RELEASED` 后冻结。
 - `interface-standard/v1` 与 `interface-standard-validation-result/v1`、Standard Validator 及双方向 b2e0061 Final fixture；两个 Standard 均经 `deng` 确认准确 hash，结果为 0 ERROR、0 WARNING、0 blocking issue，`finalEligible=true`。
-- `interface-template/v1` 与 `interface-template-validation-result/v1`、Template Validator 及双方向 b2e0061 Draft fixture；ASSEMBLY/PARSE 候选 hash 分别为 `sha256:356b83c1aff90d83d82fa3bbc14f7fe8277c34605a3d5edb4cb99abd71c49957`、`sha256:33cd4f7ae02701d6ab19cf46628398354590dba3d612f91e43b06f78d1356621`，仍等待 Human Review。
+- `interface-template/v1` 与 `interface-template-validation-result/v1`、Template Validator 及双方向 b2e0061 Final fixtures/results；ASSEMBLY/PARSE hash 分别为 `sha256:b9966a449ddc29e08fa29c6cf7838273ce3cab91e00dbb38092767d21af2f561`、`sha256:16eb305b6ac3944f28cb1060b943fdfc2d471f69e6bf8ea52ce059c797fb22f9`。ASSEMBLY 保留 4 个经接受 omission 和 4 个非阻塞 Warning，PARSE 为 0 WARNING；两者均为 0 ERROR、0 blocking、`finalEligible=true`。
 
 尚未完成：
 
 - 四类 IR Draft generator。
-- 人工确认并冻结双方向 Final InterfaceTemplateIR fixture/result。
 - Configuration Workbook Generator、expected workbook 和结构化 assertions。
 - 覆盖完整可信链路的 golden regression。
 
-`configuration-rules/v1` 与 v2 均已发布并冻结；v2 不改变其 27/207/14/5/6 catalog、Function String、Mapping/Replacement、字符长度默认 `STANDARD_1` 或业务 Condition 边界，只修订 Template Standard projection。现有 Final Standard 继续绑定 v1；当前 InterfaceTemplateIR Draft 精确绑定 v2。详细任务状态见 `docs/planning/00-phase0-poc-plan.md`。
+`configuration-rules/v1` 与 v2 均已发布并冻结；v2 不改变其 27/207/14/5/6 catalog、Function String、Mapping/Replacement、字符长度默认 `STANDARD_1` 或业务 Condition 边界，只修订 Template Standard projection。现有 Final Standard 继续绑定 v1；Final InterfaceTemplateIR 精确绑定 v2。详细任务状态见 `docs/planning/00-phase0-poc-plan.md`。
 
 ## 3. In Scope
 

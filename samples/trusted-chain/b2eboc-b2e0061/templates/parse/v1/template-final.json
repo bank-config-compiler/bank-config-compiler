@@ -2,7 +2,7 @@
   "contractVersion": "interface-template/v1",
   "templateId": "b2e0061-parse-common",
   "templateVersion": "v1",
-  "status": "DRAFT",
+  "status": "FINAL",
   "interfaceCode": "b2e0061",
   "direction": "PARSE",
   "standardRef": {
@@ -467,9 +467,9 @@
   ],
   "omissions": [],
   "review": {
-    "status": "PENDING",
-    "reviewer": null,
-    "reviewedAt": null,
-    "note": null
+    "status": "APPROVED",
+    "reviewer": "deng",
+    "reviewedAt": "2026-08-09T18:56:17+08:00",
+    "note": "确认准确 Draft 候选，可以冻结为 Final InterfaceTemplateIR v1。"
   }
 }

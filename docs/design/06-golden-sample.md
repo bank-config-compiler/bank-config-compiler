@@ -2,7 +2,7 @@
 
 ## Status
 
-Draft. The immutable P0-T2 DocIR/SchemaIR Review Golden and the separate reviewed P0-T3 Final SchemaIR v2 fixture both exist. `configuration-rules/v1` and v2 projection semantics are released and frozen; two reviewed Final InterfaceStandardIR fixtures plus two InterfaceTemplateIR Draft candidates and matching results exist. Final Template Review and Configuration Workbook golden work remain in progress.
+Draft. The immutable P0-T2 DocIR/SchemaIR Review Golden and the separate reviewed P0-T3 Final SchemaIR v2 fixture both exist. `configuration-rules/v1` and v2 projection semantics are released and frozen; two reviewed Final InterfaceStandardIR fixtures and two reviewed Final InterfaceTemplateIR fixtures with matching results exist. Configuration Workbook golden work remains in progress.
 
 ## 1. 目的
 
@@ -28,11 +28,11 @@ Golden sample 是 Prompt、四类 IR、三个 Validator、Workbook Generator 和
 - workbook 结构化 assertions；
 - Review notes 和规则来源。
 
-`samples/golden/b2eboc-b2e0061/` 只证明 P0-T2 审查前 Review baseline，其 byte hash 固定且 legacy SchemaIR 被 v2 Validator 拒绝。`samples/trusted-chain/b2eboc-b2e0061/` 保存已评审 Final SchemaIR v2、双方向 Final Standard、匹配 results 和 APPROVED reviews。SchemaIR hash 为 `sha256:4729131ad59fd29899895b1149a476c1f95b71f304cb43bd17749985f19e7162`；ASSEMBLY Standard hash 为 `sha256:9c77e0e92447907fa89d6ef705501dc0947d695998b80bb154476f696e9b982e`，PARSE Standard hash 为 `sha256:33efa544460ac19f216734712c1e6ae2610321ea17eb750eff35493ecca9d57e`。三份 Final 均为 0 ERROR、0 WARNING、0 blocking issue，`finalEligible=true`。
+`samples/golden/b2eboc-b2e0061/` 只证明 P0-T2 审查前 Review baseline，其 byte hash 固定且 legacy SchemaIR 被 v2 Validator 拒绝。`samples/trusted-chain/b2eboc-b2e0061/` 保存已评审 Final SchemaIR v2、双方向 Final Standard/Template、匹配 results 和 APPROVED reviews。SchemaIR hash 为 `sha256:4729131ad59fd29899895b1149a476c1f95b71f304cb43bd17749985f19e7162`；ASSEMBLY Standard hash 为 `sha256:9c77e0e92447907fa89d6ef705501dc0947d695998b80bb154476f696e9b982e`，PARSE Standard hash 为 `sha256:33efa544460ac19f216734712c1e6ae2610321ea17eb750eff35493ecca9d57e`。SchemaIR 与两份 Standard 均为 0 ERROR、0 WARNING、0 blocking issue，`finalEligible=true`。ASSEMBLY Template hash 为 `sha256:b9966a449ddc29e08fa29c6cf7838273ce3cab91e00dbb38092767d21af2f561`，保留 4 个经接受 omission 和 4 个非阻塞 Warning；PARSE Template hash 为 `sha256:16eb305b6ac3944f28cb1060b943fdfc2d471f69e6bf8ea52ce059c797fb22f9`，0 WARNING；两者均为 0 ERROR、0 blocking issue，`finalEligible=true`。
 
 ## 3. 规则来源边界
 
-具体 Rule ID、FIELD、FUNCTION 和 `mappingRuleName` 只能来自适用的已发布规则版本。现有 Final Standard 精确引用 `configuration-rules/v1`，Template Draft 精确引用 `configuration-rules/v2`。正式导出可以证明 b2e0061 实际配置和调用形态，但必须先经规则包治理和人工确认，不能被测试直接当作 expected IR。不得为满足覆盖创建占位业务标识或内联 Mapping entries。
+具体 Rule ID、FIELD、FUNCTION 和 `mappingRuleName` 只能来自适用的已发布规则版本。现有 Final Standard 精确引用 `configuration-rules/v1`，Final Template 精确引用 `configuration-rules/v2`。正式导出可以证明 b2e0061 实际配置和调用形态，但必须先经规则包治理和人工确认，不能被测试直接当作 expected IR。不得为满足覆盖创建占位业务标识或内联 Mapping entries。
 
 Standard 与 Template fixture 必须分别记录实际使用的规则版本。模板必须绑定 expected Standard 的 stable ID、version 和 content hash。
 
@@ -129,9 +129,6 @@ Legend
 
 ## 8. 当前执行边界
 
-`configuration-rules/v1`、`configuration-rules/v2`、Standard runtime 和双方向 Final Standard 已冻结；Template Validator 和双方向 Draft/result 已实现。P0-T3 当前继续：
-
-- Human Review 并冻结双方向 Final InterfaceTemplateIR fixture/result；
-- expected Configuration Workbook 和相关 assertions。
+`configuration-rules/v1`、`configuration-rules/v2`、Standard/Template runtime、双方向 Final Standard/Template 与匹配 validation results 已冻结。P0-T3 当前继续 expected Configuration Workbook 和相关 assertions。
 
 这些资产必须按 Final SchemaIR → Standard → RELEASED Template rules → Template → Workbook 顺序补齐。P0-T2 expected artifacts 不改写；SchemaIR v2 Final fixture 已落实两个方向的 `UTF-8` Human/银行 evidence，并按已确认 canonical content hash 冻结。ASSEMBLY Final Standard 为 36 fields、3 XML Keys、1 condition，hash 为 `sha256:9c77e0e92447907fa89d6ef705501dc0947d695998b80bb154476f696e9b982e`；PARSE Final Standard 为 19 fields、3 XML Keys、4 approved differences，hash 为 `sha256:33efa544460ac19f216734712c1e6ae2610321ea17eb750eff35493ecca9d57e`。规则包 v1/v2 均保持冻结；v2 仍使用正式导出观察到的 5 个 Function、String 类型、字符长度默认 `STANDARD_1`、MAPPING 和 Replacement 契约，不得把 Function 或 Mapping 子集扩张成全量 catalog。

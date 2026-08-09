@@ -5,10 +5,10 @@
     "artifactId": "b2e0061-assembly-common",
     "artifactVersion": "v1",
     "artifactContractVersion": "interface-template/v1",
-    "contentHash": "sha256:356b83c1aff90d83d82fa3bbc14f7fe8277c34605a3d5edb4cb99abd71c49957"
+    "contentHash": "sha256:b9966a449ddc29e08fa29c6cf7838273ce3cab91e00dbb38092767d21af2f561"
   },
   "status": "passed_with_warnings",
-  "finalEligible": false,
+  "finalEligible": true,
   "summary": {
     "templateId": "b2e0061-assembly-common",
     "interfaceCode": "b2e0061",
@@ -16,9 +16,9 @@
     "rulePackageVersion": "v2",
     "fieldConfigCount": 26,
     "errorCount": 0,
-    "warningCount": 10,
+    "warningCount": 4,
     "infoCount": 0,
-    "blockingCount": 10
+    "blockingCount": 0
   },
   "coverage": {
     "valueBindingCount": 25,
@@ -27,7 +27,7 @@
     "fieldValueExpressionCount": 25,
     "xmlKeyExpressionCount": 3,
     "omissionCount": 4,
-    "approvedOmissionCount": 0,
+    "approvedOmissionCount": 4,
     "uncertainFieldConfigCount": 0,
     "functionInvocationCount": 4,
     "mappingExpressionCount": 0,
@@ -36,73 +36,31 @@
   "issues": [
     {
       "severity": "WARNING",
-      "blocking": true,
+      "blocking": false,
       "code": "MISSING_TEMPLATE_FIELD",
       "path": "omissions.b2e0061-assembly-bocb2e-trans-trn-b2e0061-rq-b2e0061-rq-bocflag",
       "message": "ASSEMBLY scalar Standard field is intentionally not represented by a Template row."
     },
     {
       "severity": "WARNING",
-      "blocking": true,
+      "blocking": false,
       "code": "MISSING_TEMPLATE_FIELD",
       "path": "omissions.b2e0061-assembly-bocb2e-trans-trn-b2e0061-rq-b2e0061-rq-fractn-actnam",
       "message": "ASSEMBLY scalar Standard field is intentionally not represented by a Template row."
     },
     {
       "severity": "WARNING",
-      "blocking": true,
+      "blocking": false,
       "code": "MISSING_TEMPLATE_FIELD",
       "path": "omissions.b2e0061-assembly-bocb2e-trans-trn-b2e0061-rq-b2e0061-rq-toactn-tobknm",
       "message": "ASSEMBLY scalar Standard field is intentionally not represented by a Template row."
     },
     {
       "severity": "WARNING",
-      "blocking": true,
+      "blocking": false,
       "code": "MISSING_TEMPLATE_FIELD",
       "path": "omissions.b2e0061-assembly-bocb2e-trans-trn-b2e0061-rq-b2e0061-rq-toactn-toname",
       "message": "ASSEMBLY scalar Standard field is intentionally not represented by a Template row."
-    },
-    {
-      "severity": "WARNING",
-      "blocking": true,
-      "code": "OMISSION_REVIEW_NOT_APPROVED",
-      "path": "omissions[0].reviewDisposition",
-      "message": "Omission requires an approved Human Review before Final use."
-    },
-    {
-      "severity": "WARNING",
-      "blocking": true,
-      "code": "OMISSION_REVIEW_NOT_APPROVED",
-      "path": "omissions[1].reviewDisposition",
-      "message": "Omission requires an approved Human Review before Final use."
-    },
-    {
-      "severity": "WARNING",
-      "blocking": true,
-      "code": "OMISSION_REVIEW_NOT_APPROVED",
-      "path": "omissions[2].reviewDisposition",
-      "message": "Omission requires an approved Human Review before Final use."
-    },
-    {
-      "severity": "WARNING",
-      "blocking": true,
-      "code": "OMISSION_REVIEW_NOT_APPROVED",
-      "path": "omissions[3].reviewDisposition",
-      "message": "Omission requires an approved Human Review before Final use."
-    },
-    {
-      "severity": "WARNING",
-      "blocking": true,
-      "code": "REVIEW_NOT_APPROVED",
-      "path": "review.status",
-      "message": "Human Review must approve the complete Template before Final use."
-    },
-    {
-      "severity": "WARNING",
-      "blocking": true,
-      "code": "ARTIFACT_NOT_FINAL",
-      "path": "status",
-      "message": "Draft artifacts are not eligible for the trusted chain."
     }
   ]
 }

@@ -2,7 +2,7 @@
   "contractVersion": "interface-template/v1",
   "templateId": "b2e0061-assembly-common",
   "templateVersion": "v1",
-  "status": "DRAFT",
+  "status": "FINAL",
   "interfaceCode": "b2e0061",
   "direction": "ASSEMBLY",
   "standardRef": {
@@ -1613,40 +1613,40 @@
     {
       "standardFieldRef": "b2e0061-assembly-bocb2e-trans-trn-b2e0061-rq-b2e0061-rq-fractn-actnam",
       "reason": "正式导出依赖同目标多行业务 Condition；P0 不选择任一条件分支。",
-      "reviewDisposition": "PENDING",
-      "reviewer": null,
-      "reviewedAt": null,
-      "reviewNote": null
+      "reviewDisposition": "ACCEPTED",
+      "reviewer": "deng",
+      "reviewedAt": "2026-08-09T18:56:17+08:00",
+      "reviewNote": "确认 P0 不擅自选择同目标业务 Condition 分支，接受该 omission。"
     },
     {
       "standardFieldRef": "b2e0061-assembly-bocb2e-trans-trn-b2e0061-rq-b2e0061-rq-toactn-toname",
       "reason": "正式导出依赖同目标多行业务 Condition；P0 不选择任一条件分支。",
-      "reviewDisposition": "PENDING",
-      "reviewer": null,
-      "reviewedAt": null,
-      "reviewNote": null
+      "reviewDisposition": "ACCEPTED",
+      "reviewer": "deng",
+      "reviewedAt": "2026-08-09T18:56:17+08:00",
+      "reviewNote": "确认 P0 不擅自选择同目标业务 Condition 分支，接受该 omission。"
     },
     {
       "standardFieldRef": "b2e0061-assembly-bocb2e-trans-trn-b2e0061-rq-b2e0061-rq-toactn-tobknm",
       "reason": "正式导出包含条件 CONCATENATE 与无条件 EMPTY 的同目标多行配置；P0 不选择分支。",
-      "reviewDisposition": "PENDING",
-      "reviewer": null,
-      "reviewedAt": null,
-      "reviewNote": null
+      "reviewDisposition": "ACCEPTED",
+      "reviewer": "deng",
+      "reviewedAt": "2026-08-09T18:56:17+08:00",
+      "reviewNote": "确认 P0 不擅自选择同目标业务 Condition 分支，接受该 omission。"
     },
     {
       "standardFieldRef": "b2e0061-assembly-bocb2e-trans-trn-b2e0061-rq-b2e0061-rq-bocflag",
       "reason": "正式导出包含条件值与另一固定值的同目标多行配置；P0 不选择分支。",
-      "reviewDisposition": "PENDING",
-      "reviewer": null,
-      "reviewedAt": null,
-      "reviewNote": null
+      "reviewDisposition": "ACCEPTED",
+      "reviewer": "deng",
+      "reviewedAt": "2026-08-09T18:56:17+08:00",
+      "reviewNote": "确认 P0 不擅自选择同目标业务 Condition 分支，接受该 omission。"
     }
   ],
   "review": {
-    "status": "PENDING",
-    "reviewer": null,
-    "reviewedAt": null,
-    "note": null
+    "status": "APPROVED",
+    "reviewer": "deng",
+    "reviewedAt": "2026-08-09T18:56:17+08:00",
+    "note": "确认准确 Draft 候选及四条 ASSEMBLY omission，可以冻结为 Final InterfaceTemplateIR v1。"
   }
 }
