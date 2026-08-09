@@ -5,10 +5,10 @@
     "artifactId": "b2e0061-assembly-standard",
     "artifactVersion": "v1",
     "artifactContractVersion": "interface-standard/v1",
-    "contentHash": "sha256:34691505230a063e7b0c92798f6bd81b7fc41c5a988b0476195fcc23ec778af4"
+    "contentHash": "sha256:9c77e0e92447907fa89d6ef705501dc0947d695998b80bb154476f696e9b982e"
   },
-  "status": "passed_with_warnings",
-  "finalEligible": false,
+  "status": "passed",
+  "finalEligible": true,
   "summary": {
     "standardId": "b2e0061-assembly-standard",
     "interfaceCode": "b2e0061",
@@ -16,9 +16,9 @@
     "rulePackageVersion": "v1",
     "fieldCount": 36,
     "errorCount": 0,
-    "warningCount": 4,
+    "warningCount": 0,
     "infoCount": 0,
-    "blockingCount": 4
+    "blockingCount": 0
   },
   "coverage": {
     "scalarFieldCount": 29,
@@ -26,36 +26,7 @@
     "xmlKeyCount": 3,
     "conditionalConstraintCount": 1,
     "differenceCount": 0,
-    "uncertainFieldCount": 1
+    "uncertainFieldCount": 0
   },
-  "issues": [
-    {
-      "severity": "WARNING",
-      "blocking": true,
-      "code": "UNCERTAIN_STANDARD_FIELD",
-      "path": "b2e0061-assembly-bocb2e-trans-trn-b2e0061-rq-b2e0061-rq-toactn-email",
-      "message": "Uncertain Standard fields cannot enter a Final artifact."
-    },
-    {
-      "severity": "WARNING",
-      "blocking": true,
-      "code": "UNKNOWN_CONSTRAINT",
-      "path": "b2e0061-assembly-bocb2e-trans-trn-b2e0061-rq-b2e0061-rq-toactn-email.regex",
-      "message": "UNKNOWN constraints cannot enter a Final Standard."
-    },
-    {
-      "severity": "WARNING",
-      "blocking": true,
-      "code": "REVIEW_NOT_APPROVED",
-      "path": "review.status",
-      "message": "Human Review must be approved before Final use."
-    },
-    {
-      "severity": "WARNING",
-      "blocking": true,
-      "code": "ARTIFACT_NOT_FINAL",
-      "path": "status",
-      "message": "Draft artifacts are not eligible for the trusted chain."
-    }
-  ]
+  "issues": []
 }

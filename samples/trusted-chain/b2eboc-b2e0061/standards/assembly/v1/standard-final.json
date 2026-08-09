@@ -2,12 +2,12 @@
   "contractVersion": "interface-standard/v1",
   "standardId": "b2e0061-assembly-standard",
   "standardVersion": "v1",
-  "status": "DRAFT",
+  "status": "FINAL",
   "review": {
-    "status": "PENDING",
-    "reviewer": null,
-    "reviewedAt": null,
-    "note": null
+    "status": "APPROVED",
+    "reviewer": "deng",
+    "reviewedAt": "2026-08-09T16:18:27+08:00",
+    "note": "确认 email 不配置精确 Regex；其余字段投影与银行条件可冻结。"
   },
   "interfaceCode": "b2e0061",
   "direction": "ASSEMBLY",
@@ -1330,7 +1330,7 @@
         "value": null
       },
       "regex": {
-        "state": "UNKNOWN",
+        "state": "NO_CONSTRAINT",
         "value": null
       },
       "dataType": "String",
@@ -1350,12 +1350,17 @@
           "kind": "FINAL_SCHEMA_IR",
           "sourceRef": "Root.bocb2e.trans.trn-b2e0061-rq.b2e0061-rq.toactn.email",
           "note": "字段结构与银行约束来自已冻结的 Final SchemaIR v2。"
+        },
+        {
+          "kind": "HUMAN_CONFIRMATION",
+          "sourceRef": "samples/trusted-chain/b2eboc-b2e0061/standards/standard-review.md#human-review-conclusions",
+          "note": "Human 确认不配置精确 email Regex，保留 SchemaIR email 格式语义与长度 3-80。"
         }
       ],
-      "confidence": 0.8,
-      "uncertain": true,
-      "uncertainReason": "Final SchemaIR 只确认 email 格式语义，目标系统采用的 Regex 仍需 Human Review。",
-      "reviewNote": "请确认目标系统 email Regex。"
+      "confidence": 1.0,
+      "uncertain": false,
+      "uncertainReason": null,
+      "reviewNote": "Human 确认不配置精确 email Regex；保留 SchemaIR email 格式语义与长度 3-80。"
     },
     {
       "fieldId": "b2e0061-assembly-bocb2e-trans-trn-b2e0061-rq-b2e0061-rq-trnamt",

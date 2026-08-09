@@ -2,7 +2,7 @@
 
 ## Status
 
-Draft. Logical contract confirmed; `configuration-rules/v1` is released and immutable. InterfaceStandardIR machine wire/Validator and two Standard Drafts are implemented; Final Standard Human Review and InterfaceTemplateIR machine wire remain P0-T3 work.
+Draft. Logical contract confirmed; `configuration-rules/v1` is released and immutable. InterfaceStandardIR machine wire/Validator and two reviewed Final Standards are implemented and frozen; InterfaceTemplateIR machine wire remains P0-T3 work.
 
 ## 1. 目的与边界
 

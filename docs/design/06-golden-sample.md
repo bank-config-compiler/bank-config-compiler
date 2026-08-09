@@ -2,7 +2,7 @@
 
 ## Status
 
-Draft. The immutable P0-T2 DocIR/SchemaIR Review Golden and the separate reviewed P0-T3 Final SchemaIR v2 fixture both exist. `configuration-rules/v1` is released; two InterfaceStandardIR Draft candidates and matching results now exist, while Final Standard Review, InterfaceTemplateIR and Configuration Workbook golden work remain in progress.
+Draft. The immutable P0-T2 DocIR/SchemaIR Review Golden and the separate reviewed P0-T3 Final SchemaIR v2 fixture both exist. `configuration-rules/v1` is released; two reviewed Final InterfaceStandardIR fixtures and matching results now exist, while InterfaceTemplateIR and Configuration Workbook golden work remain in progress.
 
 ## 1. 目的
 
@@ -28,7 +28,7 @@ Golden sample 是 Prompt、四类 IR、三个 Validator、Workbook Generator 和
 - workbook 结构化 assertions；
 - Review notes 和规则来源。
 
-`samples/golden/b2eboc-b2e0061/` 只证明 P0-T2 审查前 Review baseline，其 byte hash 固定且 legacy SchemaIR 被 v2 Validator 拒绝。`samples/trusted-chain/b2eboc-b2e0061/` 保存已评审 Final SchemaIR v2、匹配 result 和 APPROVED review；准确 hash 为 `sha256:4729131ad59fd29899895b1149a476c1f95b71f304cb43bd17749985f19e7162`，结果为 0 ERROR、0 WARNING、0 blocking issue，`finalEligible=true`。同目录还保存 ASSEMBLY/PARSE Standard Draft、匹配 result 和 Standard Review 入口；两个 Draft 均为 0 ERROR，但仍因明确的 Human Review 项而 `finalEligible=false`。
+`samples/golden/b2eboc-b2e0061/` 只证明 P0-T2 审查前 Review baseline，其 byte hash 固定且 legacy SchemaIR 被 v2 Validator 拒绝。`samples/trusted-chain/b2eboc-b2e0061/` 保存已评审 Final SchemaIR v2、双方向 Final Standard、匹配 results 和 APPROVED reviews。SchemaIR hash 为 `sha256:4729131ad59fd29899895b1149a476c1f95b71f304cb43bd17749985f19e7162`；ASSEMBLY Standard hash 为 `sha256:9c77e0e92447907fa89d6ef705501dc0947d695998b80bb154476f696e9b982e`，PARSE Standard hash 为 `sha256:33efa544460ac19f216734712c1e6ae2610321ea17eb750eff35493ecca9d57e`。三份 Final 均为 0 ERROR、0 WARNING、0 blocking issue，`finalEligible=true`。
 
 ## 3. 规则来源边界
 
@@ -129,10 +129,9 @@ Legend
 
 ## 8. 当前执行边界
 
-`configuration-rules/v1` 已发布并冻结；Standard runtime 和双方向 Draft 已完成，P0-T3 可以继续以下工作：
+`configuration-rules/v1`、Standard runtime 和双方向 Final Standard 已冻结，P0-T3 可以继续以下工作：
 
-- 处置 email Regex 与四条响应长度差异，并冻结两个 Final InterfaceStandardIR 与匹配 result；
 - InterfaceTemplateIR fixture 与 Template Validator expected result；
 - expected Configuration Workbook 和相关 assertions。
 
-这些资产必须按 Final SchemaIR → Standard → Template → Workbook 顺序补齐。P0-T2 expected artifacts 不改写；SchemaIR v2 Final fixture 已落实两个方向的 `UTF-8` Human/银行 evidence，并按已确认 canonical content hash 冻结。ASSEMBLY Standard Draft 为 36 fields、3 XML Keys、1 condition，hash 为 `sha256:34691505230a063e7b0c92798f6bd81b7fc41c5a988b0476195fcc23ec778af4`；PARSE Standard Draft 为 19 fields、3 XML Keys、4 differences，hash 为 `sha256:28dfde20c7190d5eccc93558d0726e7675656c4e6029b77f3018e76807fcacb2`。规则包 v1 已冻结；正式导出观察到的 5 个 Function、String 类型、字符长度默认 `STANDARD_1`、MAPPING 和 Replacement 契约必须进入专项 golden，但不得把 Function 或 Mapping 子集扩张成全量 catalog。后续继续冻结 Final Standard、Template 和 Workbook fixture。
+这些资产必须按 Final SchemaIR → Standard → Template → Workbook 顺序补齐。P0-T2 expected artifacts 不改写；SchemaIR v2 Final fixture 已落实两个方向的 `UTF-8` Human/银行 evidence，并按已确认 canonical content hash 冻结。ASSEMBLY Final Standard 为 36 fields、3 XML Keys、1 condition，hash 为 `sha256:9c77e0e92447907fa89d6ef705501dc0947d695998b80bb154476f696e9b982e`；PARSE Final Standard 为 19 fields、3 XML Keys、4 approved differences，hash 为 `sha256:33efa544460ac19f216734712c1e6ae2610321ea17eb750eff35493ecca9d57e`。规则包 v1 已冻结；正式导出观察到的 5 个 Function、String 类型、字符长度默认 `STANDARD_1`、MAPPING 和 Replacement 契约必须进入专项 golden，但不得把 Function 或 Mapping 子集扩张成全量 catalog。后续继续冻结 Template 和 Workbook fixture。

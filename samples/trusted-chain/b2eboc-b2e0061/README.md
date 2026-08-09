@@ -7,12 +7,12 @@
 - `schemair-final.json`：`schemair/v2`、`b2eboc-b2e0061-schema@v1`，49 个 fields；
 - `schemair-validation-result.json`：与 Final canonical content hash 精确匹配的 v2 结果；
 - `schemair-review.md`：Human 事实结论与准确 hash 确认记录。
-- `standards/assembly/v1/`：ASSEMBLY InterfaceStandardIR Draft 与匹配 validation result；
-- `standards/parse/v1/`：PARSE InterfaceStandardIR Draft 与匹配 validation result；
-- `standards/standard-review.md`：双方向 Standard 的准确候选 hash 与 Human Review 门禁。
+- `standards/assembly/v1/`：ASSEMBLY Final InterfaceStandardIR 与匹配 validation result；
+- `standards/parse/v1/`：PARSE Final InterfaceStandardIR 与匹配 validation result；
+- `standards/standard-review.md`：双方向 Standard 的准确 hash 确认与 Human Review 记录。
 
 Final hash 为 `sha256:4729131ad59fd29899895b1149a476c1f95b71f304cb43bd17749985f19e7162`。当前结果为 0 ERROR、0 WARNING、34 INFO、0 blocking issue、`finalEligible=true`；两方向 XML encoding 均保存 Human 与银行线下确认的 `UTF-8` evidence。
 
 `deng` 已确认该准确 hash。任何 SchemaIR JSON 语义值变化都会使 Review 和 validation result 同时失效，必须重新复验和确认。
 
-Standard Draft 当前均为 0 ERROR，但仍包含 lifecycle、email Regex 和 PARSE length difference 的 blocking Review 项，不能作为 Final Standard 进入 Template 阶段。
+两份 Final Standard 均为 0 ERROR、0 WARNING、0 blocking issue、`finalEligible=true`。ASSEMBLY hash 为 `sha256:9c77e0e92447907fa89d6ef705501dc0947d695998b80bb154476f696e9b982e`；PARSE hash 为 `sha256:33efa544460ac19f216734712c1e6ae2610321ea17eb750eff35493ecca9d57e`。`deng` 已确认两个准确 hash，可供后续 Template 精确绑定。

@@ -2,12 +2,12 @@
   "contractVersion": "interface-standard/v1",
   "standardId": "b2e0061-parse-standard",
   "standardVersion": "v1",
-  "status": "DRAFT",
+  "status": "FINAL",
   "review": {
-    "status": "PENDING",
-    "reviewer": null,
-    "reviewedAt": null,
-    "note": null
+    "status": "APPROVED",
+    "reviewer": "deng",
+    "reviewedAt": "2026-08-09T16:18:27+08:00",
+    "note": "确认顶层及明细 rspcod/rspmsg 使用 Standard 默认长度 50/500。"
   },
   "interfaceCode": "b2e0061",
   "direction": "PARSE",
@@ -622,10 +622,10 @@
             "STD.DIFFERENCE.PRESERVE"
           ],
           "review": {
-            "status": "PENDING",
-            "reviewer": null,
-            "reviewedAt": null,
-            "note": null
+            "status": "APPROVED",
+            "reviewer": "deng",
+            "reviewedAt": "2026-08-09T16:18:27+08:00",
+            "note": "确认 rspcod 使用 0-50 的 Standard 默认长度。"
           }
         }
       ],
@@ -703,10 +703,10 @@
             "STD.DIFFERENCE.PRESERVE"
           ],
           "review": {
-            "status": "PENDING",
-            "reviewer": null,
-            "reviewedAt": null,
-            "note": null
+            "status": "APPROVED",
+            "reviewer": "deng",
+            "reviewedAt": "2026-08-09T16:18:27+08:00",
+            "note": "确认 rspmsg 使用 0-500 的 Standard 默认长度。"
           }
         }
       ],
@@ -880,10 +880,10 @@
             "STD.DIFFERENCE.PRESERVE"
           ],
           "review": {
-            "status": "PENDING",
-            "reviewer": null,
-            "reviewedAt": null,
-            "note": null
+            "status": "APPROVED",
+            "reviewer": "deng",
+            "reviewedAt": "2026-08-09T16:18:27+08:00",
+            "note": "确认 rspcod 使用 0-50 的 Standard 默认长度。"
           }
         }
       ],
@@ -961,10 +961,10 @@
             "STD.DIFFERENCE.PRESERVE"
           ],
           "review": {
-            "status": "PENDING",
-            "reviewer": null,
-            "reviewedAt": null,
-            "note": null
+            "status": "APPROVED",
+            "reviewer": "deng",
+            "reviewedAt": "2026-08-09T16:18:27+08:00",
+            "note": "确认 rspmsg 使用 0-500 的 Standard 默认长度。"
           }
         }
       ],
