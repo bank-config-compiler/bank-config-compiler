@@ -2,14 +2,21 @@
 
 ## Status
 
-Draft candidate. Maintainer 与 business reviewer 尚未对准确候选双签；不得用于 Final IR。
+Released Review Record.
 
 ## Governance
 
 - Maintainer：`deng`
 - Business reviewer：`configuration-reviewer`
-- Confirmation date：待双签后按 Asia/Shanghai 当日填写。
-- Release disposition：`DRAFT`。
+- Confirmation date：`2026-08-09`（Asia/Shanghai）。
+- Release disposition：`RELEASED`；v2 内容冻结。
+
+## Release Confirmation
+
+- Candidate：`f2cf454b53541ccfa171f8f3ede59dae9e609583`
+- Maintainer `deng`：确认该准确候选可以发布为 `configuration-rules/v2 RELEASED`。
+- Business reviewer `configuration-reviewer`：确认该准确候选可以发布为 `configuration-rules/v2 RELEASED`。
+- 发布转换只修改生命周期 metadata、发布记录、发布模式测试和状态文档，不增加或修改规则、FIELD、Function 或 Mapping 事实。
 
 ## Candidate Boundary
 
@@ -42,12 +49,12 @@ v2 完整继承 v1 已发布的 Rule ID、FIELD、Function、Mapping 与 process
 ## Release Checks
 
 - [x] 四份 YAML 可由 `yaml.safe_load` 安全加载并通过现有严格 loader。
-- [x] v2 目录名、package version、四文件 status 与 DRAFT lifecycle 一致。
+- [x] v2 目录名、package version、四文件 status、confirmation date 与 RELEASED lifecycle 一致。
 - [x] Rule ID、FIELD、Function、Mapping 和 processing-policy catalog 与 v1 完全一致。
 - [x] 只有方向相关 Standard projection 规则及其解释发生语义变化。
 - [x] Standard 与 Template 可以引用不同规则版本的边界已记录。
 - [x] README、ADR、Phase0 状态与候选行为一致。
-- [ ] Maintainer `deng` 对准确候选明确确认。
-- [ ] Business reviewer `configuration-reviewer` 对同一准确候选明确确认。
+- [x] Maintainer `deng` 对准确候选 `f2cf454b53541ccfa171f8f3ede59dae9e609583` 明确确认。
+- [x] Business reviewer `configuration-reviewer` 对同一准确候选明确确认。
 
 任何规则事实、catalog 或文档语义修改都会使已有确认失效，必须重新验证并重新双签。

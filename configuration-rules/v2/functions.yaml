@@ -15,7 +15,7 @@
 #   resultDataType: String               # 所有函数输出均为 String。
 
 packageVersion: v2
-status: DRAFT
+status: RELEASED
 
 evidenceSources:
   - source: TARGET_SYSTEM_FORMAL_EXPORT

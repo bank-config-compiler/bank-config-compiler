@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted. Amends ADR-0008. Implemented by `configuration-rules/v2` after its release gate.
+Accepted. Amends ADR-0008. Implemented by the released `configuration-rules/v2`.
 
 ## Date
 
@@ -90,4 +90,4 @@ Why not chosen:
 - ASSEMBLY coverage 和 target 唯一性基于 `standardTarget.standardFieldRef`；PARSE target 唯一性基于 `parseTarget.parseFieldRef`。
 - PARSE collection context 必须验证表达式中的每个 Standard source 都位于对应 `standardSource` 集合节点下；零 source 表达式只依赖已建立的 collection iteration context。
 - Workbook 对 ASSEMBLY 展示显式 Template projection；对 PARSE 从绑定 Final Standard 展开所有 source projection，并与 Parse target 分列展示。
-- `configuration-rules/v2` 在双 reviewer 发布前只能用于 DRAFT 候选验证，不能支撑 Final Template。
+- `configuration-rules/v2` 已经双 reviewer 对准确候选确认并发布；Final Template 必须精确引用该 `RELEASED` 版本。

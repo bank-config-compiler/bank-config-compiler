@@ -2,7 +2,7 @@
 
 ## Status
 
-Active. P0-T3 is In Progress. `configuration-rules/v1` remains released and immutable; a v2 DRAFT candidate now carries the direction-specific Standard projection amendment required by InterfaceTemplateIR and must pass a new double-review release gate before Template implementation can continue. SchemaIR v2 and InterfaceStandardIR runtimes/final fixtures remain frozen at their confirmed hashes.
+Active. P0-T3 is In Progress. `configuration-rules/v1` remains released and immutable; v2 has passed its double-review release gate and is also released and frozen. SchemaIR v2 and InterfaceStandardIR runtimes/final fixtures remain frozen at their confirmed hashes. InterfaceTemplateIR runtime is the current implementation batch.
 
 ## 1. 目标与边界
 
@@ -31,7 +31,7 @@ Phase0 不实现 UI、JSON 银行报文、目标系统 Import JSON/API、Excel �
 | P0-T0：Bootstrap | Done | 无 | 无 | `ingest` 与 `check --profile raw` 保留；legacy `phase0a` 已在 SchemaIR v2 批次移除。 |
 | P0-T1：`b2e0061` IR candidate / Review | Done | P0-T0 | 无 | Candidate DocIR / SchemaIR 经 Human Review 更新，正式 IR 设计和 reference 边界清晰。 |
 | P0-T2：Review Golden sample boundary | Done | P0-T1 | 无 | Expected DocIR、修订前 expected SchemaIR、expected review notes 和 v1 validation result 已冻结为审查前 Golden。 |
-| P0-T3：Trusted chain | In Progress | P0-T2、`configuration-rules/v1` RELEASED | `configuration-rules/v2` 方向性 projection 候选等待双签发布；Template/Workbook 尚未实现 | 完成两个配置 IR/Validator、Workbook 和完整 trusted-chain regression。 |
+| P0-T3：Trusted chain | In Progress | P0-T2、`configuration-rules/v1` 与 v2 RELEASED | Template/Workbook 尚未实现 | 完成两个配置 IR/Validator、Workbook 和完整 trusted-chain regression。 |
 | P0-T4：Draft generators | Blocked | P0-T3 | 三个 Final contract、Validator 和 trusted-chain 尚未冻结 | Provider-neutral generator interface 与四类确定性 stub 可运行，且无法绕过 Validator/Human Review 写入 Final。 |
 
 状态定义：
@@ -50,7 +50,7 @@ Phase0 不实现 UI、JSON 银行报文、目标系统 Import JSON/API、Excel �
 - SchemaIR v2 Validator、canonical hash/result helper、严格 workspace JSON I/O 及自动化测试
 - `samples/trusted-chain/b2eboc-b2e0061/` 下 49-field Final、匹配 validation result 和 APPROVED review 记录；准确 hash 为 `sha256:4729131ad59fd29899895b1149a476c1f95b71f304cb43bd17749985f19e7162`
 - `configuration-rules/v1` RELEASED、规则解释、双 reviewer 确认和 Review 记录
-- `configuration-rules/v2` DRAFT：catalog 与 v1 一致，只修订 `TPL.BIND.STANDARD_PROJECTION`；等待准确候选双签
+- `configuration-rules/v2` RELEASED：catalog 与 v1 一致，只修订 `TPL.BIND.STANDARD_PROJECTION`；准确候选 `f2cf454b53541ccfa171f8f3ede59dae9e609583` 已完成双签
 - 规则包 safe loader、严格 schema/semantic validator、聚合错误与 RELEASED/DRAFT 正反向测试
 - `interface-standard/v1`、Standard Validator、双方向 Final/results 与 APPROVED Review；ASSEMBLY hash `sha256:9c77e0e92447907fa89d6ef705501dc0947d695998b80bb154476f696e9b982e`，PARSE hash `sha256:33efa544460ac19f216734712c1e6ae2610321ea17eb750eff35493ecca9d57e`
 - PR #12 / merge commit `2de9f69`：最新 requirements、design、ADR amendment、reference 边界和规则事实收束
@@ -65,13 +65,13 @@ Phase0 不实现 UI、JSON 银行报文、目标系统 Import JSON/API、Excel �
 | SchemaIR validation result | 保存 identity/version/contract/hash、`finalEligible`、summary、coverage 和 blocking issues | 无；已存在与 Final hash 匹配且 `finalEligible=true` 的结果 | 已完成 |
 | `workspace.py` | `raw` profile；支持受边界保护的嵌套严格 JSON I/O | Standard/Template 固定路径和完整 `phase0` 链路选择尚未实现 | P0-T3 Workbook |
 | `cli.py` | `ingest` 和 `check --profile raw`；`phase0a` 已移除 | 完整 `phase0` selector/check 与 Workbook 入口尚未实现 | P0-T3 Workbook |
-| 规则资产 | v1 已于 2026-08-06 发布并冻结；v2 DRAFT 继承 catalog 并修订方向性 Standard projection | v2 必须经 maintainer/business reviewer 对准确候选双签后 RELEASED | P0-T3 Template 前置门禁 |
+| 规则资产 | v1 已于 2026-08-06 发布并冻结；v2 继承 catalog 并修订方向性 Standard projection，已于 2026-08-09 发布并冻结 | 无；Template 必须显式绑定适用的 RELEASED 规则版本 | 已完成 |
 | Standard | `interface-standard/v1`、result v1、Validator、双方向 Final/results 和 APPROVED Review 已实现 | 无；两份 Final identity/version/hash 已冻结 | 已完成 |
 | Template | 只有逻辑设计和正式导出证据 | 无 machine wire contract、Validator、Final fixture 或 validation result | P0-T3 Template |
 | Workbook | 只有七个 sheet 和来源矩阵设计 | 无 openpyxl Generator、回读 assertions 或确定性 regression | P0-T3 Workbook |
 | Draft generators | 未实现 | 四类核心 IR 仍依赖人工 fixture，Phase0 通过条件未满足 | P0-T4 |
 
-当前 regression、Final SchemaIR/Standard validation results 和 v1 双签发布记录说明 legacy baseline、SchemaIR/Standard/规则运行时稳定；v2 DRAFT 的机器通过不能代替双 reviewer 发布，也不能作为 InterfaceTemplateIR 已实现的证据。
+当前 regression、Final SchemaIR/Standard validation results 和 v1/v2 双签发布记录说明 legacy baseline、SchemaIR/Standard/规则运行时稳定；v2 发布只关闭 Template 的规则前置门禁，不能作为 InterfaceTemplateIR 已实现的证据。
 
 ## 3. 已确认迁移原则
 
@@ -385,22 +385,23 @@ Phase0 不实现 UI、JSON 银行报文、目标系统 Import JSON/API、Excel �
 - Verification：Final Standard golden equality、hash mismatch、完整 pytest、docs-sync、BOM、diff 和敏感信息检查。
 - Next starts when：Template 可以精确绑定两份 Final Standard。
 
-### Current Commit 4C：`configuration-rules/v2` DRAFT projection amendment
+### 已完成 Commit 4C：`configuration-rules/v2` DRAFT projection amendment
 
 - Suggested message：`feat: revise template projection rules`
+- Evidence：commit `f2cf454b53541ccfa171f8f3ede59dae9e609583`；`deng` 与 `configuration-reviewer` 均确认该准确候选可发布。
 - Scope/Files：新增 `configuration-rules/v2`，完整继承 v1 catalog，只修订 `TPL.BIND.STANDARD_PROJECTION`；加入 v2 DRAFT loader/catalog equality 回归、ADR-0010 和最小状态文档。不修改 v1、Final SchemaIR、Final Standard 或 Template runtime。
 - Completion signal：v2 可用 `require_released=False` 安全加载，默认 loader 明确拒绝；27/207/14/5/6 与 v1 完全一致，方向性 projection 差异可精确审查。
 - Review gate：展示本 commit SHA、完整验证结果以及 v1→v2 的精确语义 diff，等待 `deng` 与 `configuration-reviewer` 对同一准确候选双签。
 - Next starts when：两个角色均明确确认；任何规则、catalog 或解释语义变化都会使确认失效。
 
-### Future Commit 4D：发布 `configuration-rules/v2`
+### 已完成 Commit 4D：发布 `configuration-rules/v2`
 
 - Suggested message：`chore: release configuration rules v2`
 - Scope/Files：只修改 v2 四份 YAML lifecycle、confirmation date、review/README 与发布模式测试/状态文档，不增加规则或 catalog 事实。
 - Completion signal：v2 四文件为 `RELEASED`，review 记录准确候选与双 reviewer，默认 loader、完整 pytest/build/docs-sync 和内容检查全部通过。
 - Next starts when：发布 commit 成为当前开发基线，Template runtime 才能绑定 v2。
 
-### Future Commit 5A / 5B：InterfaceTemplateIR Draft runtime / Final freeze
+### Current Commit 5A / Future Commit 5B：InterfaceTemplateIR Draft runtime / Final freeze
 
 - Suggested messages：`feat: add InterfaceTemplateIR validation` / `chore: freeze reviewed interface templates`
 - Scope/Files：5A 绑定 RELEASED v2，冻结方向相关 Template/expression/processing contract、validator 与双向 Draft/results；5B 只提交获批 Final/results/review。

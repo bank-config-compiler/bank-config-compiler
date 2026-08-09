@@ -2,7 +2,7 @@
 
 ## Status
 
-Draft. Logical contract confirmed; `configuration-rules/v1` is released and immutable, while v2 direction-specific projection semantics await double-review release. InterfaceStandardIR machine wire/Validator and two reviewed Final Standards are implemented and frozen; InterfaceTemplateIR machine wire remains P0-T3 work.
+Draft. Logical contract confirmed; `configuration-rules/v1` and the v2 direction-specific projection semantics are released and immutable. InterfaceStandardIR machine wire/Validator and two reviewed Final Standards are implemented and frozen; InterfaceTemplateIR machine wire remains P0-T3 work.
 
 ## 1. 目的与边界
 

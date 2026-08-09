@@ -2,7 +2,7 @@
 
 ## Status
 
-Active. `v1` remains immutable and released; `v2` is a DRAFT candidate awaiting double review.
+Active. `v1` and `v2` are immutable released rule packages.
 
 ## Purpose
 
@@ -72,4 +72,4 @@ Active. `v1` remains immutable and released; `v2` is a DRAFT candidate awaiting 
 ## Available Versions
 
 - [`v1/`](v1/README.md)：接口无关、非全量的 BKL configuration rules 子集，已于 2026-08-06 发布并冻结。
-- [`v2/`](v2/README.md)：继承 v1 catalog、只修订方向相关 Standard projection 的 DRAFT 候选；双 reviewer 发布前不得支撑 Final IR。
+- [`v2/`](v2/README.md)：继承 v1 catalog、只修订方向相关 Standard projection；已于 2026-08-09 发布并冻结。

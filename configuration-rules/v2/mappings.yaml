@@ -1,5 +1,5 @@
 packageVersion: v2
-status: DRAFT
+status: RELEASED
 catalog:
   catalogId: BKL_MAPPING_RULE_SAMPLE
   sampleSubset: true

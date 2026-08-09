@@ -85,12 +85,12 @@ def test_loads_current_released_rule_package_and_builds_indexes() -> None:
     }
 
 
-def test_loads_v2_draft_with_only_directional_projection_semantics_changed() -> None:
+def test_loads_v2_released_with_only_directional_projection_semantics_changed() -> None:
     v1 = load_rule_package(RULE_PACKAGE_DIR)
     v2 = load_rule_package(RULE_PACKAGE_V2_DIR, require_released=False)
 
     assert v2.version == "v2"
-    assert v2.status == "DRAFT"
+    assert v2.status == "RELEASED"
     assert set(v2.rules_by_id) == set(v1.rules_by_id)
     assert v2.fields_by_direction == v1.fields_by_direction
     assert v2.functions_by_code == v1.functions_by_code
@@ -126,11 +126,11 @@ def test_loads_v2_draft_with_only_directional_projection_semantics_changed() -> 
         assert v2_document == v1_document
 
 
-def test_rejects_v2_draft_by_default() -> None:
-    with pytest.raises(RulePackageValidationError) as captured:
-        load_rule_package(RULE_PACKAGE_V2_DIR)
+def test_loads_v2_released_by_default() -> None:
+    package = load_rule_package(RULE_PACKAGE_V2_DIR)
 
-    assert validation_codes(captured.value) == {"RULE_PACKAGE_NOT_RELEASED"}
+    assert package.version == "v2"
+    assert package.status == "RELEASED"
 
 
 def test_rejects_legacy_interface_specific_rule_contract(tmp_path: Path) -> None:

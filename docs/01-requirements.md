@@ -200,7 +200,7 @@ InterfaceStandardIR 与 InterfaceTemplateIR 的权威目标系统规则来源位
 
 `configuration-rules/v1` 是根据正式导出、`bkl.md`、ASSEMBLY/PARSE 字段清单、Mapping 样例和业务确认建立的 BKL configuration rules 子集，不绑定具体银行接口，也不声称覆盖全量 catalog。Function catalog 只包含正式导出中实际观察到的条目，不使用 `bkl.md` 的 function 内容；Function 类型统一为 String。v1 已于 2026-08-06 发布为不可变的 `RELEASED` 版本，可以被 Final IR 精确引用。字符长度默认值已确认为 `STANDARD_1`；其他仍未知的系统默认值必须保持 `UNKNOWN`，不得从相近概念推断。
 
-`configuration-rules/v2` 继承 v1 的 Rule ID、FIELD、Function、Mapping 和 processing-policy catalog，只修订 `TPL.BIND.STANDARD_PROJECTION` 的方向相关语义。v2 在双 reviewer 确认前保持 `DRAFT`，只能用于候选验证；现有 Final SchemaIR/Standard 继续引用 v1，后续 Template 可在 v2 RELEASED 后独立引用 v2。
+`configuration-rules/v2` 继承 v1 的 Rule ID、FIELD、Function、Mapping 和 processing-policy catalog，只修订 `TPL.BIND.STANDARD_PROJECTION` 的方向相关语义。v2 已经双 reviewer 对准确候选确认并发布为 `RELEASED`；现有 Final SchemaIR/Standard 继续引用 v1，后续 Template 独立引用 v2，不自动迁移既有 Final IR。
 
 ## 8. 可信流程
 

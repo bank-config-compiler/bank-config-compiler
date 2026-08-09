@@ -2,7 +2,7 @@
 
 ## Status
 
-Draft candidate. Only candidate validation may use `require_released=False`; Final IR must wait for double review and RELEASED status.
+Released.
 
 ## Scope
 
@@ -32,15 +32,15 @@ Draft candidate. Only candidate validation may use `require_released=False`; Fin
 |---|---|
 | Package | `configuration-rules` |
 | Version | `v2` |
-| Status | `DRAFT` |
+| Status | `RELEASED` |
 | Maintainer | `deng` |
 | Business reviewer | `configuration-reviewer` |
-| Confirmation date | Pending double review |
+| Confirmation date | `2026-08-09` |
 | Target | BKL configuration rules subset |
 
-本版本从不可变 v1 创建，只修订 `TPL.BIND.STANDARD_PROJECTION` 的方向相关语义，不修改已发布 v1。当前双 reviewer 尚未确认准确候选，因此不得支撑 Final IR。
+本版本从不可变 v1 创建，只修订 `TPL.BIND.STANDARD_PROJECTION` 的方向相关语义，不修改已发布 v1。`review.md` 已记录两个角色对准确候选 `f2cf454b53541ccfa171f8f3ede59dae9e609583` 的明确确认；本目录自发布起冻结。
 
-仓库内 loader/validator 对本候选执行安全加载、严格 schema/semantic 校验和引用闭合检查时必须显式传入 `require_released=False`。默认 loader 在发布前拒绝本版本；该边界不会因候选验证而放宽。
+仓库内 loader/validator 默认接受本 `RELEASED` 版本，并执行安全加载、严格 schema/semantic 校验和引用闭合检查。历史 v1 继续可独立加载；调用方必须显式选择规则版本，不自动迁移已有 Final IR。
 
 v1 的 Rule ID、FIELD、Function、Mapping 与 processing-policy catalog 在 v2 中保持不变。ASSEMBLY 使用 `standardTarget.standardProjection` 显式镜像 Final Standard；PARSE 的 FIELD_REF 或 collection `standardSource` 保存 `standardFieldRef`，Validator 根据 Template 精确绑定的 Final Standard identity/version/content hash 派生 required、length 和 dataType。PARSE 不保存顶层单一 Standard source，也不重复保存 projection。
 
