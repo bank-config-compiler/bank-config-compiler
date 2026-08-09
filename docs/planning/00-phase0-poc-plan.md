@@ -2,7 +2,7 @@
 
 ## Status
 
-Active. P0-T3 is In Progress. `configuration-rules/v1` and v2 are released and immutable. SchemaIR v2, InterfaceStandardIR and InterfaceTemplateIR runtimes/final fixtures are frozen at their confirmed hashes. Configuration Workbook and the complete trusted-chain regression are the current gate.
+Active. P0-T3 is In Progress. `configuration-rules/v1` and v2 are released and immutable. SchemaIR v2, InterfaceStandardIR and InterfaceTemplateIR runtimes/final fixtures are frozen at their confirmed hashes. The Configuration Workbook core library runtime is complete; `phase0` workspace/CLI, committed Golden Workbooks and the complete trusted-chain regression are the current gate.
 
 ## 1. 目标与边界
 
@@ -31,8 +31,8 @@ Phase0 不实现 UI、JSON 银行报文、目标系统 Import JSON/API、Excel �
 | P0-T0：Bootstrap | Done | 无 | 无 | `ingest` 与 `check --profile raw` 保留；legacy `phase0a` 已在 SchemaIR v2 批次移除。 |
 | P0-T1：`b2e0061` IR candidate / Review | Done | P0-T0 | 无 | Candidate DocIR / SchemaIR 经 Human Review 更新，正式 IR 设计和 reference 边界清晰。 |
 | P0-T2：Review Golden sample boundary | Done | P0-T1 | 无 | Expected DocIR、修订前 expected SchemaIR、expected review notes 和 v1 validation result 已冻结为审查前 Golden。 |
-| P0-T3：Trusted chain | In Progress | P0-T2、`configuration-rules/v1` 与 v2 RELEASED | Workbook 尚未实现 | 完成两个配置 IR/Validator、Workbook 和完整 trusted-chain regression。 |
-| P0-T4：Draft generators | Blocked | P0-T3 | Workbook 和完整 trusted-chain regression 尚未完成 | Provider-neutral generator interface 与四类确定性 stub 可运行，且无法绕过 Validator/Human Review 写入 Final。 |
+| P0-T3：Trusted chain | In Progress | P0-T2、`configuration-rules/v1` 与 v2 RELEASED | `phase0` workspace/CLI、Golden Workbook 和完整 regression 尚未实现 | 完成两个配置 IR/Validator、Workbook 和完整 trusted-chain regression。 |
+| P0-T4：Draft generators | Blocked | P0-T3 | `phase0` CLI、Golden Workbook 和完整 trusted-chain regression 尚未完成 | Provider-neutral generator interface 与四类确定性 stub 可运行，且无法绕过 Validator/Human Review 写入 Final。 |
 
 状态定义：
 
@@ -69,7 +69,7 @@ Phase0 不实现 UI、JSON 银行报文、目标系统 Import JSON/API、Excel �
 | 规则资产 | v1 已于 2026-08-06 发布并冻结；v2 继承 catalog 并修订方向性 Standard projection，已于 2026-08-09 发布并冻结 | 无；Template 必须显式绑定适用的 RELEASED 规则版本 | 已完成 |
 | Standard | `interface-standard/v1`、result v1、Validator、双方向 Final/results 和 APPROVED Review 已实现 | 无；两份 Final identity/version/hash 已冻结 | 已完成 |
 | Template | `interface-template/v1`、result v1、Validator、双方向 Final/results 和 APPROVED Review 已实现并绑定 RELEASED v2 | 无；两份 Final identity/version/hash 与四条 ASSEMBLY omission 已冻结 | 已完成 |
-| Workbook | 只有七个 sheet 和来源矩阵设计 | 无 openpyxl Generator、回读 assertions 或确定性 regression | P0-T3 Workbook |
+| Workbook | openpyxl 核心 Generator、完整 Final/result/rule gate、七个 sheet 投影、safe text、原子写入和 unit-level 回读 assertions 已实现 | 尚无 `phase0` workspace/CLI、提交的双方向 Golden Workbook 和完整 regression | P0-T3 Workbook |
 | Draft generators | 未实现 | 四类核心 IR 仍依赖人工 fixture，Phase0 通过条件未满足 | P0-T4 |
 
 当前 regression、三类 Final validation results、v1/v2 发布记录和 Template Final golden 说明 legacy baseline、SchemaIR/Standard/规则运行时及 Template machine contract 稳定；Workbook 与完整 trusted chain 仍未完成。
@@ -95,8 +95,23 @@ Phase0 不实现 UI、JSON 银行报文、目标系统 Import JSON/API、Excel �
 ### 3.3 Workspace 与 CLI
 
 - SchemaIR v2 批次移除 `phase0a`，不提供兼容别名；过渡期 CLI 只保留 `raw` profile。
-- 完整 `phase0` profile 延后到 Workbook 批次启用，并要求显式 `direction + standardVersion + templateId + templateVersion + rule package path`；不扫描全部目录、不自动选择最新版本、不新增 manifest。
-- `phase0` workspace 支持 SchemaIR、按 direction/version 保存的 Standard、按 direction/template/version 保存的 Template、三个 validation result 和 Workbook。
+- 完整 `phase0` profile 在 Workbook 批次启用，只读校验一条显式选择的 Final trusted chain；它不生成或修改任何 artifact，也不读取生成后的 Workbook 作为 IR 反向输入。
+- 调用者必须显式提供 `direction + standardVersion + templateId + templateVersion + standard rule package path + template rule package path`。Standard 与 Template 可以引用不同的不可变规则版本；当前 b2e0061 Final Standard 使用 v1，Final Template 使用 v2，因此禁止合并为单一规则路径。
+- `phase0` 不扫描全部目录、不自动选择最新版本、不新增 manifest，也不把仓库内 `configuration-rules/` 设为隐式默认路径。
+- 固定 workspace 路径为：
+
+  ```text
+  schemair-final.json
+  schemair-validation-result.json
+  standards/{direction}/{standardVersion}/standard-final.json
+  standards/{direction}/{standardVersion}/standard-validation-result.json
+  templates/{direction}/{templateId}/{templateVersion}/template-final.json
+  templates/{direction}/{templateId}/{templateVersion}/template-validation-result.json
+  templates/{direction}/{templateId}/{templateVersion}/configuration-workbook.xlsx
+  ```
+
+- `check --profile phase0` 校验前六份 JSON、两个显式规则包及其完整引用闭合，不要求 Workbook 已存在；`generate-workbook` 复用同一输入门禁并写入固定 Workbook 路径。两者都保留现有 `raw` profile 和 `ingest` 行为。
+- `generate-workbook` 默认拒绝覆盖已有文件，只有显式 `--overwrite` 才允许原子替换；生成失败不得留下半写入文件。
 - artifact 协议随对应运行时批次增量实现，不能等到 Workbook 阶段再一次性补齐所有路径。
 - 发生 CLI 命令、artifact、配置或验证方式变化时，同一实现 commit 必须同步根 `README.md` 和相关设计说明。
 
@@ -271,36 +286,147 @@ Phase0 不实现 UI、JSON 银行报文、目标系统 Import JSON/API、Excel �
 
 ### 4.5 Configuration Workbook 与 trusted-chain regression
 
-**依赖：Final SchemaIR、Final Standard、Final Template 及匹配 validation results。**
+**状态：In Progress。Commit 6A 核心运行时已完成；Commit 6B workspace/CLI 与完整 regression 是 P0-T3 唯一剩余实现批次。**
 
-**边界**
+**依赖**
 
-- 使用 openpyxl 为一个 `interfaceCode + direction + templateId + templateVersion` 生成一份 Workbook。
-- 固定七个 sheet：`Overview`、`Interface Standard`、`Interface Template`、`Value Expressions`、`Warnings`、`Rule References`、`Legend`。
-- Generator 输入增加显式 `Standard Action = CREATE | REUSE | UPDATE`，不得连接目标系统自行判断。
-- 扩展 workspace/CLI 的完整 `phase0` artifact 检查和 Workbook 生成入口。
-- 为 ASSEMBLY/PARSE 分别生成 Golden Workbook，并使用 openpyxl 回读结构化 assertions。
+- Final SchemaIR 与精确匹配的 `schemair-validation-result/v2`。
+- 当前方向的 Final InterfaceStandardIR 与精确匹配的 `interface-standard-validation-result/v1`。
+- 当前方向选定的 Final InterfaceTemplateIR 与精确匹配的 `interface-template-validation-result/v1`。
+- Standard 实际引用的 RELEASED 规则包和 Template 实际引用的 RELEASED 规则包；两者必须分别显式加载，不能假设版本相同。
+- 调用者显式提供 `Standard Action = CREATE | REUSE | UPDATE` 和带时区的生成时间。
+
+**已确认决策与取舍**
+
+- `check --profile phase0` 保持只读；新增独立 `generate-workbook` 命令负责写文件，避免“检查”命令产生副作用。
+- `Interface Template` 主 sheet 严格一条 `fieldConfig` 一行。PARSE 复合表达式的多个 Standard source 以相同顺序在对应 Standard snapshot 列中使用换行分隔；完整树只在 `Value Expressions` 展开，不复制主行。
+- Generator 不信任调用者传入的 validation result 摘要。它重新运行三个现有 Validator，并要求传入 result 与重新计算结果完整对象相等；只比较 hash 或 `finalEligible` 不足以进入 trusted chain。
+- 非法输入直接 fail closed，不生成 debug Workbook。本批不实现排障工作簿、旧 Standard diff、Excel 反向校验或运行时目标系统查询。
+- `UPDATE` 没有旧 Standard 输入，因此只在 `Overview` 显示“需人工与目标环境现有版本对照”的固定提示，不声称生成真实版本差异。
+- b2e0061 两份 Final Template 不使用 MAPPING/Replacement。Workbook 对这两类表达的投影通过既有 `tests/fixtures/interface-template-v1/mapping-replacement.json` 做 unit-level 专项测试，不把该 fragment 伪装成完整 Final chain，也不向 b2e0061 Workbook 注入虚假银行事实。
+- 以上决定是现有 ADR-0007/0008/0009 的实现收束，不改变长期架构，无需新增 ADR；实现时只同步受影响的设计说明。
+
+**公开接口与错误契约**
+
+- 新增 `bank_config_compiler.configuration_workbook`，公开以下只读门禁供 `phase0` check 和 Generator 复用：
+
+  ```python
+  validate_configuration_workbook_inputs(
+      *,
+      schemair: dict[str, Any],
+      schemair_validation_result: dict[str, Any],
+      standard: dict[str, Any],
+      standard_validation_result: dict[str, Any],
+      template: dict[str, Any],
+      template_validation_result: dict[str, Any],
+      standard_rule_package: RulePackage,
+      template_rule_package: RulePackage,
+  ) -> None
+  ```
+
+- 同一模块公开生成入口：
+
+  ```python
+  generate_configuration_workbook(
+      *,
+      schemair: dict[str, Any],
+      schemair_validation_result: dict[str, Any],
+      standard: dict[str, Any],
+      standard_validation_result: dict[str, Any],
+      template: dict[str, Any],
+      template_validation_result: dict[str, Any],
+      standard_rule_package: RulePackage,
+      template_rule_package: RulePackage,
+      standard_action: str,
+      output_path: Path,
+      generated_at: datetime,
+      overwrite: bool = False,
+  ) -> Path
+  ```
+
+- 模块定义 `WORKBOOK_FORMAT_VERSION = "v1"`；`Overview` 记录该版本和项目版本，避免把内部函数名承诺为长期格式协议。
+- `generated_at` 必须为 offset-aware `datetime`。库调用显式传入，CLI 使用当前带时区时间；golden tests 注入固定值。
+- `WorkbookGenerationError` 聚合稳定的 `{code, artifact, path, message}` issues；任何错误均不返回或保留部分 Workbook。
+- 模块级 logger 在入口记录 `DEBUG`，成功记录 `INFO`（interface、direction、template、sheet/row counts、outcome），预期输入错误记录一次 `WARNING`。禁止记录 LITERAL、Mapping target、原始 YAML、银行原文全文或安全输入真实值。
+- 保存采用输出目录内临时文件后原子替换。输出已存在且 `overwrite=False`、父路径不是目录、保存/回读失败均转译为带上下文的 `WorkbookGenerationError`。
+
+**输入可信链门禁**
+
+1. 要求两个依赖均为 `RulePackage`、状态为 `RELEASED`，且 version 分别等于 Standard/Template 中记录的 `rulePackageVersion`；CLI 只能通过 `load_rule_package(...)` 获取它们。
+2. 运行 `validate_schemair(schemair)`，要求结果与传入 SchemaIR result 完整相等且 `finalEligible=true`。
+3. 使用 SchemaIR 和 Standard 规则包运行 `validate_interface_standard(...)`，要求结果与传入 Standard result 完整相等且 `finalEligible=true`。
+4. 使用绑定 Standard 和 Template 规则包运行 `validate_interface_template(...)`，要求结果与传入 Template result 完整相等且 `finalEligible=true`。
+5. 再校验 `interfaceCode`、direction、artifact identity/version/contract/hash 和 Template→Standard 引用均与实际对象一致；任一不一致拒绝生成。workspace loader 另外负责 selector 与实际 artifact 的一致性。
+6. `standard_action` 只允许 `CREATE | REUSE | UPDATE`，拒绝 bool、空字符串、大小写 alias 或隐式默认值。
+7. 任一业务单元格待写值包含 `<REDACTED>`、非法控制字符、超过 Excel 32,767 字符限制或无法安全表示为 literal text 时拒绝生成，不截断、不执行、不降级。
+
+**Workbook 固定结构与顺序**
+
+- 固定七个 sheet 且顺序唯一：`Overview`、`Interface Standard`、`Interface Template`、`Value Expressions`、`Warnings`、`Rule References`、`Legend`。
+- 不使用 merged cells、宏、外部链接或业务公式。表格 sheet 使用首行 header、`freeze_panes = "A2"`、auto filter、自动换行和顶端对齐；样式常量集中定义，不为单个样例硬编码坐标。
+- 固定样式为：header fill `1F4E78`、白色粗体；REUSE/只读 fill `D9E1F2`；WARNING fill `FFF2CC`；ERROR fill `F4CCCC`；INFO fill `D9EAD3`。ID/path 列宽 42，description/message/evidence 列宽 60，enum/status 列宽 20，sequence/count/bool 列宽 14，其余列宽 28；禁止按当前样例内容自动扩缩导致结构漂移。
+- 可编辑 Execution Status 使用固定 data validation `NOT_STARTED,IN_PROGRESS,CONFIGURED,BLOCKED`；Verification Status 使用 `NOT_VERIFIED,PASSED,FAILED`。REUSE 的 `NOT_APPLICABLE` 不挂 data validation。状态转换约束写入 `Legend`，本批不用公式、宏或 sheet protection 动态强制。
+- 所有来源于 IR、Review、规则包或用户上下文的字符串显式写为 text。以 `= + - @` 开头的外部字符串不得成为公式；回读测试断言业务单元格不存在 `data_type="f"`。
+- 结构化确定性比较排除 `Generated At`，其余 sheet 名、行列顺序、值、cell data type、关键样式、data validation 和 warnings 必须一致。不比较 `.xlsx` ZIP 字节。
+
+**各 Sheet 投影契约**
+
+- `Overview` 使用固定 `Key | Value` 两列和以下分组顺序：Workbook format/delivery/generated metadata；interface/direction/XML encoding；SchemaIR identity/contract/hash/result summary；Standard identity/contract/hash/rule version/action/result summary；Template identity/contract/hash/rule version/result summary；UPDATE 固定提示。有效输入只生成 `DELIVERABLE`，不存在 debug 状态。
+- `Interface Standard` 严格使用 `docs/design/05-configuration-workbook.md` 已定义列顺序。字段通过 `parentPath` 建树，按同父 `sequence` 进行递归前序遍历；Object/Node 在其子字段之前。不得使用 SchemaIR `level` 排序。
+- Standard `CREATE/UPDATE` 行初始化为 `Execution Status=NOT_STARTED`、`Verification Status=NOT_VERIFIED`、空 Operator Note；`REUSE` 行固定为两个 `NOT_APPLICABLE` 并使用只读视觉样式。本批不启用 sheet password/protection，不用宏或公式强制状态流转。
+- `Interface Template` 严格使用设计文档列顺序并保持 `fieldConfigs` 数组顺序，一条 config 一行。ASSEMBLY 只保存一个 target snapshot；PARSE 从表达式深度优先、同级按 `sequence` 的遍历结果以及 `COLLECTION_ITEM.standardSource` 收集有序唯一 Standard refs，各 Standard snapshot 列以相同顺序换行对齐。Parse target 始终单独分列。
+- Template 行初始化为 `NOT_STARTED + NOT_VERIFIED`。`STRUCTURE_ONLY/COLLECTION_ITEM` 的 Value Mode 与 Value Summary 为空；空值表示不适用，不是 `EMPTY`、UNKNOWN 或 omission。
+- `Value Expressions` 对每个 `VALUE` 的 FIELD_VALUE root 和每个 XML Key root 递归先父后子展开。Expression ID 由 `scope + target ref + xml key（适用时）+ child index path` 确定性生成；Parent ID 和 Sequence 可重建树。Function arguments 使用 canonical compact JSON 保存按 position 排序的 `position/kind/value-or-ref`，不是自然语言摘要。Node/Object 不产生 FIELD_VALUE 节点。
+- `Warnings` 依次收集当前方向 Standard 所引用 SchemaIR path/XML Key path 上的 SchemaIR Validator issues、Standard differences、bank conditional constraints、ASSEMBLY accepted omissions、Standard/Template Validator 的剩余 issues。SchemaIR path 通过 `schemaIrFieldPath` 映射到 Standard Field，XML Key path 映射到所属 Standard Field。
+- Warnings 行映射固定为：Validator-only issue 保留原 severity，`Category=VALIDATOR`，Message 前缀保留 issue code，`Review Disposition=NOT_REQUIRED`；Standard difference 使用 `WARNING + SCHEMA_STANDARD_DIFFERENCE + ACCEPTED`；结构化 bank condition 使用 `INFO + BANK_CONDITIONAL_CONSTRAINT + ACCEPTED`；accepted omission 使用 `WARNING + MISSING_TEMPLATE_FIELD + ACCEPTED`。
+- 与 omission 对应的 Template `MISSING_TEMPLATE_FIELD` issue 合并到同一行并保留 `Source=Template Validator + Review`；与同一 SchemaIR path 的结构化 bank condition 对应的 SchemaIR `CONDITIONAL_FIELD` INFO 合并为一条富化 condition 行；不同 category 的同字段问题不得误合并。排序固定为 severity、category、Standard Field Ref、source/path。未配置 Parse Field 不生成 warning。
+- 当前 Final/result 下，b2e0061 ASSEMBLY golden 预期 34 条方向相关 SchemaIR `CONDITIONAL_FIELD`（其中 obssid 行合并结构化 bank condition）+ 4 条合并后的 accepted omission，共 38 行；PARSE 预期 11 条方向相关 SchemaIR `CONDITIONAL_FIELD` + 4 条已批准 Standard difference，共 15 行。若 Final/result 变化导致数量变化，golden 必须失败并要求重新 Review，而不是更新为宽松断言。
+- 当前 golden 的核心结构计数固定为：ASSEMBLY 36 个 Standard rows、26 个 Template rows、30 个 Value Expression nodes（27 FIELD_VALUE + 3 XML_KEY）；PARSE 19 个 Standard rows、8 个 Template rows、13 个 FIELD_VALUE nodes。Function arguments 保存在所属 expression row，不额外增加 expression node。
+- `Rule References` 一行对应 `(Artifact Scope, Rule Package Version, Rule ID, Used By)`，只展开 IR 实际 `ruleReferences`；`Rule Title` 取相应 `rules_by_id[ruleId].summary`，`Source File / Section` 固定写为 `rules.yaml / rules[id=<Rule ID>]`，按四元组稳定排序。Function/Mapping catalog code 在 `Value Expressions` 展示，不伪装为 Rule ID，Mapping entries 不进入 Workbook。
+- `Legend` 使用固定静态行解释列来源、枚举、六种 Value Mode、三种 binding、两种 FIXED_VALUE payload、空值、`EMPTY`、omission、状态初值、REUSE 和 secure ref；不得从样例临时生成自然语言规则。
+
+**Workspace 与 CLI 接口**
+
+- 新增不可变 `Phase0Selection(direction, standard_version, template_id, template_version)` 和固定 path builder；direction 的 CLI 值为小写 `assembly | parse`，version 必须匹配 `^v[1-9]\d*$`，template ID 必须为 kebab-case stable ID。加载后 selector 必须匹配 IR 的大写 direction、version 和 template identity。
+- 新增不可变 `Phase0Artifacts` 保存六份 JSON，并由 `load_phase0_artifacts(workspace_path, selection) -> Phase0Artifacts` 使用既有严格 JSON I/O 加载；路径必须继续受 workspace boundary 保护，且 selector 必须与加载后的 direction/version/template identity 完全一致。
+- `check --profile phase0` 必需参数：`--direction`、`--standard-version`、`--template-id`、`--template-version`、`--standard-rule-package`、`--template-rule-package`。它加载两个 RELEASED 包并执行完整输入可信链门禁，但不要求或写入 Workbook。
+- 新增 `generate-workbook`，使用上述相同 selector/rule arguments，再要求 `--standard-action {CREATE,REUSE,UPDATE}`，支持 `--overwrite`；输出固定为所选 Template 目录下 `configuration-workbook.xlsx`，不接受任意输出路径。
+- CLI 将 `WorkspaceError`、`RulePackageValidationError` 和 `WorkbookGenerationError` 转为 exit code 2；stdout 只输出生成路径或检查计数，stderr 不展示敏感值。
 
 **涉及模块**
 
-- Workbook generator、workspace/CLI 和 tests
-- 双方向 workbook assertions 与 trusted-chain regression
-- openpyxl 依赖、README 和相关 docs-sync
+- `bank_config_compiler/configuration_workbook.py`
+- `bank_config_compiler/workspace.py`、`bank_config_compiler/cli.py`
+- `tests/test_configuration_workbook.py`、`tests/test_configuration_workbook_golden.py`、workspace/CLI tests
+- `samples/trusted-chain/b2eboc-b2e0061/templates/{assembly,parse}/v1/configuration-workbook.xlsx`
+- `pyproject.toml`、`uv.lock`：加入 `openpyxl>=3.1.5,<4`
+- `README.md`、Workbook design、Golden design、Phase0 phase/status 和本计划的完成状态同步
 
 **完成标志**
 
+- 双方向 Workbook 均由当前 Final chain 生成并可由 openpyxl 重新打开；固定 sheet、列、行顺序与关键样式满足契约。
 - Standard 快照、Template 镜像、PARSE target、三种 binding 和两端 datatype 分列可还原。
-- encoding、银行 Condition、SchemaIR/Standard 差异、已确认 omissions、Validator issues 和 Rule References 不被静默丢失。
+- encoding、银行 Condition、SchemaIR/Standard differences、四条 accepted omissions、Validator issues 和 Rule References 不被静默丢失或重复。
 - Value Expressions 可还原标量字段值与 XML Key expression tree；Node/Object 不产生 FIELD_VALUE 节点。
-- MAPPING/Replacement 只展示 rule name，不复制 entries；SECURE_INPUT_REF 不泄露真实值。
-- 相同 Final 输入、校验结果、规则版本和 Standard Action 生成相同结构化业务内容。
-- P0-T3 全部验收通过后改为 `Done`，P0-T4 解锁。
+- MAPPING/Replacement 受控测试只展示 rule name，不复制 entries；SECURE_INPUT_REF 只展示安全引用标识。
+- 相同 Final 输入、validation results、规则版本、Standard Action 和固定 `generated_at` 生成相同结构化内容；变化只发生在显式任务上下文。
+- `check --profile raw` 与现有 `ingest` 行为保持兼容；`phase0a` 继续拒绝。
+- P0-T3 全部验收通过后改为 `Done`，P0-T4 解锁；四类 Draft generator 不属于 P0-T3 完成条件。
 
-**验证**
+**测试与验证**
 
-- 七个 sheet、列顺序、关键单元格/样式、Warnings、REUSE 状态和表达式树回读断言。
-- Generator 对非 Final、hash mismatch、DRAFT rules、缺失 Standard Action 和敏感占位值 fail closed。
-- 完整 pytest、golden regression、docs-sync、BOM、diff 和敏感信息扫描。
+- Unit：输入门禁、完整 result equality、双规则版本、Standard Action、路径/overwrite/原子失败、safe text、超长/非法字符、公式注入、日志脱敏。
+- Projection：七个 sheet/列顺序、层级排序、单 config 单行、PARSE 多 source 对齐、expression ID/tree/function args、Warnings 合并、Rule References 四元组和 Legend。
+- Action：CREATE/UPDATE 初始状态、REUSE `NOT_APPLICABLE`、UPDATE 固定提示；不实现真实旧版本 diff。
+- Controlled fixture：使用既有 fragment 对 MAPPING 与 Replacement 的 Workbook row projector 做 UT，覆盖 redacted rule 拒绝、无 entries/target 泄漏；不通过伪造 Human Review 把 fragment 提升为 Final，并明确断言不是 b2e0061 银行事实。
+- Golden：提交 ASSEMBLY/PARSE `CREATE` Workbook；用固定 `generated_at` 重新生成到临时目录，以 openpyxl 回读并比较结构化 snapshot，不比较二进制字节。
+- CLI：raw compatibility、phase0 selectors 缺失/非法、两个 rule path 错配、check 只读、generate 成功、已有文件拒绝/overwrite、两个方向 smoke。
+- `uv --cache-dir .uv-cache run --group dev pytest -q -p no:cacheprovider --basetemp tmp\pytest-p0t3-workbook`
+- `uv lock --check`
+- `uv --cache-dir .uv-cache build --out-dir tmp\build-p0t3-workbook`
+- `git diff --check`、所有文本 UTF-8 no BOM、artifact/rule reference 闭合。
+- 通过 openpyxl 与 ZIP 内容检查无业务 formula、宏、external link、`<REDACTED>`、Mapping entries/target 或高置信敏感固定值。
+- 完成每个 coherent batch 后运行 docs-sync，强制检查根 `README.md`；人工打开两份 Golden Workbook 做最小视觉 smoke，不以视觉检查替代结构化 assertions。
 
 ## 5. P0-T4：Provider-neutral Draft generators
 
@@ -419,13 +545,23 @@ Phase0 不实现 UI、JSON 银行报文、目标系统 Import JSON/API、Excel �
 - Verification：Final Template golden equality、hash mismatch、完整 pytest、docs-sync、BOM、diff 和敏感信息检查。
 - Next starts when：Workbook 所需三份 Final 与三份匹配 validation result 完整。
 
-### Future Commit 6：Configuration Workbook、`phase0` 与完整 regression
+### 已完成 Commit 6A：Configuration Workbook 核心运行时
 
 - Suggested message：`feat: generate configuration workbooks`
-- Scope/Files：openpyxl Generator、显式链路 selector、workspace/CLI `phase0`、双方向 Workbook assertions、tests、dependencies 和 docs-sync。
-- Completion signal：P0-T3 trusted-chain regression 完成并改为 Done。
-- Verification：Workbook 回读、完整 regression、CLI smoke、pytest、BOM、diff 和敏感信息检查。
-- Next starts when：P0-T4 解锁。
+- Scope：实现 `configuration_workbook.py`、完整 Final/result/rule input gate、七个 sheet 的确定性投影、safe text/原子写入、受控 Mapping/Replacement 表达和核心 UT；不新增 CLI 命令、不提交 b2e0061 Golden Workbook。
+- Files：`bank_config_compiler/configuration_workbook.py`、`tests/test_configuration_workbook.py`、`pyproject.toml`、`uv.lock`，以及 Workbook/Golden 设计和根 README 的已知同步。
+- Completion signal：库 API 可从当前 ASSEMBLY/PARSE Final chain 生成并重新打开结构正确的临时 Workbook；非法链路、伪造 result、规则错配和不安全 cell 均 fail closed。
+- Verification：Workbook unit/projection/controlled fixture tests、完整 pytest、build、docs-sync、BOM、diff、公式/敏感信息检查。
+- Next starts when：公开生成接口、输入门禁、sheet/row/expression/warning/rule projection 已稳定，CLI 无需重新设计核心语义。
+
+### Future Commit 6B：`phase0` workspace/CLI 与完整 regression
+
+- Suggested message：`feat: complete phase0 workbook workflow`
+- Scope：实现 `Phase0Selection`、固定 artifact paths、只读 `check --profile phase0`、`generate-workbook`、双方向 CREATE Golden Workbook、openpyxl 回读 assertions、CLI smoke 和阶段状态同步；不实现 Draft generators。
+- Files：`bank_config_compiler/workspace.py`、`bank_config_compiler/cli.py`、workspace/CLI/golden tests、`samples/trusted-chain/b2eboc-b2e0061/templates/{assembly,parse}/v1/configuration-workbook.xlsx`、根 README、Phase0 phase/planning 和 reference/trusted-chain 状态文档。
+- Completion signal：显式选择的 ASSEMBLY/PARSE trusted chain 均能先只读检查、再生成固定路径 Workbook；结构化 golden regression 通过，P0-T3 改为 Done，P0-T4 解锁。
+- Verification：双方向 CLI smoke、Workbook 回读、完整 regression、pytest、build、docs-sync、BOM、diff、ZIP/公式/外链/宏和敏感信息检查。
+- Next starts when：Commit 6B 已成为后续开发基线；P0-T4 才可实现四类 Draft generators。
 
 ### Future Commit 7：四类 Draft generators
 
@@ -448,12 +584,20 @@ Phase0 不实现 UI、JSON 银行报文、目标系统 Import JSON/API、Excel �
 - code、tests 和已知文档同步在同一逻辑 commit；完成后运行 docs-sync。
 - 用户可见命令、artifact、配置、验证方式或阶段状态变化时强制检查根 `README.md`。
 
-### 7.2 Phase0 最终门禁
+### 7.2 P0-T3 完成门禁
 
-- `configuration-rules/v1` 为 RELEASED 且不可变。
+- `configuration-rules/v1`、v2 均为 RELEASED 且不可变，Standard/Template 分别加载其实际引用版本。
 - SchemaIR/Standard/Template machine contract 和 validation result contract 已冻结。
-- 三份 Final artifact 均具有 Human Review 证据和匹配 validation result。
+- 每条方向链的 SchemaIR/Standard/Template Final artifact 均具有 Human Review 证据和完整相等的重新计算 validation result。
 - ASSEMBLY/PARSE 的 Standard、Template 和 Workbook 均有 golden regression。
 - 六种 Value Mode、MAPPING/Replacement、三种 binding、Standard 镜像、银行 Condition、XML Key expression、omission 和 secure input 均被覆盖。
-- 四类 deterministic Draft generator 可运行且不能产生 Final。
-- 完整链路可重复执行，不依赖未确认业务默认值、历史导出 ID 或模型常识。
+- `check --profile phase0` 与 `generate-workbook` 使用显式 selector 和两个规则包路径，不扫描、猜测或自动选择最新版。
+- Workbook 输入错误 fail closed；输出无业务公式、宏、外链、敏感固定值、Mapping entries/target 或静默截断。
+- 相同 Final chain、results、规则版本、Standard Action 和固定任务上下文可重复生成相同结构化内容。
+- 完整 P0-T3 链路不依赖未确认业务默认值、历史导出 ID 或模型常识；满足后 P0-T3 改为 Done 并解锁 P0-T4。
+
+### 7.3 Phase0-PoC 最终门禁
+
+- P0-T3 完成门禁全部通过。
+- 四类 deterministic Draft generator 可运行，通过同一 provider contract 产生合法 Draft，且不能生成 Final 或绕过 Human Review/Validator。
+- Draft-to-Workbook 完整回归可重复运行；Phase0-PoC 改为 Done 后才进入 Phase1 planning。
