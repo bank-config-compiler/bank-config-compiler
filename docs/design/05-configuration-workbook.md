@@ -2,7 +2,7 @@
 
 ## Status
 
-Draft. Product contract confirmed; `configuration-rules/v1` is released and immutable. Generation remains pending P0-T3 Final InterfaceStandardIR / InterfaceTemplateIR fixtures and validators.
+Implemented for P0-T3. `configuration-rules/v1` and v2 direction-specific projection semantics are released and immutable. The openpyxl generator, exact trusted-chain gate, fixed seven-sheet projection, safe text handling, atomic write path, explicit `phase0` workspace/CLI and committed ASSEMBLY/PARSE Golden Workbooks are covered by structured regression.
 
 ## 1. 目的与粒度
 
@@ -120,7 +120,7 @@ Generator 只展示调用者提供的 Action，不连接目标系统验证它是
 
 | 列 | 来源 | 含义 |
 |---|---|---|
-| `Standard Field Ref` | InterfaceTemplateIR | ASSEMBLY target 或 PARSE source 的标准字段 ID。 |
+| `Standard Field Ref` | InterfaceTemplateIR | ASSEMBLY `standardTarget` 或 PARSE 表达式/collection source 的标准字段 ID；PARSE 复合表达式可展开多行。 |
 | `Standard Role` | Generator | ASSEMBLY 为 `TARGET`，PARSE 为 `SOURCE`。 |
 | `Standard Field Name` | InterfaceStandardIR | 绑定 Standard 的字段名称快照。 |
 | `Standard Parent Path` | InterfaceStandardIR | 绑定 Standard 的 Parent Path。 |
@@ -128,9 +128,9 @@ Generator 只展示调用者提供的 Action，不连接目标系统验证它是
 | `Standard Required` | InterfaceStandardIR | Standard 的 Required 状态和值。 |
 | `Standard Length` | InterfaceStandardIR | Standard 的 Length 状态和值。 |
 | `Standard Data Type` | InterfaceStandardIR | Standard 的 String/Boolean/Date/Number/Node/Object。 |
-| `Template Required` | InterfaceTemplateIR.standardProjection | 显式镜像的 Required；必须等于 Standard。 |
-| `Template Length` | InterfaceTemplateIR.standardProjection | 显式镜像的 Length；必须等于 Standard。 |
-| `Template Data Type` | InterfaceTemplateIR.standardProjection | 显式镜像的 Data Type；必须等于 Standard。 |
+| `Template Required` | ASSEMBLY InterfaceTemplateIR.standardTarget.standardProjection；PARSE 从 Final Standard 派生 | ASSEMBLY 显式镜像；PARSE 按每个 source ref 确定性展开。 |
+| `Template Length` | 同上 | ASSEMBLY 显式镜像；PARSE 按每个 source ref 确定性展开。 |
+| `Template Data Type` | 同上 | ASSEMBLY 显式镜像；PARSE 按每个 source ref 确定性展开。 |
 | `Parse Target Ref` | InterfaceTemplateIR | PARSE 的固定输出目标字段；ASSEMBLY 留空。 |
 | `Parse Target Name` | Parse Field Catalog snapshot | PARSE target 名称；ASSEMBLY 留空。 |
 | `Parse Target Parent Path` | Parse Field Catalog snapshot | PARSE target 父路径；ASSEMBLY 留空。 |

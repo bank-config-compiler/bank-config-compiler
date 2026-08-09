@@ -1,0 +1,1798 @@
+{
+  "contractVersion": "interface-standard/v1",
+  "standardId": "b2e0061-assembly-standard",
+  "standardVersion": "v1",
+  "status": "FINAL",
+  "review": {
+    "status": "APPROVED",
+    "reviewer": "deng",
+    "reviewedAt": "2026-08-09T16:18:27+08:00",
+    "note": "确认 email 不配置精确 Regex；其余字段投影与银行条件可冻结。"
+  },
+  "interfaceCode": "b2e0061",
+  "direction": "ASSEMBLY",
+  "schemaIrRef": {
+    "schemaId": "b2eboc-b2e0061-schema",
+    "schemaVersion": "v1",
+    "contractVersion": "schemair/v2",
+    "contentHash": "sha256:4729131ad59fd29899895b1149a476c1f95b71f304cb43bd17749985f19e7162"
+  },
+  "rulePackageVersion": "v1",
+  "xmlEncodingRef": {
+    "functionType": "ASSEMBLY",
+    "value": "UTF-8"
+  },
+  "fields": [
+    {
+      "fieldId": "b2e0061-assembly-bocb2e",
+      "sequence": 1,
+      "fieldName": "bocb2e",
+      "fieldDescription": "BOCB2E XML block",
+      "conditionText": "一个HTTP请求或响应只能并且必须包括一个BOCB2E XML块。",
+      "parentPath": "Root",
+      "fullPath": "Root.bocb2e",
+      "required": true,
+      "lengthLimit": {
+        "state": "NO_CONSTRAINT",
+        "min": null,
+        "max": null,
+        "precision": null,
+        "scale": null
+      },
+      "illegalCharacters": {
+        "state": "NO_CONSTRAINT",
+        "value": null
+      },
+      "regex": {
+        "state": "NO_CONSTRAINT",
+        "value": null
+      },
+      "dataType": "Object",
+      "xmlKeys": [
+        {
+          "name": "@version",
+          "schemaIrFieldPath": "Root.bocb2e.@version"
+        },
+        {
+          "name": "@security",
+          "schemaIrFieldPath": "Root.bocb2e.@security"
+        },
+        {
+          "name": "@locale",
+          "schemaIrFieldPath": "Root.bocb2e.@locale"
+        }
+      ],
+      "schemaIrFieldPath": "Root.bocb2e",
+      "conditionalConstraints": [],
+      "ruleReferences": [
+        "STD.FIELD.PARENT_PATH",
+        "STD.FIELD.FULL_PATH",
+        "STD.FIELD.SEQUENCE",
+        "STD.FIELD.DATA_TYPE",
+        "STD.CONSTRAINT.VALUE_STATE",
+        "STD.FIELD.XML_KEYS"
+      ],
+      "differences": [],
+      "evidence": [
+        {
+          "kind": "FINAL_SCHEMA_IR",
+          "sourceRef": "Root.bocb2e",
+          "note": "字段结构与银行约束来自已冻结的 Final SchemaIR v2。"
+        }
+      ],
+      "confidence": 1.0,
+      "uncertain": false,
+      "uncertainReason": null,
+      "reviewNote": null
+    },
+    {
+      "fieldId": "b2e0061-assembly-bocb2e-head",
+      "sequence": 1,
+      "fieldName": "head",
+      "fieldDescription": "消息头",
+      "conditionText": null,
+      "parentPath": "Root.bocb2e",
+      "fullPath": "Root.bocb2e.head",
+      "required": true,
+      "lengthLimit": {
+        "state": "NO_CONSTRAINT",
+        "min": null,
+        "max": null,
+        "precision": null,
+        "scale": null
+      },
+      "illegalCharacters": {
+        "state": "NO_CONSTRAINT",
+        "value": null
+      },
+      "regex": {
+        "state": "NO_CONSTRAINT",
+        "value": null
+      },
+      "dataType": "Object",
+      "xmlKeys": [],
+      "schemaIrFieldPath": "Root.bocb2e.head",
+      "conditionalConstraints": [],
+      "ruleReferences": [
+        "STD.FIELD.PARENT_PATH",
+        "STD.FIELD.FULL_PATH",
+        "STD.FIELD.SEQUENCE",
+        "STD.FIELD.DATA_TYPE",
+        "STD.CONSTRAINT.VALUE_STATE"
+      ],
+      "differences": [],
+      "evidence": [
+        {
+          "kind": "FINAL_SCHEMA_IR",
+          "sourceRef": "Root.bocb2e.head",
+          "note": "字段结构与银行约束来自已冻结的 Final SchemaIR v2。"
+        }
+      ],
+      "confidence": 1.0,
+      "uncertain": false,
+      "uncertainReason": null,
+      "reviewNote": null
+    },
+    {
+      "fieldId": "b2e0061-assembly-bocb2e-head-termid",
+      "sequence": 1,
+      "fieldName": "termid",
+      "fieldDescription": "前置机终端号",
+      "conditionText": "E开头+前置机IP地址（各段补零，无小数点12位）；检查终端号是否维护。",
+      "parentPath": "Root.bocb2e.head",
+      "fullPath": "Root.bocb2e.head.termid",
+      "required": true,
+      "lengthLimit": {
+        "state": "NO_CONSTRAINT",
+        "min": null,
+        "max": null,
+        "precision": null,
+        "scale": null
+      },
+      "illegalCharacters": {
+        "state": "NO_CONSTRAINT",
+        "value": null
+      },
+      "regex": {
+        "state": "NO_CONSTRAINT",
+        "value": null
+      },
+      "dataType": "String",
+      "xmlKeys": [],
+      "schemaIrFieldPath": "Root.bocb2e.head.termid",
+      "conditionalConstraints": [],
+      "ruleReferences": [
+        "STD.FIELD.PARENT_PATH",
+        "STD.FIELD.FULL_PATH",
+        "STD.FIELD.SEQUENCE",
+        "STD.FIELD.DATA_TYPE",
+        "STD.CONSTRAINT.VALUE_STATE"
+      ],
+      "differences": [],
+      "evidence": [
+        {
+          "kind": "FINAL_SCHEMA_IR",
+          "sourceRef": "Root.bocb2e.head.termid",
+          "note": "字段结构与银行约束来自已冻结的 Final SchemaIR v2。"
+        }
+      ],
+      "confidence": 1.0,
+      "uncertain": false,
+      "uncertainReason": null,
+      "reviewNote": null
+    },
+    {
+      "fieldId": "b2e0061-assembly-bocb2e-head-trnid",
+      "sequence": 2,
+      "fieldName": "trnid",
+      "fieldDescription": "报文编号",
+      "conditionText": "字母数字串 0-12位。",
+      "parentPath": "Root.bocb2e.head",
+      "fullPath": "Root.bocb2e.head.trnid",
+      "required": true,
+      "lengthLimit": {
+        "state": "NO_CONSTRAINT",
+        "min": null,
+        "max": null,
+        "precision": null,
+        "scale": null
+      },
+      "illegalCharacters": {
+        "state": "NO_CONSTRAINT",
+        "value": null
+      },
+      "regex": {
+        "state": "NO_CONSTRAINT",
+        "value": null
+      },
+      "dataType": "String",
+      "xmlKeys": [],
+      "schemaIrFieldPath": "Root.bocb2e.head.trnid",
+      "conditionalConstraints": [],
+      "ruleReferences": [
+        "STD.FIELD.PARENT_PATH",
+        "STD.FIELD.FULL_PATH",
+        "STD.FIELD.SEQUENCE",
+        "STD.FIELD.DATA_TYPE",
+        "STD.CONSTRAINT.VALUE_STATE"
+      ],
+      "differences": [],
+      "evidence": [
+        {
+          "kind": "FINAL_SCHEMA_IR",
+          "sourceRef": "Root.bocb2e.head.trnid",
+          "note": "字段结构与银行约束来自已冻结的 Final SchemaIR v2。"
+        }
+      ],
+      "confidence": 1.0,
+      "uncertain": false,
+      "uncertainReason": null,
+      "reviewNote": null
+    },
+    {
+      "fieldId": "b2e0061-assembly-bocb2e-head-custid",
+      "sequence": 3,
+      "fieldName": "custid",
+      "fieldDescription": "客户编码",
+      "conditionText": "数码1-10位。",
+      "parentPath": "Root.bocb2e.head",
+      "fullPath": "Root.bocb2e.head.custid",
+      "required": true,
+      "lengthLimit": {
+        "state": "NO_CONSTRAINT",
+        "min": null,
+        "max": null,
+        "precision": null,
+        "scale": null
+      },
+      "illegalCharacters": {
+        "state": "NO_CONSTRAINT",
+        "value": null
+      },
+      "regex": {
+        "state": "NO_CONSTRAINT",
+        "value": null
+      },
+      "dataType": "String",
+      "xmlKeys": [],
+      "schemaIrFieldPath": "Root.bocb2e.head.custid",
+      "conditionalConstraints": [],
+      "ruleReferences": [
+        "STD.FIELD.PARENT_PATH",
+        "STD.FIELD.FULL_PATH",
+        "STD.FIELD.SEQUENCE",
+        "STD.FIELD.DATA_TYPE",
+        "STD.CONSTRAINT.VALUE_STATE"
+      ],
+      "differences": [],
+      "evidence": [
+        {
+          "kind": "FINAL_SCHEMA_IR",
+          "sourceRef": "Root.bocb2e.head.custid",
+          "note": "字段结构与银行约束来自已冻结的 Final SchemaIR v2。"
+        }
+      ],
+      "confidence": 1.0,
+      "uncertain": false,
+      "uncertainReason": null,
+      "reviewNote": null
+    },
+    {
+      "fieldId": "b2e0061-assembly-bocb2e-head-cusopr",
+      "sequence": 4,
+      "fieldName": "cusopr",
+      "fieldDescription": "企业操作员代码",
+      "conditionText": "字母数字标点串 1-20位；检查操作员是否存在。",
+      "parentPath": "Root.bocb2e.head",
+      "fullPath": "Root.bocb2e.head.cusopr",
+      "required": true,
+      "lengthLimit": {
+        "state": "NO_CONSTRAINT",
+        "min": null,
+        "max": null,
+        "precision": null,
+        "scale": null
+      },
+      "illegalCharacters": {
+        "state": "NO_CONSTRAINT",
+        "value": null
+      },
+      "regex": {
+        "state": "NO_CONSTRAINT",
+        "value": null
+      },
+      "dataType": "String",
+      "xmlKeys": [],
+      "schemaIrFieldPath": "Root.bocb2e.head.cusopr",
+      "conditionalConstraints": [],
+      "ruleReferences": [
+        "STD.FIELD.PARENT_PATH",
+        "STD.FIELD.FULL_PATH",
+        "STD.FIELD.SEQUENCE",
+        "STD.FIELD.DATA_TYPE",
+        "STD.CONSTRAINT.VALUE_STATE"
+      ],
+      "differences": [],
+      "evidence": [
+        {
+          "kind": "FINAL_SCHEMA_IR",
+          "sourceRef": "Root.bocb2e.head.cusopr",
+          "note": "字段结构与银行约束来自已冻结的 Final SchemaIR v2。"
+        }
+      ],
+      "confidence": 1.0,
+      "uncertain": false,
+      "uncertainReason": null,
+      "reviewNote": null
+    },
+    {
+      "fieldId": "b2e0061-assembly-bocb2e-head-trncod",
+      "sequence": 5,
+      "fieldName": "trncod",
+      "fieldDescription": "交易代码",
+      "conditionText": "b2e开头加4位数字；检查交易是否存在，与报文体是否一致。",
+      "parentPath": "Root.bocb2e.head",
+      "fullPath": "Root.bocb2e.head.trncod",
+      "required": true,
+      "lengthLimit": {
+        "state": "NO_CONSTRAINT",
+        "min": null,
+        "max": null,
+        "precision": null,
+        "scale": null
+      },
+      "illegalCharacters": {
+        "state": "NO_CONSTRAINT",
+        "value": null
+      },
+      "regex": {
+        "state": "NO_CONSTRAINT",
+        "value": null
+      },
+      "dataType": "String",
+      "xmlKeys": [],
+      "schemaIrFieldPath": "Root.bocb2e.head.trncod",
+      "conditionalConstraints": [],
+      "ruleReferences": [
+        "STD.FIELD.PARENT_PATH",
+        "STD.FIELD.FULL_PATH",
+        "STD.FIELD.SEQUENCE",
+        "STD.FIELD.DATA_TYPE",
+        "STD.CONSTRAINT.VALUE_STATE"
+      ],
+      "differences": [],
+      "evidence": [
+        {
+          "kind": "FINAL_SCHEMA_IR",
+          "sourceRef": "Root.bocb2e.head.trncod",
+          "note": "字段结构与银行约束来自已冻结的 Final SchemaIR v2。"
+        }
+      ],
+      "confidence": 1.0,
+      "uncertain": false,
+      "uncertainReason": null,
+      "reviewNote": null
+    },
+    {
+      "fieldId": "b2e0061-assembly-bocb2e-head-token",
+      "sequence": 6,
+      "fieldName": "token",
+      "fieldDescription": "交易验证标识",
+      "conditionText": "Base64字符串0-64位；检查令牌是否正确。请求示例可缺省，响应示例出现。",
+      "parentPath": "Root.bocb2e.head",
+      "fullPath": "Root.bocb2e.head.token",
+      "required": true,
+      "lengthLimit": {
+        "state": "NO_CONSTRAINT",
+        "min": null,
+        "max": null,
+        "precision": null,
+        "scale": null
+      },
+      "illegalCharacters": {
+        "state": "NO_CONSTRAINT",
+        "value": null
+      },
+      "regex": {
+        "state": "NO_CONSTRAINT",
+        "value": null
+      },
+      "dataType": "String",
+      "xmlKeys": [],
+      "schemaIrFieldPath": "Root.bocb2e.head.token",
+      "conditionalConstraints": [],
+      "ruleReferences": [
+        "STD.FIELD.PARENT_PATH",
+        "STD.FIELD.FULL_PATH",
+        "STD.FIELD.SEQUENCE",
+        "STD.FIELD.DATA_TYPE",
+        "STD.CONSTRAINT.VALUE_STATE"
+      ],
+      "differences": [],
+      "evidence": [
+        {
+          "kind": "FINAL_SCHEMA_IR",
+          "sourceRef": "Root.bocb2e.head.token",
+          "note": "字段结构与银行约束来自已冻结的 Final SchemaIR v2。"
+        }
+      ],
+      "confidence": 1.0,
+      "uncertain": false,
+      "uncertainReason": null,
+      "reviewNote": null
+    },
+    {
+      "fieldId": "b2e0061-assembly-bocb2e-trans",
+      "sequence": 2,
+      "fieldName": "trans",
+      "fieldDescription": "交易数据块",
+      "conditionText": "b2e0061 的请求/响应交易 wrapper 位于该节点下。",
+      "parentPath": "Root.bocb2e",
+      "fullPath": "Root.bocb2e.trans",
+      "required": true,
+      "lengthLimit": {
+        "state": "NO_CONSTRAINT",
+        "min": null,
+        "max": null,
+        "precision": null,
+        "scale": null
+      },
+      "illegalCharacters": {
+        "state": "NO_CONSTRAINT",
+        "value": null
+      },
+      "regex": {
+        "state": "NO_CONSTRAINT",
+        "value": null
+      },
+      "dataType": "Object",
+      "xmlKeys": [],
+      "schemaIrFieldPath": "Root.bocb2e.trans",
+      "conditionalConstraints": [],
+      "ruleReferences": [
+        "STD.FIELD.PARENT_PATH",
+        "STD.FIELD.FULL_PATH",
+        "STD.FIELD.SEQUENCE",
+        "STD.FIELD.DATA_TYPE",
+        "STD.CONSTRAINT.VALUE_STATE"
+      ],
+      "differences": [],
+      "evidence": [
+        {
+          "kind": "FINAL_SCHEMA_IR",
+          "sourceRef": "Root.bocb2e.trans",
+          "note": "字段结构与银行约束来自已冻结的 Final SchemaIR v2。"
+        }
+      ],
+      "confidence": 1.0,
+      "uncertain": false,
+      "uncertainReason": null,
+      "reviewNote": null
+    },
+    {
+      "fieldId": "b2e0061-assembly-bocb2e-trans-trn-b2e0061-rq",
+      "sequence": 1,
+      "fieldName": "trn-b2e0061-rq",
+      "fieldDescription": "转账交易请求",
+      "conditionText": null,
+      "parentPath": "Root.bocb2e.trans",
+      "fullPath": "Root.bocb2e.trans.trn-b2e0061-rq",
+      "required": true,
+      "lengthLimit": {
+        "state": "NO_CONSTRAINT",
+        "min": null,
+        "max": null,
+        "precision": null,
+        "scale": null
+      },
+      "illegalCharacters": {
+        "state": "NO_CONSTRAINT",
+        "value": null
+      },
+      "regex": {
+        "state": "NO_CONSTRAINT",
+        "value": null
+      },
+      "dataType": "Object",
+      "xmlKeys": [],
+      "schemaIrFieldPath": "Root.bocb2e.trans.trn-b2e0061-rq",
+      "conditionalConstraints": [],
+      "ruleReferences": [
+        "STD.FIELD.PARENT_PATH",
+        "STD.FIELD.FULL_PATH",
+        "STD.FIELD.SEQUENCE",
+        "STD.FIELD.DATA_TYPE",
+        "STD.CONSTRAINT.VALUE_STATE"
+      ],
+      "differences": [],
+      "evidence": [
+        {
+          "kind": "FINAL_SCHEMA_IR",
+          "sourceRef": "Root.bocb2e.trans.trn-b2e0061-rq",
+          "note": "字段结构与银行约束来自已冻结的 Final SchemaIR v2。"
+        }
+      ],
+      "confidence": 1.0,
+      "uncertain": false,
+      "uncertainReason": null,
+      "reviewNote": null
+    },
+    {
+      "fieldId": "b2e0061-assembly-bocb2e-trans-trn-b2e0061-rq-ceitinfo",
+      "sequence": 1,
+      "fieldName": "ceitinfo",
+      "fieldDescription": "数字签名",
+      "conditionText": "该标签由前置机自动添加，企业无需上送。",
+      "parentPath": "Root.bocb2e.trans.trn-b2e0061-rq",
+      "fullPath": "Root.bocb2e.trans.trn-b2e0061-rq.ceitinfo",
+      "required": false,
+      "lengthLimit": {
+        "state": "NO_CONSTRAINT",
+        "min": null,
+        "max": null,
+        "precision": null,
+        "scale": null
+      },
+      "illegalCharacters": {
+        "state": "NO_CONSTRAINT",
+        "value": null
+      },
+      "regex": {
+        "state": "NO_CONSTRAINT",
+        "value": null
+      },
+      "dataType": "String",
+      "xmlKeys": [],
+      "schemaIrFieldPath": "Root.bocb2e.trans.trn-b2e0061-rq.ceitinfo",
+      "conditionalConstraints": [],
+      "ruleReferences": [
+        "STD.FIELD.PARENT_PATH",
+        "STD.FIELD.FULL_PATH",
+        "STD.FIELD.SEQUENCE",
+        "STD.FIELD.DATA_TYPE",
+        "STD.CONSTRAINT.VALUE_STATE"
+      ],
+      "differences": [],
+      "evidence": [
+        {
+          "kind": "FINAL_SCHEMA_IR",
+          "sourceRef": "Root.bocb2e.trans.trn-b2e0061-rq.ceitinfo",
+          "note": "字段结构与银行约束来自已冻结的 Final SchemaIR v2。"
+        }
+      ],
+      "confidence": 1.0,
+      "uncertain": false,
+      "uncertainReason": null,
+      "reviewNote": null
+    },
+    {
+      "fieldId": "b2e0061-assembly-bocb2e-trans-trn-b2e0061-rq-transtype",
+      "sequence": 2,
+      "fieldName": "transtype",
+      "fieldDescription": "交易类型",
+      "conditionText": "可空，表示普通转账交易；非空时只能为1或2。",
+      "parentPath": "Root.bocb2e.trans.trn-b2e0061-rq",
+      "fullPath": "Root.bocb2e.trans.trn-b2e0061-rq.transtype",
+      "required": false,
+      "lengthLimit": {
+        "state": "VALUE",
+        "min": 0,
+        "max": 1,
+        "precision": null,
+        "scale": null
+      },
+      "illegalCharacters": {
+        "state": "NO_CONSTRAINT",
+        "value": null
+      },
+      "regex": {
+        "state": "NO_CONSTRAINT",
+        "value": null
+      },
+      "dataType": "String",
+      "xmlKeys": [],
+      "schemaIrFieldPath": "Root.bocb2e.trans.trn-b2e0061-rq.transtype",
+      "conditionalConstraints": [],
+      "ruleReferences": [
+        "STD.FIELD.PARENT_PATH",
+        "STD.FIELD.FULL_PATH",
+        "STD.FIELD.SEQUENCE",
+        "STD.FIELD.DATA_TYPE",
+        "STD.CONSTRAINT.VALUE_STATE"
+      ],
+      "differences": [],
+      "evidence": [
+        {
+          "kind": "FINAL_SCHEMA_IR",
+          "sourceRef": "Root.bocb2e.trans.trn-b2e0061-rq.transtype",
+          "note": "字段结构与银行约束来自已冻结的 Final SchemaIR v2。"
+        }
+      ],
+      "confidence": 1.0,
+      "uncertain": false,
+      "uncertainReason": null,
+      "reviewNote": null
+    },
+    {
+      "fieldId": "b2e0061-assembly-bocb2e-trans-trn-b2e0061-rq-b2e0061-rq",
+      "sequence": 3,
+      "fieldName": "b2e0061-rq",
+      "fieldDescription": "转账请求内容",
+      "conditionText": null,
+      "parentPath": "Root.bocb2e.trans.trn-b2e0061-rq",
+      "fullPath": "Root.bocb2e.trans.trn-b2e0061-rq.b2e0061-rq",
+      "required": true,
+      "lengthLimit": {
+        "state": "NO_CONSTRAINT",
+        "min": null,
+        "max": null,
+        "precision": null,
+        "scale": null
+      },
+      "illegalCharacters": {
+        "state": "NO_CONSTRAINT",
+        "value": null
+      },
+      "regex": {
+        "state": "NO_CONSTRAINT",
+        "value": null
+      },
+      "dataType": "Node",
+      "xmlKeys": [],
+      "schemaIrFieldPath": "Root.bocb2e.trans.trn-b2e0061-rq.b2e0061-rq",
+      "conditionalConstraints": [],
+      "ruleReferences": [
+        "STD.FIELD.PARENT_PATH",
+        "STD.FIELD.FULL_PATH",
+        "STD.FIELD.SEQUENCE",
+        "STD.FIELD.DATA_TYPE",
+        "STD.CONSTRAINT.VALUE_STATE"
+      ],
+      "differences": [],
+      "evidence": [
+        {
+          "kind": "FINAL_SCHEMA_IR",
+          "sourceRef": "Root.bocb2e.trans.trn-b2e0061-rq.b2e0061-rq",
+          "note": "字段结构与银行约束来自已冻结的 Final SchemaIR v2。"
+        }
+      ],
+      "confidence": 1.0,
+      "uncertain": false,
+      "uncertainReason": null,
+      "reviewNote": null
+    },
+    {
+      "fieldId": "b2e0061-assembly-bocb2e-trans-trn-b2e0061-rq-b2e0061-rq-insid",
+      "sequence": 1,
+      "fieldName": "insid",
+      "fieldDescription": "指令ID",
+      "conditionText": "平台校验：非空字符串，长度1-32；操作员所属客户号下不能重复，不支持中文。",
+      "parentPath": "Root.bocb2e.trans.trn-b2e0061-rq.b2e0061-rq",
+      "fullPath": "Root.bocb2e.trans.trn-b2e0061-rq.b2e0061-rq.insid",
+      "required": true,
+      "lengthLimit": {
+        "state": "VALUE",
+        "min": 1,
+        "max": 32,
+        "precision": null,
+        "scale": null
+      },
+      "illegalCharacters": {
+        "state": "NO_CONSTRAINT",
+        "value": null
+      },
+      "regex": {
+        "state": "NO_CONSTRAINT",
+        "value": null
+      },
+      "dataType": "String",
+      "xmlKeys": [],
+      "schemaIrFieldPath": "Root.bocb2e.trans.trn-b2e0061-rq.b2e0061-rq.insid",
+      "conditionalConstraints": [],
+      "ruleReferences": [
+        "STD.FIELD.PARENT_PATH",
+        "STD.FIELD.FULL_PATH",
+        "STD.FIELD.SEQUENCE",
+        "STD.FIELD.DATA_TYPE",
+        "STD.CONSTRAINT.VALUE_STATE"
+      ],
+      "differences": [],
+      "evidence": [
+        {
+          "kind": "FINAL_SCHEMA_IR",
+          "sourceRef": "Root.bocb2e.trans.trn-b2e0061-rq.b2e0061-rq.insid",
+          "note": "字段结构与银行约束来自已冻结的 Final SchemaIR v2。"
+        }
+      ],
+      "confidence": 1.0,
+      "uncertain": false,
+      "uncertainReason": null,
+      "reviewNote": null
+    },
+    {
+      "fieldId": "b2e0061-assembly-bocb2e-trans-trn-b2e0061-rq-b2e0061-rq-obssid",
+      "sequence": 2,
+      "fieldName": "obssid",
+      "fieldDescription": "网银交易流水号",
+      "conditionText": "交易类型为2时上送有效且非空；对应交易必须存在且是该客户下的公转私退回类交易。",
+      "parentPath": "Root.bocb2e.trans.trn-b2e0061-rq.b2e0061-rq",
+      "fullPath": "Root.bocb2e.trans.trn-b2e0061-rq.b2e0061-rq.obssid",
+      "required": false,
+      "lengthLimit": {
+        "state": "VALUE",
+        "min": 0,
+        "max": 30,
+        "precision": null,
+        "scale": null
+      },
+      "illegalCharacters": {
+        "state": "NO_CONSTRAINT",
+        "value": null
+      },
+      "regex": {
+        "state": "NO_CONSTRAINT",
+        "value": null
+      },
+      "dataType": "String",
+      "xmlKeys": [],
+      "schemaIrFieldPath": "Root.bocb2e.trans.trn-b2e0061-rq.b2e0061-rq.obssid",
+      "conditionalConstraints": [
+        {
+          "conditionId": "b2e0061-assembly-condition-1",
+          "schemaIrConditionIndex": 0,
+          "controllingFieldRef": "b2e0061-assembly-bocb2e-trans-trn-b2e0061-rq-transtype",
+          "operator": "EQUALS",
+          "literal": "2",
+          "targetFieldRef": "b2e0061-assembly-bocb2e-trans-trn-b2e0061-rq-b2e0061-rq-obssid",
+          "effect": "REQUIRED",
+          "sourceText": "|  |  | <obssid> |  | 网银交易流水号 | 可空，若不为空只为数字且长度1-30位 | 交易类型为2时上送有效，且非空。该流水对应的交易必须存在，而且是该客户下的公转私类交易。交易状态为退回类交易。网银交易流水号19位，最大9223372036854775807 |",
+          "evidence": {
+            "kind": "DIRECT",
+            "note": "条件和值来自 raw-doc 中 obssid 字段说明。"
+          },
+          "review": {
+            "status": "APPROVED",
+            "reviewer": "deng",
+            "reviewedAt": "2026-08-09T12:48:17+08:00",
+            "note": "确认 transtype=2 时 obssid 必填。"
+          },
+          "ruleReferences": [
+            "STD.CONSTRAINT.BANK_CONDITION"
+          ]
+        }
+      ],
+      "ruleReferences": [
+        "STD.FIELD.PARENT_PATH",
+        "STD.FIELD.FULL_PATH",
+        "STD.FIELD.SEQUENCE",
+        "STD.FIELD.DATA_TYPE",
+        "STD.CONSTRAINT.VALUE_STATE"
+      ],
+      "differences": [],
+      "evidence": [
+        {
+          "kind": "FINAL_SCHEMA_IR",
+          "sourceRef": "Root.bocb2e.trans.trn-b2e0061-rq.b2e0061-rq.obssid",
+          "note": "字段结构与银行约束来自已冻结的 Final SchemaIR v2。"
+        }
+      ],
+      "confidence": 1.0,
+      "uncertain": false,
+      "uncertainReason": null,
+      "reviewNote": null
+    },
+    {
+      "fieldId": "b2e0061-assembly-bocb2e-trans-trn-b2e0061-rq-b2e0061-rq-fractn",
+      "sequence": 3,
+      "fieldName": "fractn",
+      "fieldDescription": "付款人账户",
+      "conditionText": null,
+      "parentPath": "Root.bocb2e.trans.trn-b2e0061-rq.b2e0061-rq",
+      "fullPath": "Root.bocb2e.trans.trn-b2e0061-rq.b2e0061-rq.fractn",
+      "required": false,
+      "lengthLimit": {
+        "state": "NO_CONSTRAINT",
+        "min": null,
+        "max": null,
+        "precision": null,
+        "scale": null
+      },
+      "illegalCharacters": {
+        "state": "NO_CONSTRAINT",
+        "value": null
+      },
+      "regex": {
+        "state": "NO_CONSTRAINT",
+        "value": null
+      },
+      "dataType": "Object",
+      "xmlKeys": [],
+      "schemaIrFieldPath": "Root.bocb2e.trans.trn-b2e0061-rq.b2e0061-rq.fractn",
+      "conditionalConstraints": [],
+      "ruleReferences": [
+        "STD.FIELD.PARENT_PATH",
+        "STD.FIELD.FULL_PATH",
+        "STD.FIELD.SEQUENCE",
+        "STD.FIELD.DATA_TYPE",
+        "STD.CONSTRAINT.VALUE_STATE"
+      ],
+      "differences": [],
+      "evidence": [
+        {
+          "kind": "FINAL_SCHEMA_IR",
+          "sourceRef": "Root.bocb2e.trans.trn-b2e0061-rq.b2e0061-rq.fractn",
+          "note": "字段结构与银行约束来自已冻结的 Final SchemaIR v2。"
+        }
+      ],
+      "confidence": 1.0,
+      "uncertain": false,
+      "uncertainReason": null,
+      "reviewNote": null
+    },
+    {
+      "fieldId": "b2e0061-assembly-bocb2e-trans-trn-b2e0061-rq-b2e0061-rq-fractn-fribkn",
+      "sequence": 1,
+      "fieldName": "fribkn",
+      "fieldDescription": "付款行联行号",
+      "conditionText": "可空；联行号有对应的省行联行号，旧线账号建议上送。",
+      "parentPath": "Root.bocb2e.trans.trn-b2e0061-rq.b2e0061-rq.fractn",
+      "fullPath": "Root.bocb2e.trans.trn-b2e0061-rq.b2e0061-rq.fractn.fribkn",
+      "required": false,
+      "lengthLimit": {
+        "state": "VALUE",
+        "min": 0,
+        "max": 5,
+        "precision": null,
+        "scale": null
+      },
+      "illegalCharacters": {
+        "state": "NO_CONSTRAINT",
+        "value": null
+      },
+      "regex": {
+        "state": "VALUE",
+        "value": "^[0-9]+$"
+      },
+      "dataType": "String",
+      "xmlKeys": [],
+      "schemaIrFieldPath": "Root.bocb2e.trans.trn-b2e0061-rq.b2e0061-rq.fractn.fribkn",
+      "conditionalConstraints": [],
+      "ruleReferences": [
+        "STD.FIELD.PARENT_PATH",
+        "STD.FIELD.FULL_PATH",
+        "STD.FIELD.SEQUENCE",
+        "STD.FIELD.DATA_TYPE",
+        "STD.CONSTRAINT.VALUE_STATE"
+      ],
+      "differences": [],
+      "evidence": [
+        {
+          "kind": "FINAL_SCHEMA_IR",
+          "sourceRef": "Root.bocb2e.trans.trn-b2e0061-rq.b2e0061-rq.fractn.fribkn",
+          "note": "字段结构与银行约束来自已冻结的 Final SchemaIR v2。"
+        }
+      ],
+      "confidence": 1.0,
+      "uncertain": false,
+      "uncertainReason": null,
+      "reviewNote": null
+    },
+    {
+      "fieldId": "b2e0061-assembly-bocb2e-trans-trn-b2e0061-rq-b2e0061-rq-fractn-actacn",
+      "sequence": 2,
+      "fieldName": "actacn",
+      "fieldDescription": "付款账号",
+      "conditionText": "账户已在网银维护，操作员有权限；不支持中文；虚拟账号包含I/O时送主账号。",
+      "parentPath": "Root.bocb2e.trans.trn-b2e0061-rq.b2e0061-rq.fractn",
+      "fullPath": "Root.bocb2e.trans.trn-b2e0061-rq.b2e0061-rq.fractn.actacn",
+      "required": true,
+      "lengthLimit": {
+        "state": "VALUE",
+        "min": 1,
+        "max": 35,
+        "precision": null,
+        "scale": null
+      },
+      "illegalCharacters": {
+        "state": "NO_CONSTRAINT",
+        "value": null
+      },
+      "regex": {
+        "state": "NO_CONSTRAINT",
+        "value": null
+      },
+      "dataType": "String",
+      "xmlKeys": [],
+      "schemaIrFieldPath": "Root.bocb2e.trans.trn-b2e0061-rq.b2e0061-rq.fractn.actacn",
+      "conditionalConstraints": [],
+      "ruleReferences": [
+        "STD.FIELD.PARENT_PATH",
+        "STD.FIELD.FULL_PATH",
+        "STD.FIELD.SEQUENCE",
+        "STD.FIELD.DATA_TYPE",
+        "STD.CONSTRAINT.VALUE_STATE"
+      ],
+      "differences": [],
+      "evidence": [
+        {
+          "kind": "FINAL_SCHEMA_IR",
+          "sourceRef": "Root.bocb2e.trans.trn-b2e0061-rq.b2e0061-rq.fractn.actacn",
+          "note": "字段结构与银行约束来自已冻结的 Final SchemaIR v2。"
+        }
+      ],
+      "confidence": 1.0,
+      "uncertain": false,
+      "uncertainReason": null,
+      "reviewNote": null
+    },
+    {
+      "fieldId": "b2e0061-assembly-bocb2e-trans-trn-b2e0061-rq-b2e0061-rq-fractn-actnam",
+      "sequence": 3,
+      "fieldName": "actnam",
+      "fieldDescription": "付款人名称",
+      "conditionText": "若为虚拟账号，请上送主账号名称。",
+      "parentPath": "Root.bocb2e.trans.trn-b2e0061-rq.b2e0061-rq.fractn",
+      "fullPath": "Root.bocb2e.trans.trn-b2e0061-rq.b2e0061-rq.fractn.actnam",
+      "required": false,
+      "lengthLimit": {
+        "state": "VALUE",
+        "min": 0,
+        "max": 70,
+        "precision": null,
+        "scale": null
+      },
+      "illegalCharacters": {
+        "state": "NO_CONSTRAINT",
+        "value": null
+      },
+      "regex": {
+        "state": "NO_CONSTRAINT",
+        "value": null
+      },
+      "dataType": "String",
+      "xmlKeys": [],
+      "schemaIrFieldPath": "Root.bocb2e.trans.trn-b2e0061-rq.b2e0061-rq.fractn.actnam",
+      "conditionalConstraints": [],
+      "ruleReferences": [
+        "STD.FIELD.PARENT_PATH",
+        "STD.FIELD.FULL_PATH",
+        "STD.FIELD.SEQUENCE",
+        "STD.FIELD.DATA_TYPE",
+        "STD.CONSTRAINT.VALUE_STATE"
+      ],
+      "differences": [],
+      "evidence": [
+        {
+          "kind": "FINAL_SCHEMA_IR",
+          "sourceRef": "Root.bocb2e.trans.trn-b2e0061-rq.b2e0061-rq.fractn.actnam",
+          "note": "字段结构与银行约束来自已冻结的 Final SchemaIR v2。"
+        }
+      ],
+      "confidence": 1.0,
+      "uncertain": false,
+      "uncertainReason": null,
+      "reviewNote": null
+    },
+    {
+      "fieldId": "b2e0061-assembly-bocb2e-trans-trn-b2e0061-rq-b2e0061-rq-toactn",
+      "sequence": 4,
+      "fieldName": "toactn",
+      "fieldDescription": "收款人账户信息",
+      "conditionText": null,
+      "parentPath": "Root.bocb2e.trans.trn-b2e0061-rq.b2e0061-rq",
+      "fullPath": "Root.bocb2e.trans.trn-b2e0061-rq.b2e0061-rq.toactn",
+      "required": false,
+      "lengthLimit": {
+        "state": "NO_CONSTRAINT",
+        "min": null,
+        "max": null,
+        "precision": null,
+        "scale": null
+      },
+      "illegalCharacters": {
+        "state": "NO_CONSTRAINT",
+        "value": null
+      },
+      "regex": {
+        "state": "NO_CONSTRAINT",
+        "value": null
+      },
+      "dataType": "Object",
+      "xmlKeys": [],
+      "schemaIrFieldPath": "Root.bocb2e.trans.trn-b2e0061-rq.b2e0061-rq.toactn",
+      "conditionalConstraints": [],
+      "ruleReferences": [
+        "STD.FIELD.PARENT_PATH",
+        "STD.FIELD.FULL_PATH",
+        "STD.FIELD.SEQUENCE",
+        "STD.FIELD.DATA_TYPE",
+        "STD.CONSTRAINT.VALUE_STATE"
+      ],
+      "differences": [],
+      "evidence": [
+        {
+          "kind": "FINAL_SCHEMA_IR",
+          "sourceRef": "Root.bocb2e.trans.trn-b2e0061-rq.b2e0061-rq.toactn",
+          "note": "字段结构与银行约束来自已冻结的 Final SchemaIR v2。"
+        }
+      ],
+      "confidence": 1.0,
+      "uncertain": false,
+      "uncertainReason": null,
+      "reviewNote": null
+    },
+    {
+      "fieldId": "b2e0061-assembly-bocb2e-trans-trn-b2e0061-rq-b2e0061-rq-toactn-toibkn",
+      "sequence": 1,
+      "fieldName": "toibkn",
+      "fieldDescription": "收款行联行号",
+      "conditionText": "可空；5位或12位数字；中行账户支持上送12位CNAPS号。",
+      "parentPath": "Root.bocb2e.trans.trn-b2e0061-rq.b2e0061-rq.toactn",
+      "fullPath": "Root.bocb2e.trans.trn-b2e0061-rq.b2e0061-rq.toactn.toibkn",
+      "required": false,
+      "lengthLimit": {
+        "state": "VALUE",
+        "min": 0,
+        "max": 12,
+        "precision": null,
+        "scale": null
+      },
+      "illegalCharacters": {
+        "state": "NO_CONSTRAINT",
+        "value": null
+      },
+      "regex": {
+        "state": "NO_CONSTRAINT",
+        "value": null
+      },
+      "dataType": "String",
+      "xmlKeys": [],
+      "schemaIrFieldPath": "Root.bocb2e.trans.trn-b2e0061-rq.b2e0061-rq.toactn.toibkn",
+      "conditionalConstraints": [],
+      "ruleReferences": [
+        "STD.FIELD.PARENT_PATH",
+        "STD.FIELD.FULL_PATH",
+        "STD.FIELD.SEQUENCE",
+        "STD.FIELD.DATA_TYPE",
+        "STD.CONSTRAINT.VALUE_STATE"
+      ],
+      "differences": [],
+      "evidence": [
+        {
+          "kind": "FINAL_SCHEMA_IR",
+          "sourceRef": "Root.bocb2e.trans.trn-b2e0061-rq.b2e0061-rq.toactn.toibkn",
+          "note": "字段结构与银行约束来自已冻结的 Final SchemaIR v2。"
+        }
+      ],
+      "confidence": 1.0,
+      "uncertain": false,
+      "uncertainReason": null,
+      "reviewNote": null
+    },
+    {
+      "fieldId": "b2e0061-assembly-bocb2e-trans-trn-b2e0061-rq-b2e0061-rq-toactn-acttyp",
+      "sequence": 2,
+      "fieldName": "acttyp",
+      "fieldDescription": "收款账户类型",
+      "conditionText": "可空，默认为借记卡；客户可以上送但无业务校验。",
+      "parentPath": "Root.bocb2e.trans.trn-b2e0061-rq.b2e0061-rq.toactn",
+      "fullPath": "Root.bocb2e.trans.trn-b2e0061-rq.b2e0061-rq.toactn.acttyp",
+      "required": false,
+      "lengthLimit": {
+        "state": "VALUE",
+        "min": 0,
+        "max": 3,
+        "precision": null,
+        "scale": null
+      },
+      "illegalCharacters": {
+        "state": "NO_CONSTRAINT",
+        "value": null
+      },
+      "regex": {
+        "state": "NO_CONSTRAINT",
+        "value": null
+      },
+      "dataType": "String",
+      "xmlKeys": [],
+      "schemaIrFieldPath": "Root.bocb2e.trans.trn-b2e0061-rq.b2e0061-rq.toactn.acttyp",
+      "conditionalConstraints": [],
+      "ruleReferences": [
+        "STD.FIELD.PARENT_PATH",
+        "STD.FIELD.FULL_PATH",
+        "STD.FIELD.SEQUENCE",
+        "STD.FIELD.DATA_TYPE",
+        "STD.CONSTRAINT.VALUE_STATE"
+      ],
+      "differences": [],
+      "evidence": [
+        {
+          "kind": "FINAL_SCHEMA_IR",
+          "sourceRef": "Root.bocb2e.trans.trn-b2e0061-rq.b2e0061-rq.toactn.acttyp",
+          "note": "字段结构与银行约束来自已冻结的 Final SchemaIR v2。"
+        }
+      ],
+      "confidence": 1.0,
+      "uncertain": false,
+      "uncertainReason": null,
+      "reviewNote": null
+    },
+    {
+      "fieldId": "b2e0061-assembly-bocb2e-trans-trn-b2e0061-rq-b2e0061-rq-toactn-actacn",
+      "sequence": 3,
+      "fieldName": "actacn",
+      "fieldDescription": "收款账号",
+      "conditionText": "如果收款账户为中行账户且长度18位，则必须上送收款行联行号；不支持中文。",
+      "parentPath": "Root.bocb2e.trans.trn-b2e0061-rq.b2e0061-rq.toactn",
+      "fullPath": "Root.bocb2e.trans.trn-b2e0061-rq.b2e0061-rq.toactn.actacn",
+      "required": true,
+      "lengthLimit": {
+        "state": "VALUE",
+        "min": 1,
+        "max": 35,
+        "precision": null,
+        "scale": null
+      },
+      "illegalCharacters": {
+        "state": "NO_CONSTRAINT",
+        "value": null
+      },
+      "regex": {
+        "state": "NO_CONSTRAINT",
+        "value": null
+      },
+      "dataType": "String",
+      "xmlKeys": [],
+      "schemaIrFieldPath": "Root.bocb2e.trans.trn-b2e0061-rq.b2e0061-rq.toactn.actacn",
+      "conditionalConstraints": [],
+      "ruleReferences": [
+        "STD.FIELD.PARENT_PATH",
+        "STD.FIELD.FULL_PATH",
+        "STD.FIELD.SEQUENCE",
+        "STD.FIELD.DATA_TYPE",
+        "STD.CONSTRAINT.VALUE_STATE"
+      ],
+      "differences": [],
+      "evidence": [
+        {
+          "kind": "FINAL_SCHEMA_IR",
+          "sourceRef": "Root.bocb2e.trans.trn-b2e0061-rq.b2e0061-rq.toactn.actacn",
+          "note": "字段结构与银行约束来自已冻结的 Final SchemaIR v2。"
+        }
+      ],
+      "confidence": 1.0,
+      "uncertain": false,
+      "uncertainReason": null,
+      "reviewNote": null
+    },
+    {
+      "fieldId": "b2e0061-assembly-bocb2e-trans-trn-b2e0061-rq-b2e0061-rq-toactn-toname",
+      "sequence": 4,
+      "fieldName": "toname",
+      "fieldDescription": "收款人名称",
+      "conditionText": "一个汉字等于一个字符。",
+      "parentPath": "Root.bocb2e.trans.trn-b2e0061-rq.b2e0061-rq.toactn",
+      "fullPath": "Root.bocb2e.trans.trn-b2e0061-rq.b2e0061-rq.toactn.toname",
+      "required": true,
+      "lengthLimit": {
+        "state": "VALUE",
+        "min": 1,
+        "max": 70,
+        "precision": null,
+        "scale": null
+      },
+      "illegalCharacters": {
+        "state": "NO_CONSTRAINT",
+        "value": null
+      },
+      "regex": {
+        "state": "NO_CONSTRAINT",
+        "value": null
+      },
+      "dataType": "String",
+      "xmlKeys": [],
+      "schemaIrFieldPath": "Root.bocb2e.trans.trn-b2e0061-rq.b2e0061-rq.toactn.toname",
+      "conditionalConstraints": [],
+      "ruleReferences": [
+        "STD.FIELD.PARENT_PATH",
+        "STD.FIELD.FULL_PATH",
+        "STD.FIELD.SEQUENCE",
+        "STD.FIELD.DATA_TYPE",
+        "STD.CONSTRAINT.VALUE_STATE"
+      ],
+      "differences": [],
+      "evidence": [
+        {
+          "kind": "FINAL_SCHEMA_IR",
+          "sourceRef": "Root.bocb2e.trans.trn-b2e0061-rq.b2e0061-rq.toactn.toname",
+          "note": "字段结构与银行约束来自已冻结的 Final SchemaIR v2。"
+        }
+      ],
+      "confidence": 1.0,
+      "uncertain": false,
+      "uncertainReason": null,
+      "reviewNote": null
+    },
+    {
+      "fieldId": "b2e0061-assembly-bocb2e-trans-trn-b2e0061-rq-b2e0061-rq-toactn-tobknm",
+      "sequence": 5,
+      "fieldName": "tobknm",
+      "fieldDescription": "收款人开户行名称",
+      "conditionText": "当收款行联行号为空时必填；系统可根据联行号或12位CNAPS号补全。",
+      "parentPath": "Root.bocb2e.trans.trn-b2e0061-rq.b2e0061-rq.toactn",
+      "fullPath": "Root.bocb2e.trans.trn-b2e0061-rq.b2e0061-rq.toactn.tobknm",
+      "required": false,
+      "lengthLimit": {
+        "state": "VALUE",
+        "min": 0,
+        "max": 70,
+        "precision": null,
+        "scale": null
+      },
+      "illegalCharacters": {
+        "state": "NO_CONSTRAINT",
+        "value": null
+      },
+      "regex": {
+        "state": "NO_CONSTRAINT",
+        "value": null
+      },
+      "dataType": "String",
+      "xmlKeys": [],
+      "schemaIrFieldPath": "Root.bocb2e.trans.trn-b2e0061-rq.b2e0061-rq.toactn.tobknm",
+      "conditionalConstraints": [],
+      "ruleReferences": [
+        "STD.FIELD.PARENT_PATH",
+        "STD.FIELD.FULL_PATH",
+        "STD.FIELD.SEQUENCE",
+        "STD.FIELD.DATA_TYPE",
+        "STD.CONSTRAINT.VALUE_STATE"
+      ],
+      "differences": [],
+      "evidence": [
+        {
+          "kind": "FINAL_SCHEMA_IR",
+          "sourceRef": "Root.bocb2e.trans.trn-b2e0061-rq.b2e0061-rq.toactn.tobknm",
+          "note": "字段结构与银行约束来自已冻结的 Final SchemaIR v2。"
+        }
+      ],
+      "confidence": 1.0,
+      "uncertain": false,
+      "uncertainReason": null,
+      "reviewNote": null
+    },
+    {
+      "fieldId": "b2e0061-assembly-bocb2e-trans-trn-b2e0061-rq-b2e0061-rq-toactn-toaddr",
+      "sequence": 6,
+      "fieldName": "toaddr",
+      "fieldDescription": "收款人地址",
+      "conditionText": "一个汉字占2个字符。",
+      "parentPath": "Root.bocb2e.trans.trn-b2e0061-rq.b2e0061-rq.toactn",
+      "fullPath": "Root.bocb2e.trans.trn-b2e0061-rq.b2e0061-rq.toactn.toaddr",
+      "required": false,
+      "lengthLimit": {
+        "state": "VALUE",
+        "min": 0,
+        "max": 70,
+        "precision": null,
+        "scale": null
+      },
+      "illegalCharacters": {
+        "state": "NO_CONSTRAINT",
+        "value": null
+      },
+      "regex": {
+        "state": "NO_CONSTRAINT",
+        "value": null
+      },
+      "dataType": "String",
+      "xmlKeys": [],
+      "schemaIrFieldPath": "Root.bocb2e.trans.trn-b2e0061-rq.b2e0061-rq.toactn.toaddr",
+      "conditionalConstraints": [],
+      "ruleReferences": [
+        "STD.FIELD.PARENT_PATH",
+        "STD.FIELD.FULL_PATH",
+        "STD.FIELD.SEQUENCE",
+        "STD.FIELD.DATA_TYPE",
+        "STD.CONSTRAINT.VALUE_STATE"
+      ],
+      "differences": [],
+      "evidence": [
+        {
+          "kind": "FINAL_SCHEMA_IR",
+          "sourceRef": "Root.bocb2e.trans.trn-b2e0061-rq.b2e0061-rq.toactn.toaddr",
+          "note": "字段结构与银行约束来自已冻结的 Final SchemaIR v2。"
+        }
+      ],
+      "confidence": 1.0,
+      "uncertain": false,
+      "uncertainReason": null,
+      "reviewNote": null
+    },
+    {
+      "fieldId": "b2e0061-assembly-bocb2e-trans-trn-b2e0061-rq-b2e0061-rq-toactn-email",
+      "sequence": 7,
+      "fieldName": "email",
+      "fieldDescription": "收款人电子邮件地址",
+      "conditionText": "可空；非空时包含@，3-80位。",
+      "parentPath": "Root.bocb2e.trans.trn-b2e0061-rq.b2e0061-rq.toactn",
+      "fullPath": "Root.bocb2e.trans.trn-b2e0061-rq.b2e0061-rq.toactn.email",
+      "required": false,
+      "lengthLimit": {
+        "state": "VALUE",
+        "min": 3,
+        "max": 80,
+        "precision": null,
+        "scale": null
+      },
+      "illegalCharacters": {
+        "state": "NO_CONSTRAINT",
+        "value": null
+      },
+      "regex": {
+        "state": "NO_CONSTRAINT",
+        "value": null
+      },
+      "dataType": "String",
+      "xmlKeys": [],
+      "schemaIrFieldPath": "Root.bocb2e.trans.trn-b2e0061-rq.b2e0061-rq.toactn.email",
+      "conditionalConstraints": [],
+      "ruleReferences": [
+        "STD.FIELD.PARENT_PATH",
+        "STD.FIELD.FULL_PATH",
+        "STD.FIELD.SEQUENCE",
+        "STD.FIELD.DATA_TYPE",
+        "STD.CONSTRAINT.VALUE_STATE"
+      ],
+      "differences": [],
+      "evidence": [
+        {
+          "kind": "FINAL_SCHEMA_IR",
+          "sourceRef": "Root.bocb2e.trans.trn-b2e0061-rq.b2e0061-rq.toactn.email",
+          "note": "字段结构与银行约束来自已冻结的 Final SchemaIR v2。"
+        },
+        {
+          "kind": "HUMAN_CONFIRMATION",
+          "sourceRef": "samples/trusted-chain/b2eboc-b2e0061/standards/standard-review.md#human-review-conclusions",
+          "note": "Human 确认不配置精确 email Regex，保留 SchemaIR email 格式语义与长度 3-80。"
+        }
+      ],
+      "confidence": 1.0,
+      "uncertain": false,
+      "uncertainReason": null,
+      "reviewNote": "Human 确认不配置精确 email Regex；保留 SchemaIR email 格式语义与长度 3-80。"
+    },
+    {
+      "fieldId": "b2e0061-assembly-bocb2e-trans-trn-b2e0061-rq-b2e0061-rq-trnamt",
+      "sequence": 5,
+      "fieldName": "trnamt",
+      "fieldDescription": "转账金额",
+      "conditionText": "非空正数；根据交易币种辅币位数检查金额格式；不超过转账限额。",
+      "parentPath": "Root.bocb2e.trans.trn-b2e0061-rq.b2e0061-rq",
+      "fullPath": "Root.bocb2e.trans.trn-b2e0061-rq.b2e0061-rq.trnamt",
+      "required": true,
+      "lengthLimit": {
+        "state": "VALUE",
+        "min": null,
+        "max": null,
+        "precision": 22,
+        "scale": 2
+      },
+      "illegalCharacters": {
+        "state": "NO_CONSTRAINT",
+        "value": null
+      },
+      "regex": {
+        "state": "NO_CONSTRAINT",
+        "value": null
+      },
+      "dataType": "Number",
+      "xmlKeys": [],
+      "schemaIrFieldPath": "Root.bocb2e.trans.trn-b2e0061-rq.b2e0061-rq.trnamt",
+      "conditionalConstraints": [],
+      "ruleReferences": [
+        "STD.FIELD.PARENT_PATH",
+        "STD.FIELD.FULL_PATH",
+        "STD.FIELD.SEQUENCE",
+        "STD.FIELD.DATA_TYPE",
+        "STD.CONSTRAINT.VALUE_STATE"
+      ],
+      "differences": [],
+      "evidence": [
+        {
+          "kind": "FINAL_SCHEMA_IR",
+          "sourceRef": "Root.bocb2e.trans.trn-b2e0061-rq.b2e0061-rq.trnamt",
+          "note": "字段结构与银行约束来自已冻结的 Final SchemaIR v2。"
+        }
+      ],
+      "confidence": 1.0,
+      "uncertain": false,
+      "uncertainReason": null,
+      "reviewNote": null
+    },
+    {
+      "fieldId": "b2e0061-assembly-bocb2e-trans-trn-b2e0061-rq-b2e0061-rq-trncur",
+      "sequence": 6,
+      "fieldName": "trncur",
+      "fieldDescription": "转账货币",
+      "conditionText": "只支持001或者CNY，仅人民币。",
+      "parentPath": "Root.bocb2e.trans.trn-b2e0061-rq.b2e0061-rq",
+      "fullPath": "Root.bocb2e.trans.trn-b2e0061-rq.b2e0061-rq.trncur",
+      "required": true,
+      "lengthLimit": {
+        "state": "VALUE",
+        "min": 3,
+        "max": 3,
+        "precision": null,
+        "scale": null
+      },
+      "illegalCharacters": {
+        "state": "NO_CONSTRAINT",
+        "value": null
+      },
+      "regex": {
+        "state": "NO_CONSTRAINT",
+        "value": null
+      },
+      "dataType": "String",
+      "xmlKeys": [],
+      "schemaIrFieldPath": "Root.bocb2e.trans.trn-b2e0061-rq.b2e0061-rq.trncur",
+      "conditionalConstraints": [],
+      "ruleReferences": [
+        "STD.FIELD.PARENT_PATH",
+        "STD.FIELD.FULL_PATH",
+        "STD.FIELD.SEQUENCE",
+        "STD.FIELD.DATA_TYPE",
+        "STD.CONSTRAINT.VALUE_STATE"
+      ],
+      "differences": [],
+      "evidence": [
+        {
+          "kind": "FINAL_SCHEMA_IR",
+          "sourceRef": "Root.bocb2e.trans.trn-b2e0061-rq.b2e0061-rq.trncur",
+          "note": "字段结构与银行约束来自已冻结的 Final SchemaIR v2。"
+        }
+      ],
+      "confidence": 1.0,
+      "uncertain": false,
+      "uncertainReason": null,
+      "reviewNote": null
+    },
+    {
+      "fieldId": "b2e0061-assembly-bocb2e-trans-trn-b2e0061-rq-b2e0061-rq-priolv",
+      "sequence": 7,
+      "fieldName": "priolv",
+      "fieldDescription": "银行处理优先级",
+      "conditionText": "枚举：0=普通，1=加急。",
+      "parentPath": "Root.bocb2e.trans.trn-b2e0061-rq.b2e0061-rq",
+      "fullPath": "Root.bocb2e.trans.trn-b2e0061-rq.b2e0061-rq.priolv",
+      "required": true,
+      "lengthLimit": {
+        "state": "VALUE",
+        "min": 1,
+        "max": 2,
+        "precision": null,
+        "scale": null
+      },
+      "illegalCharacters": {
+        "state": "NO_CONSTRAINT",
+        "value": null
+      },
+      "regex": {
+        "state": "NO_CONSTRAINT",
+        "value": null
+      },
+      "dataType": "String",
+      "xmlKeys": [],
+      "schemaIrFieldPath": "Root.bocb2e.trans.trn-b2e0061-rq.b2e0061-rq.priolv",
+      "conditionalConstraints": [],
+      "ruleReferences": [
+        "STD.FIELD.PARENT_PATH",
+        "STD.FIELD.FULL_PATH",
+        "STD.FIELD.SEQUENCE",
+        "STD.FIELD.DATA_TYPE",
+        "STD.CONSTRAINT.VALUE_STATE"
+      ],
+      "differences": [],
+      "evidence": [
+        {
+          "kind": "FINAL_SCHEMA_IR",
+          "sourceRef": "Root.bocb2e.trans.trn-b2e0061-rq.b2e0061-rq.priolv",
+          "note": "字段结构与银行约束来自已冻结的 Final SchemaIR v2。"
+        }
+      ],
+      "confidence": 1.0,
+      "uncertain": false,
+      "uncertainReason": null,
+      "reviewNote": null
+    },
+    {
+      "fieldId": "b2e0061-assembly-bocb2e-trans-trn-b2e0061-rq-b2e0061-rq-cuspriolv",
+      "sequence": 8,
+      "fieldName": "cuspriolv",
+      "fieldDescription": "客户处理优先级",
+      "conditionText": "枚举：0=普通，1=快速。",
+      "parentPath": "Root.bocb2e.trans.trn-b2e0061-rq.b2e0061-rq",
+      "fullPath": "Root.bocb2e.trans.trn-b2e0061-rq.b2e0061-rq.cuspriolv",
+      "required": true,
+      "lengthLimit": {
+        "state": "VALUE",
+        "min": 1,
+        "max": 2,
+        "precision": null,
+        "scale": null
+      },
+      "illegalCharacters": {
+        "state": "NO_CONSTRAINT",
+        "value": null
+      },
+      "regex": {
+        "state": "NO_CONSTRAINT",
+        "value": null
+      },
+      "dataType": "String",
+      "xmlKeys": [],
+      "schemaIrFieldPath": "Root.bocb2e.trans.trn-b2e0061-rq.b2e0061-rq.cuspriolv",
+      "conditionalConstraints": [],
+      "ruleReferences": [
+        "STD.FIELD.PARENT_PATH",
+        "STD.FIELD.FULL_PATH",
+        "STD.FIELD.SEQUENCE",
+        "STD.FIELD.DATA_TYPE",
+        "STD.CONSTRAINT.VALUE_STATE"
+      ],
+      "differences": [],
+      "evidence": [
+        {
+          "kind": "FINAL_SCHEMA_IR",
+          "sourceRef": "Root.bocb2e.trans.trn-b2e0061-rq.b2e0061-rq.cuspriolv",
+          "note": "字段结构与银行约束来自已冻结的 Final SchemaIR v2。"
+        }
+      ],
+      "confidence": 1.0,
+      "uncertain": false,
+      "uncertainReason": null,
+      "reviewNote": null
+    },
+    {
+      "fieldId": "b2e0061-assembly-bocb2e-trans-trn-b2e0061-rq-b2e0061-rq-furinfo",
+      "sequence": 9,
+      "fieldName": "furinfo",
+      "fieldDescription": "用途",
+      "conditionText": "不支持“|”；一个汉字占2个字符。",
+      "parentPath": "Root.bocb2e.trans.trn-b2e0061-rq.b2e0061-rq",
+      "fullPath": "Root.bocb2e.trans.trn-b2e0061-rq.b2e0061-rq.furinfo",
+      "required": false,
+      "lengthLimit": {
+        "state": "VALUE",
+        "min": 0,
+        "max": 200,
+        "precision": null,
+        "scale": null
+      },
+      "illegalCharacters": {
+        "state": "NO_CONSTRAINT",
+        "value": null
+      },
+      "regex": {
+        "state": "NO_CONSTRAINT",
+        "value": null
+      },
+      "dataType": "String",
+      "xmlKeys": [],
+      "schemaIrFieldPath": "Root.bocb2e.trans.trn-b2e0061-rq.b2e0061-rq.furinfo",
+      "conditionalConstraints": [],
+      "ruleReferences": [
+        "STD.FIELD.PARENT_PATH",
+        "STD.FIELD.FULL_PATH",
+        "STD.FIELD.SEQUENCE",
+        "STD.FIELD.DATA_TYPE",
+        "STD.CONSTRAINT.VALUE_STATE"
+      ],
+      "differences": [],
+      "evidence": [
+        {
+          "kind": "FINAL_SCHEMA_IR",
+          "sourceRef": "Root.bocb2e.trans.trn-b2e0061-rq.b2e0061-rq.furinfo",
+          "note": "字段结构与银行约束来自已冻结的 Final SchemaIR v2。"
+        }
+      ],
+      "confidence": 1.0,
+      "uncertain": false,
+      "uncertainReason": null,
+      "reviewNote": null
+    },
+    {
+      "fieldId": "b2e0061-assembly-bocb2e-trans-trn-b2e0061-rq-b2e0061-rq-trfdate",
+      "sequence": 10,
+      "fieldName": "trfdate",
+      "fieldDescription": "要求的转账日期",
+      "conditionText": "系统当前日期含当日之后的一个月内。",
+      "parentPath": "Root.bocb2e.trans.trn-b2e0061-rq.b2e0061-rq",
+      "fullPath": "Root.bocb2e.trans.trn-b2e0061-rq.b2e0061-rq.trfdate",
+      "required": true,
+      "lengthLimit": {
+        "state": "VALUE",
+        "min": 8,
+        "max": 8,
+        "precision": null,
+        "scale": null
+      },
+      "illegalCharacters": {
+        "state": "NO_CONSTRAINT",
+        "value": null
+      },
+      "regex": {
+        "state": "VALUE",
+        "value": "^[0-9]{8}$"
+      },
+      "dataType": "Date",
+      "xmlKeys": [],
+      "schemaIrFieldPath": "Root.bocb2e.trans.trn-b2e0061-rq.b2e0061-rq.trfdate",
+      "conditionalConstraints": [],
+      "ruleReferences": [
+        "STD.FIELD.PARENT_PATH",
+        "STD.FIELD.FULL_PATH",
+        "STD.FIELD.SEQUENCE",
+        "STD.FIELD.DATA_TYPE",
+        "STD.CONSTRAINT.VALUE_STATE"
+      ],
+      "differences": [],
+      "evidence": [
+        {
+          "kind": "FINAL_SCHEMA_IR",
+          "sourceRef": "Root.bocb2e.trans.trn-b2e0061-rq.b2e0061-rq.trfdate",
+          "note": "字段结构与银行约束来自已冻结的 Final SchemaIR v2。"
+        }
+      ],
+      "confidence": 1.0,
+      "uncertain": false,
+      "uncertainReason": null,
+      "reviewNote": null
+    },
+    {
+      "fieldId": "b2e0061-assembly-bocb2e-trans-trn-b2e0061-rq-b2e0061-rq-trftime",
+      "sequence": 11,
+      "fieldName": "trftime",
+      "fieldDescription": "要求的转账时间",
+      "conditionText": "转账日期为当日时，时间为当前时间后整点；转账日期为当日后一个月内，时间为整点；默认000000。",
+      "parentPath": "Root.bocb2e.trans.trn-b2e0061-rq.b2e0061-rq",
+      "fullPath": "Root.bocb2e.trans.trn-b2e0061-rq.b2e0061-rq.trftime",
+      "required": false,
+      "lengthLimit": {
+        "state": "VALUE",
+        "min": 6,
+        "max": 6,
+        "precision": null,
+        "scale": null
+      },
+      "illegalCharacters": {
+        "state": "NO_CONSTRAINT",
+        "value": null
+      },
+      "regex": {
+        "state": "VALUE",
+        "value": "^(?:[01][0-9]|2[0-3])0000$"
+      },
+      "dataType": "String",
+      "xmlKeys": [],
+      "schemaIrFieldPath": "Root.bocb2e.trans.trn-b2e0061-rq.b2e0061-rq.trftime",
+      "conditionalConstraints": [],
+      "ruleReferences": [
+        "STD.FIELD.PARENT_PATH",
+        "STD.FIELD.FULL_PATH",
+        "STD.FIELD.SEQUENCE",
+        "STD.FIELD.DATA_TYPE",
+        "STD.CONSTRAINT.VALUE_STATE"
+      ],
+      "differences": [],
+      "evidence": [
+        {
+          "kind": "FINAL_SCHEMA_IR",
+          "sourceRef": "Root.bocb2e.trans.trn-b2e0061-rq.b2e0061-rq.trftime",
+          "note": "字段结构与银行约束来自已冻结的 Final SchemaIR v2。"
+        }
+      ],
+      "confidence": 1.0,
+      "uncertain": false,
+      "uncertainReason": null,
+      "reviewNote": null
+    },
+    {
+      "fieldId": "b2e0061-assembly-bocb2e-trans-trn-b2e0061-rq-b2e0061-rq-comacn",
+      "sequence": 12,
+      "fieldName": "comacn",
+      "fieldDescription": "支付费用账号",
+      "conditionText": "非空则字符1-20位且账户已维护；为空则使用付款账户代替；付款账号和付费账号必须同为BANCS账号或同为非BANCS账号。",
+      "parentPath": "Root.bocb2e.trans.trn-b2e0061-rq.b2e0061-rq",
+      "fullPath": "Root.bocb2e.trans.trn-b2e0061-rq.b2e0061-rq.comacn",
+      "required": false,
+      "lengthLimit": {
+        "state": "VALUE",
+        "min": 0,
+        "max": 35,
+        "precision": null,
+        "scale": null
+      },
+      "illegalCharacters": {
+        "state": "NO_CONSTRAINT",
+        "value": null
+      },
+      "regex": {
+        "state": "NO_CONSTRAINT",
+        "value": null
+      },
+      "dataType": "String",
+      "xmlKeys": [],
+      "schemaIrFieldPath": "Root.bocb2e.trans.trn-b2e0061-rq.b2e0061-rq.comacn",
+      "conditionalConstraints": [],
+      "ruleReferences": [
+        "STD.FIELD.PARENT_PATH",
+        "STD.FIELD.FULL_PATH",
+        "STD.FIELD.SEQUENCE",
+        "STD.FIELD.DATA_TYPE",
+        "STD.CONSTRAINT.VALUE_STATE"
+      ],
+      "differences": [],
+      "evidence": [
+        {
+          "kind": "FINAL_SCHEMA_IR",
+          "sourceRef": "Root.bocb2e.trans.trn-b2e0061-rq.b2e0061-rq.comacn",
+          "note": "字段结构与银行约束来自已冻结的 Final SchemaIR v2。"
+        }
+      ],
+      "confidence": 1.0,
+      "uncertain": false,
+      "uncertainReason": null,
+      "reviewNote": null
+    },
+    {
+      "fieldId": "b2e0061-assembly-bocb2e-trans-trn-b2e0061-rq-b2e0061-rq-bocflag",
+      "sequence": 13,
+      "fieldName": "bocflag",
+      "fieldDescription": "收款人是否中行账号",
+      "conditionText": "枚举：1=中行，0=他行。",
+      "parentPath": "Root.bocb2e.trans.trn-b2e0061-rq.b2e0061-rq",
+      "fullPath": "Root.bocb2e.trans.trn-b2e0061-rq.b2e0061-rq.bocflag",
+      "required": true,
+      "lengthLimit": {
+        "state": "VALUE",
+        "min": 1,
+        "max": 2,
+        "precision": null,
+        "scale": null
+      },
+      "illegalCharacters": {
+        "state": "NO_CONSTRAINT",
+        "value": null
+      },
+      "regex": {
+        "state": "NO_CONSTRAINT",
+        "value": null
+      },
+      "dataType": "String",
+      "xmlKeys": [],
+      "schemaIrFieldPath": "Root.bocb2e.trans.trn-b2e0061-rq.b2e0061-rq.bocflag",
+      "conditionalConstraints": [],
+      "ruleReferences": [
+        "STD.FIELD.PARENT_PATH",
+        "STD.FIELD.FULL_PATH",
+        "STD.FIELD.SEQUENCE",
+        "STD.FIELD.DATA_TYPE",
+        "STD.CONSTRAINT.VALUE_STATE"
+      ],
+      "differences": [],
+      "evidence": [
+        {
+          "kind": "FINAL_SCHEMA_IR",
+          "sourceRef": "Root.bocb2e.trans.trn-b2e0061-rq.b2e0061-rq.bocflag",
+          "note": "字段结构与银行约束来自已冻结的 Final SchemaIR v2。"
+        }
+      ],
+      "confidence": 1.0,
+      "uncertain": false,
+      "uncertainReason": null,
+      "reviewNote": null
+    }
+  ]
+}

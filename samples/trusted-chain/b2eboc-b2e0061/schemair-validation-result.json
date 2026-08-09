@@ -1,0 +1,271 @@
+{
+  "contractVersion": "schemair-validation-result/v2",
+  "validatedArtifact": {
+    "kind": "SchemaIR",
+    "artifactId": "b2eboc-b2e0061-schema",
+    "artifactVersion": "v1",
+    "artifactContractVersion": "schemair/v2",
+    "contentHash": "sha256:4729131ad59fd29899895b1149a476c1f95b71f304cb43bd17749985f19e7162"
+  },
+  "status": "passed",
+  "finalEligible": true,
+  "summary": {
+    "schemaId": "b2eboc-b2e0061-schema",
+    "interfaceCode": "b2e0061",
+    "messageFormat": "XML",
+    "messageCount": 2,
+    "fieldCount": 49,
+    "errorCount": 0,
+    "warningCount": 0,
+    "infoCount": 34,
+    "blockingCount": 0
+  },
+  "coverage": {
+    "envelopeFieldCount": 12,
+    "messageFieldCount": 37,
+    "fieldsByFunctionType": {
+      "ASSEMBLY": 27,
+      "PARSE": 10
+    }
+  },
+  "issues": [
+    {
+      "severity": "INFO",
+      "blocking": false,
+      "code": "CONDITIONAL_FIELD",
+      "path": "Root.bocb2e",
+      "message": "Field has conditionText."
+    },
+    {
+      "severity": "INFO",
+      "blocking": false,
+      "code": "CONDITIONAL_FIELD",
+      "path": "Root.bocb2e.@locale",
+      "message": "Field has conditionText."
+    },
+    {
+      "severity": "INFO",
+      "blocking": false,
+      "code": "CONDITIONAL_FIELD",
+      "path": "Root.bocb2e.@security",
+      "message": "Field has conditionText."
+    },
+    {
+      "severity": "INFO",
+      "blocking": false,
+      "code": "CONDITIONAL_FIELD",
+      "path": "Root.bocb2e.@version",
+      "message": "Field has conditionText."
+    },
+    {
+      "severity": "INFO",
+      "blocking": false,
+      "code": "CONDITIONAL_FIELD",
+      "path": "Root.bocb2e.head.cusopr",
+      "message": "Field has conditionText."
+    },
+    {
+      "severity": "INFO",
+      "blocking": false,
+      "code": "CONDITIONAL_FIELD",
+      "path": "Root.bocb2e.head.custid",
+      "message": "Field has conditionText."
+    },
+    {
+      "severity": "INFO",
+      "blocking": false,
+      "code": "CONDITIONAL_FIELD",
+      "path": "Root.bocb2e.head.termid",
+      "message": "Field has conditionText."
+    },
+    {
+      "severity": "INFO",
+      "blocking": false,
+      "code": "CONDITIONAL_FIELD",
+      "path": "Root.bocb2e.head.token",
+      "message": "Field has conditionText."
+    },
+    {
+      "severity": "INFO",
+      "blocking": false,
+      "code": "CONDITIONAL_FIELD",
+      "path": "Root.bocb2e.head.trncod",
+      "message": "Field has conditionText."
+    },
+    {
+      "severity": "INFO",
+      "blocking": false,
+      "code": "CONDITIONAL_FIELD",
+      "path": "Root.bocb2e.head.trnid",
+      "message": "Field has conditionText."
+    },
+    {
+      "severity": "INFO",
+      "blocking": false,
+      "code": "CONDITIONAL_FIELD",
+      "path": "Root.bocb2e.trans",
+      "message": "Field has conditionText."
+    },
+    {
+      "severity": "INFO",
+      "blocking": false,
+      "code": "CONDITIONAL_FIELD",
+      "path": "Root.bocb2e.trans.trn-b2e0061-rq.b2e0061-rq.bocflag",
+      "message": "Field has conditionText."
+    },
+    {
+      "severity": "INFO",
+      "blocking": false,
+      "code": "CONDITIONAL_FIELD",
+      "path": "Root.bocb2e.trans.trn-b2e0061-rq.b2e0061-rq.comacn",
+      "message": "Field has conditionText."
+    },
+    {
+      "severity": "INFO",
+      "blocking": false,
+      "code": "CONDITIONAL_FIELD",
+      "path": "Root.bocb2e.trans.trn-b2e0061-rq.b2e0061-rq.cuspriolv",
+      "message": "Field has conditionText."
+    },
+    {
+      "severity": "INFO",
+      "blocking": false,
+      "code": "CONDITIONAL_FIELD",
+      "path": "Root.bocb2e.trans.trn-b2e0061-rq.b2e0061-rq.fractn.actacn",
+      "message": "Field has conditionText."
+    },
+    {
+      "severity": "INFO",
+      "blocking": false,
+      "code": "CONDITIONAL_FIELD",
+      "path": "Root.bocb2e.trans.trn-b2e0061-rq.b2e0061-rq.fractn.actnam",
+      "message": "Field has conditionText."
+    },
+    {
+      "severity": "INFO",
+      "blocking": false,
+      "code": "CONDITIONAL_FIELD",
+      "path": "Root.bocb2e.trans.trn-b2e0061-rq.b2e0061-rq.fractn.fribkn",
+      "message": "Field has conditionText."
+    },
+    {
+      "severity": "INFO",
+      "blocking": false,
+      "code": "CONDITIONAL_FIELD",
+      "path": "Root.bocb2e.trans.trn-b2e0061-rq.b2e0061-rq.furinfo",
+      "message": "Field has conditionText."
+    },
+    {
+      "severity": "INFO",
+      "blocking": false,
+      "code": "CONDITIONAL_FIELD",
+      "path": "Root.bocb2e.trans.trn-b2e0061-rq.b2e0061-rq.insid",
+      "message": "Field has conditionText."
+    },
+    {
+      "severity": "INFO",
+      "blocking": false,
+      "code": "CONDITIONAL_FIELD",
+      "path": "Root.bocb2e.trans.trn-b2e0061-rq.b2e0061-rq.obssid",
+      "message": "Field has conditionText."
+    },
+    {
+      "severity": "INFO",
+      "blocking": false,
+      "code": "CONDITIONAL_FIELD",
+      "path": "Root.bocb2e.trans.trn-b2e0061-rq.b2e0061-rq.priolv",
+      "message": "Field has conditionText."
+    },
+    {
+      "severity": "INFO",
+      "blocking": false,
+      "code": "CONDITIONAL_FIELD",
+      "path": "Root.bocb2e.trans.trn-b2e0061-rq.b2e0061-rq.toactn.actacn",
+      "message": "Field has conditionText."
+    },
+    {
+      "severity": "INFO",
+      "blocking": false,
+      "code": "CONDITIONAL_FIELD",
+      "path": "Root.bocb2e.trans.trn-b2e0061-rq.b2e0061-rq.toactn.acttyp",
+      "message": "Field has conditionText."
+    },
+    {
+      "severity": "INFO",
+      "blocking": false,
+      "code": "CONDITIONAL_FIELD",
+      "path": "Root.bocb2e.trans.trn-b2e0061-rq.b2e0061-rq.toactn.email",
+      "message": "Field has conditionText."
+    },
+    {
+      "severity": "INFO",
+      "blocking": false,
+      "code": "CONDITIONAL_FIELD",
+      "path": "Root.bocb2e.trans.trn-b2e0061-rq.b2e0061-rq.toactn.toaddr",
+      "message": "Field has conditionText."
+    },
+    {
+      "severity": "INFO",
+      "blocking": false,
+      "code": "CONDITIONAL_FIELD",
+      "path": "Root.bocb2e.trans.trn-b2e0061-rq.b2e0061-rq.toactn.tobknm",
+      "message": "Field has conditionText."
+    },
+    {
+      "severity": "INFO",
+      "blocking": false,
+      "code": "CONDITIONAL_FIELD",
+      "path": "Root.bocb2e.trans.trn-b2e0061-rq.b2e0061-rq.toactn.toibkn",
+      "message": "Field has conditionText."
+    },
+    {
+      "severity": "INFO",
+      "blocking": false,
+      "code": "CONDITIONAL_FIELD",
+      "path": "Root.bocb2e.trans.trn-b2e0061-rq.b2e0061-rq.toactn.toname",
+      "message": "Field has conditionText."
+    },
+    {
+      "severity": "INFO",
+      "blocking": false,
+      "code": "CONDITIONAL_FIELD",
+      "path": "Root.bocb2e.trans.trn-b2e0061-rq.b2e0061-rq.trfdate",
+      "message": "Field has conditionText."
+    },
+    {
+      "severity": "INFO",
+      "blocking": false,
+      "code": "CONDITIONAL_FIELD",
+      "path": "Root.bocb2e.trans.trn-b2e0061-rq.b2e0061-rq.trftime",
+      "message": "Field has conditionText."
+    },
+    {
+      "severity": "INFO",
+      "blocking": false,
+      "code": "CONDITIONAL_FIELD",
+      "path": "Root.bocb2e.trans.trn-b2e0061-rq.b2e0061-rq.trnamt",
+      "message": "Field has conditionText."
+    },
+    {
+      "severity": "INFO",
+      "blocking": false,
+      "code": "CONDITIONAL_FIELD",
+      "path": "Root.bocb2e.trans.trn-b2e0061-rq.b2e0061-rq.trncur",
+      "message": "Field has conditionText."
+    },
+    {
+      "severity": "INFO",
+      "blocking": false,
+      "code": "CONDITIONAL_FIELD",
+      "path": "Root.bocb2e.trans.trn-b2e0061-rq.ceitinfo",
+      "message": "Field has conditionText."
+    },
+    {
+      "severity": "INFO",
+      "blocking": false,
+      "code": "CONDITIONAL_FIELD",
+      "path": "Root.bocb2e.trans.trn-b2e0061-rq.transtype",
+      "message": "Field has conditionText."
+    }
+  ]
+}

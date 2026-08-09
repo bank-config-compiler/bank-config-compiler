@@ -2,7 +2,7 @@
 
 ## Status
 
-Draft. Applies to P0-T2 expected DocIR / SchemaIR work and the P0-T3 SchemaIR wire-contract amendment.
+Draft. P0-T2 expected DocIR / SchemaIR remains a historical Review baseline; the SchemaIR v2 fields below describe the implemented P0-T3 machine contract.
 
 ## 1. 目的
 
@@ -43,24 +43,29 @@ DocIR 主表不展示完整 `Path`，避免人工 review 时被长路径淹没�
 
 | 字段 | 类型 | 含义 |
 |---|---|---|
+| `contractVersion` | string | 固定为 `schemair/v2`。 |
+| `schemaId` | string | 仓库内唯一、不可变的 kebab-case stable ID。 |
+| `schemaVersion` | string | 不可变 artifact version，格式为 `v<正整数>`。 |
+| `status` | string | `DRAFT | FINAL`。 |
+| `review` | object | `status`、具名 reviewer、带时区 `reviewedAt` 和可空 note；Pending 不携带审批身份。 |
 | `interfaceCode` | string | 接口编码，例如 `b2e0061`。 |
 | `interfaceName` | string | 接口名称。 |
 | `messageFormat` | string | 银行报文格式，当前只允许 `XML`。JSON 序列化不表示支持 JSON 银行报文。 |
-| `version` | string/null | 便于展示的候选协议版本。不确定性由 `envelope.fields` 中的 attribute 字段承载。 |
+| `protocolVersion` | string | 银行协议候选版本；它不是 artifact version，不确定性由 `envelope.fields` 中的 attribute 字段承载。 |
 | `sourceDocument` | string | SchemaIR 来源文档路径。 |
 | `envelope` | object | 可复用 BOCB2E envelope/head/trans 模型。 |
 | `messages` | array | 交易消息集合，当前按 `ASSEMBLY` / `PARSE` 区分。 |
 
-每个 `messages[]` 还保存方向级 `xmlEncoding`。它来自银行文档证据和 Human Review；证据与已确认值冲突时必须产生 Warning 并阻止 Final，直到 Human Review 给出新结论。Final 值展示在 Workbook `Overview`，不投影成 Standard Field。b2e0061 的 ASSEMBLY、PARSE 两个方向已确认均为 `UTF-8`。
+每个 `messages[]` 还保存方向级 `xmlEncoding` 与 `xmlEncodingEvidence[]`。evidence 记录 source kind/ref、observed value、`SUPPORTS | UNRESOLVED_CONFLICT | RESOLVED_CONFLICT` disposition 和 Review 说明；未处置冲突产生 blocking Warning。Final 值展示在 Workbook `Overview`，不投影成 Standard Field。b2e0061 的 ASSEMBLY、PARSE 两个方向已确认均为 canonical `UTF-8`。
 
 ## 4. SchemaIR 字段对象
 
 | 字段 | 类型 | 含义 |
 |---|---|---|
 | `path` | string | 唯一完整路径。重复 tag 通过 path 区分。 |
-| `fieldName` | string | 当前节点名称。XML attribute 不带 `@`。 |
-| `displayName` | string/null | 面向配置人员的中文名称或说明。 |
-| `parentPath` | string/null | 父节点路径。root 字段可为 `null`。 |
+| `fieldName` | string | 当前节点名称；XML attribute 保留 `@`，并与 path 最后一段完全一致。 |
+| `displayName` | string | 面向配置人员的中文名称或说明。 |
+| `parentPath` | string | 直接父节点路径；BOCB2E root 使用外部哨兵父路径 `Root`。 |
 | `level` | number | SchemaIR 路径层级，用于校验父子关系和辅助 Review；Configuration Workbook 的目标字段层级与顺序以 InterfaceStandardIR 的 parentPath/fullPath 和 sequence 为准。 |
 | `nodeKind` | string | `XML_ELEMENT`、`XML_ATTRIBUTE` 或 `SCALAR`。 |
 | `dataType` | string | 标准化类型，例如 `string`、`decimal`、`date`、`object`。 |
@@ -69,8 +74,8 @@ DocIR 主表不展示完整 `Path`，避免人工 review 时被长路径淹没�
 | `required` | boolean | 基础必填。条件必填字段使用 `false`，条件同时进入 `conditionText`；可结构化的银行条件另进入 `conditionalConstraints`。 |
 | `multiple` | boolean | 是否为重复节点或多笔记录。 |
 | `hasChildren` | boolean | 是否存在子字段。 |
-| `occurs` | string/null | 原文或推导的出现次数。 |
-| `description` | string/null | 字段说明。 |
+| `occurs` | string | 原文或推导的 `min..max` 出现次数。 |
+| `description` | string | 字段说明。 |
 | `conditionText` | string/null | 银行原始条件必填、枚举、平台校验和约束说明；不因已结构化而删除。 |
 | `sourceText` | string | 字段行级来源证据。 |
 | `evidence` | object | 来源类型和推导说明。 |
@@ -83,7 +88,7 @@ DocIR 主表不展示完整 `Path`，避免人工 review 时被长路径淹没�
 
 SchemaIR message 可以包含 `conditionalConstraints[]`，用于保存银行文档明确且落在当前最小规则集内的跨字段条件。每条约束至少具有 controlling field path、operator、target field path、effect、sourceText/evidence 和 Review 信息。P0 不把目的系统业务 Condition 写入这里，也不执行条件。
 
-银行字段、路径、出现次数和约束以 raw-doc/Final SchemaIR 为准。正式导出中的 `@lang` 只保留为 observed evidence 和差异 Warning；b2e0061 Final Standard 保留 raw-doc 的 `@security`，排除 `vamflag`。这些投影决定不回写 P0-T2 审查前 Golden，而在 P0-T3 Standard 链路中落实。
+银行字段、路径、出现次数和约束以 raw-doc/Final SchemaIR 为准。正式导出中的 observed `@lang` 只保留在来源和 Review 证据中，不作为 Final SchemaIR 或 Standard 字段；b2e0061 Final Standard 已保留 raw-doc 的 `@security` 并排除 `vamflag`。这些投影决定不回写 P0-T2 审查前 Golden，而在 P0-T3 Final Standard 中落实。
 
 ## 5. evidence.kind
 

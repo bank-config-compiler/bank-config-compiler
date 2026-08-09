@@ -22,7 +22,8 @@ P0-T1 的 `b2e0061` candidate review 暴露出几个问题：
 - SchemaIR 顶层新增 `envelope` 字段，专门表达可复用的 BOCB2E envelope/head/trans。
 - `messages` 只表达接口交易消息，例如 `ASSEMBLY` 的 `b2e0061-rq` 和 `PARSE` 的 `b2e0061-rs`。
 - 所有 SchemaIR 字段新增 `evidence`，其中 `kind` 为 `DIRECT`、`DERIVED` 或 `ASSUMED`，`note` 说明来源或推导原因。
-- 顶层 `version` 可以保留候选便捷值；真实来源和不确定性由 `envelope.fields` 中的 `Root.bocb2e.@version` 表达。
+- SchemaIR v2 使用显式 `schemaId + schemaVersion` 表达 artifact identity；原候选顶层 `version` 改名为 `protocolVersion`，真实来源和不确定性仍由 `envelope.fields` 中的 `Root.bocb2e.@version` 表达。
+- SchemaIR v2 的 XML attribute 在 `path` 与 `fieldName` 中都保留 `@`，避免同一父路径下与 element 身份混淆。
 - Schema Workbook 不新增独立 `ENVELOPE` sheet；`ASSEMBLY` 和 `PARSE` sheet 都并入 envelope/head 字段，再接当前方向交易字段。
 - 历史导出 JSON 仅作为人工 review 对照，不作为字段来源、不进入 expected SchemaIR、不作为 golden regression 输入。
 
@@ -77,5 +78,6 @@ P0-T1 的 `b2e0061` candidate review 暴露出几个问题：
 - Validator 需要校验 `envelope` 和字段级 `evidence.kind`。
 - Workbook Generator 需要在 `ASSEMBLY` 和 `PARSE` sheet 中重复展示 envelope/head 字段。
 - Review notes 可以按 `uncertain`、`confidence` 和 `evidence.kind` 稳定生成。
+- 方向级 `xmlEncodingEvidence` 把 Human/银行确认、文档观察值和冲突处置带入同一可校验 artifact；Validator 不自行解析或补猜外部证据。
 - SchemaIR 比 P0-T1 candidate 更长，但来源解释和复用边界更清楚。
 - 后续 expected SchemaIR 不应从历史导出 JSON 补字段；如发现 raw doc 不足，应通过 human review 明确补充来源和不确定性。

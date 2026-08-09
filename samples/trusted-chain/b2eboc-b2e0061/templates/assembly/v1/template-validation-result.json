@@ -1,0 +1,66 @@
+{
+  "contractVersion": "interface-template-validation-result/v1",
+  "validatedArtifact": {
+    "kind": "InterfaceTemplateIR",
+    "artifactId": "b2e0061-assembly-common",
+    "artifactVersion": "v1",
+    "artifactContractVersion": "interface-template/v1",
+    "contentHash": "sha256:b9966a449ddc29e08fa29c6cf7838273ce3cab91e00dbb38092767d21af2f561"
+  },
+  "status": "passed_with_warnings",
+  "finalEligible": true,
+  "summary": {
+    "templateId": "b2e0061-assembly-common",
+    "interfaceCode": "b2e0061",
+    "direction": "ASSEMBLY",
+    "rulePackageVersion": "v2",
+    "fieldConfigCount": 26,
+    "errorCount": 0,
+    "warningCount": 4,
+    "infoCount": 0,
+    "blockingCount": 0
+  },
+  "coverage": {
+    "valueBindingCount": 25,
+    "structureBindingCount": 1,
+    "collectionBindingCount": 0,
+    "fieldValueExpressionCount": 25,
+    "xmlKeyExpressionCount": 3,
+    "omissionCount": 4,
+    "approvedOmissionCount": 4,
+    "uncertainFieldConfigCount": 0,
+    "functionInvocationCount": 4,
+    "mappingExpressionCount": 0,
+    "replacementCount": 0
+  },
+  "issues": [
+    {
+      "severity": "WARNING",
+      "blocking": false,
+      "code": "MISSING_TEMPLATE_FIELD",
+      "path": "omissions.b2e0061-assembly-bocb2e-trans-trn-b2e0061-rq-b2e0061-rq-bocflag",
+      "message": "ASSEMBLY scalar Standard field is intentionally not represented by a Template row."
+    },
+    {
+      "severity": "WARNING",
+      "blocking": false,
+      "code": "MISSING_TEMPLATE_FIELD",
+      "path": "omissions.b2e0061-assembly-bocb2e-trans-trn-b2e0061-rq-b2e0061-rq-fractn-actnam",
+      "message": "ASSEMBLY scalar Standard field is intentionally not represented by a Template row."
+    },
+    {
+      "severity": "WARNING",
+      "blocking": false,
+      "code": "MISSING_TEMPLATE_FIELD",
+      "path": "omissions.b2e0061-assembly-bocb2e-trans-trn-b2e0061-rq-b2e0061-rq-toactn-tobknm",
+      "message": "ASSEMBLY scalar Standard field is intentionally not represented by a Template row."
+    },
+    {
+      "severity": "WARNING",
+      "blocking": false,
+      "code": "MISSING_TEMPLATE_FIELD",
+      "path": "omissions.b2e0061-assembly-bocb2e-trans-trn-b2e0061-rq-b2e0061-rq-toactn-toname",
+      "message": "ASSEMBLY scalar Standard field is intentionally not represented by a Template row."
+    }
+  ]
+}

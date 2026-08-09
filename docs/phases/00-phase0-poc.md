@@ -2,7 +2,7 @@
 
 ## Status
 
-Draft. Trusted-chain work is partially implemented; the source-material blocker is resolved and P0-T3 InterfaceStandardIR, InterfaceTemplateIR and Configuration Workbook work is In Progress.
+Draft. P0-T3 trusted chain is complete: reviewed Final SchemaIR/Standard/Template fixtures, matching results, released rules, deterministic Configuration Workbook, explicit workspace/CLI and structured Golden regression are implemented. P0-T4 Draft generators remain.
 
 ## 1. 阶段目标
 
@@ -26,21 +26,22 @@ LLM、Agent 或 workflow 可以生成 Draft，但不能替代 Validator、人工
 
 已完成：
 
-- Python CLI、`ingest`、workspace artifact bootstrap 和 `check`。
+- Python CLI、`ingest`、严格 workspace JSON artifact I/O 和 `check --profile raw`；legacy `phase0a` 已移除。
 - `b2e0061` reference raw doc。
 - 经人工 Review 的 expected DocIR、expected SchemaIR 和 expected review notes。
-- SchemaIR Validator v1、字段级校验结果契约和 expected validation result。当前 Validator 仍接受早期 JSON 枚举，尚需按 XML-only 产品契约收紧。
+- SchemaIR v2 XML-only Validator、canonical hash/result contract、encoding evidence、结构化条件和已冻结的 49-field b2e0061 Final fixture；准确 hash 已由 `deng` 确认，当前结果为 0 ERROR、0 WARNING、0 blocking issue，`finalEligible=true`。
+- `configuration-rules/v1` 已收束为接口无关、非全量的 BKL configuration rules 子集，并具有仓库内 safe loader、严格 schema/semantic validator 和引用闭合测试；双 reviewer 已确认候选并于 2026-08-06 发布，默认 loader 可直接加载该 `RELEASED` 版本。
+- `configuration-rules/v2` 继承 v1 的全部 catalog，只修订方向相关 Standard projection；maintainer 与 business reviewer 已确认准确候选，并于 2026-08-09 发布为 `RELEASED` 后冻结。
+- `interface-standard/v1` 与 `interface-standard-validation-result/v1`、Standard Validator 及双方向 b2e0061 Final fixture；两个 Standard 均经 `deng` 确认准确 hash，结果为 0 ERROR、0 WARNING、0 blocking issue，`finalEligible=true`。
+- `interface-template/v1` 与 `interface-template-validation-result/v1`、Template Validator 及双方向 b2e0061 Final fixtures/results；ASSEMBLY/PARSE hash 分别为 `sha256:b9966a449ddc29e08fa29c6cf7838273ce3cab91e00dbb38092767d21af2f561`、`sha256:16eb305b6ac3944f28cb1060b943fdfc2d471f69e6bf8ea52ce059c797fb22f9`。ASSEMBLY 保留 4 个经接受 omission 和 4 个非阻塞 Warning，PARSE 为 0 WARNING；两者均为 0 ERROR、0 blocking、`finalEligible=true`。
+- Configuration Workbook 核心运行时、固定七 sheet、完整 validation-result equality gate、双规则版本、safe text、原子写入和 CREATE/REUSE/UPDATE。
+- 只读 `check --profile phase0`、固定路径 `generate-workbook`、ASSEMBLY/PARSE Golden Workbook 与结构化/CLI regression。
 
 尚未完成：
 
 - 四类 IR Draft generator。
-- SchemaIR Validator 的 XML-only 枚举对齐。
-- `configuration-rules/v1` 已收束为接口无关、非全量的 BKL configuration rules 子集，并具有仓库内 safe loader、严格 schema/semantic validator 和引用闭合测试；双 reviewer 已确认候选并于 2026-08-06 发布，默认 loader 可直接加载该 `RELEASED` 版本。
-- InterfaceStandardIR / InterfaceTemplateIR machine wire contract、人工确认 fixture 和 Validator。
-- Configuration Workbook Generator、expected workbook 和结构化 assertions。
-- 覆盖完整可信链路的 golden regression。
 
-`configuration-rules/v1` 已根据正式导出、字段清单、Mapping 样例、`bkl.md` 和业务确认建立为 BKL 子集，不包含接口专属规则。Function catalog 只保留正式导出观察到的 5 个条目，类型统一为 String；字符长度默认值确认为 `STANDARD_1`。该版本已发布并冻结，两个目标配置 IR 与 Configuration Workbook 可以继续实现；目的系统业务 Condition 继续 fail closed。详细任务状态见 `docs/planning/00-phase0-poc-plan.md`。
+`configuration-rules/v1` 与 v2 均已发布并冻结；v2 不改变其 27/207/14/5/6 catalog、Function String、Mapping/Replacement、字符长度默认 `STANDARD_1` 或业务 Condition 边界，只修订 Template Standard projection。现有 Final Standard 继续绑定 v1；Final InterfaceTemplateIR 精确绑定 v2。详细任务状态见 `docs/planning/00-phase0-poc-plan.md`。
 
 ## 3. In Scope
 
@@ -53,8 +54,8 @@ LLM、Agent 或 workflow 可以生成 Draft，但不能替代 Validator、人工
 - Final Standard 到 InterfaceTemplateIR Draft、Template Validator 和人工确认 Final Template。
 - 一个标准关联多份同方向模板，模板精确绑定不可变标准版本。
 - ASSEMBLY 模板字段子集/omission 与 PARSE Standard source 到 Parse Field target。
-- 方向级 `messages[].xmlEncoding` Review，并在 Workbook Overview 展示。
-- Template 每个配置行显式镜像 Standard required/length/dataType。
+- 方向级 `messages[].xmlEncoding`、显式 evidence/conflict disposition Review，并在 Workbook Overview 展示。
+- ASSEMBLY Template 显式镜像 Standard target 的 required/length/dataType；PARSE 从表达式或 collection source 的 Standard reference 派生。
 - `VALUE | STRUCTURE_ONLY | COLLECTION_ITEM` 结构绑定；b2e0061 重复响应 Node 创建 `paymentLineList` 元素。
 - 银行文档明确条件与基础 Required 分离，并在 Standard/Workbook 中可追溯。
 - 标量字段值和 XML Key 使用同一递归 Value Expression 模型；Node/Object 无字段值表达式。
@@ -81,11 +82,11 @@ LLM、Agent 或 workflow 可以生成 Draft，但不能替代 Validator、人工
 
 DocIR Draft 至少保留接口编码、XML 格式、ASSEMBLY/PARSE、字段表、章节、XML 示例、条件、来源证据、冲突和不确定项。人工确认后形成 Final DocIR。
 
-SchemaIR Draft 保存银行 XML element、attribute、完整 path、父子层级、类型、required、length、occurs、condition、方向级 `xmlEncoding` 和 evidence。SchemaIR Validator 必须提供字段级错误；人工修改后必须重新校验，确认后形成 Final SchemaIR。b2e0061 两个方向已由 Human 与银行线下确认为 `UTF-8`；以后银行文档证据冲突必须产生 Warning 并阻止 Final，直到 Human Review。Final encoding 不生成 Standard 字段。
+SchemaIR Draft 保存银行 XML element、attribute、完整 path、父子层级、类型、required、length、occurs、condition、方向级 `xmlEncoding` 和 evidence。SchemaIR Validator 必须提供字段级错误。Human 先完成包括 Final lifecycle/Review metadata 在内的完整 candidate，再重新运行 Validator；只有 identity/version/contract/canonical hash 匹配且 `finalEligible=true` 的结果可以进入下游。b2e0061 两个方向已由 Human 与银行线下确认为 `UTF-8`；显式文档 evidence 冲突产生 blocking Warning，直到 Human Review 处置。Final encoding 不生成 Standard 字段。
 
 ### 5.2 规则包
 
-Phase0 必须使用业务负责人确认的版本化 `configuration-rules/v1`；它是接口无关、非全量的 BKL configuration rules 子集。Draft 用于实现，Final IR 只能引用发布后不可变的 RELEASED 版本。规则包包含：
+Phase0 必须使用业务负责人确认的版本化规则包；`configuration-rules/v1` 与 v2 都是接口无关、非全量且不可变的 BKL configuration rules 子集。Final IR 只能精确引用适用的 `RELEASED` 版本，不能自动选择最新版本。规则包包含：
 
 - Interface Standard 的路径、类型和约束映射规则；
 - 六种 Value Mode 和模板处理策略；
@@ -108,7 +109,7 @@ LLM 结合 Final SchemaIR 和规则版本生成 Standard Draft，至少覆盖：
 - SchemaIR/Standard 差异、规则依据和人工结论。
 - 银行文档明确条件与基础 Required 分离，例如 `transtype=2 => obssid required`。
 
-银行字段、路径、出现次数和约束以 raw-doc/Final SchemaIR 为准；正式导出只证明目标系统形态。raw-doc 在已审查范围内未写约束时使用 `NO_CONSTRAINT`，证据冲突或无法判定时使用 `UNKNOWN`。b2e0061 Standard 保留 `@security`、排除 `vamflag`，`@lang` 只保留为 observed evidence 和差异 Warning；`b2e0061-rq`、`b2e0061-rs` 按 `0..1000` 建模为 `Node`。
+银行字段、路径、出现次数和约束以 raw-doc/Final SchemaIR 为准；正式导出只证明目标系统形态。raw-doc 在已审查范围内未写约束时使用 `NO_CONSTRAINT`，证据冲突或无法判定时使用 `UNKNOWN`。b2e0061 Standard 保留 `@security`、排除 `vamflag`；observed `@lang` 只保留在来源和 Review 证据中，不作为 Final SchemaIR 或 Standard 字段。请求 `b2e0061-rq` 按 `1..1000`、响应 `b2e0061-rs` 按 `0..1000` 建模，二者均为 `Node`。
 
 Standard Validator 只校验结构、来源引用和确定性 invariant。人工确认后形成 Final Standard。
 
@@ -117,7 +118,7 @@ Standard Validator 只校验结构、来源引用和确定性 invariant。人工
 LLM 基于 Final Standard 和规则版本生成 Template Draft，至少覆盖：
 
 - 精确 Standard ID/version/content hash 绑定；
-- 每个配置行显式保存且严格校验 `standardProjection.required/length/dataType`；
+- ASSEMBLY 显式保存并严格校验 `standardTarget.standardProjection`；PARSE 从精确绑定的 Final Standard 解析表达式/collection source projection；
 - `VALUE | STRUCTURE_ONLY | COLLECTION_ITEM`，其中 `b2e0061-rs(Node) -> paymentLineList(List)` 为集合元素绑定；
 - ASSEMBLY target Standard Field；PARSE target Parse Field，表达式内 FIELD_REF 引用绑定 Standard；
 - ASSEMBLY 标量 Standard Field 子集和 omissions，Node/Object 不参加 coverage；PARSE configured-targets-only；
@@ -161,12 +162,12 @@ Phase0 golden regression 至少覆盖：
 - SchemaIR/Standard 差异、规则冲突和 warnings；
 - 七个固定 workbook sheet、Standard Action 和状态列。
 
-具体业务字段、function、`mappingRuleName` 和 Rule ID 只能来自已确认的 v1 catalog。MAPPING/Replacement 属于 P0 专项 golden；目的系统业务 Condition 不属于 P0 golden 成功路径。
+具体业务字段、function、`mappingRuleName` 和 Rule ID 只能来自 IR 精确引用的已发布 catalog。MAPPING/Replacement 属于 P0 专项 golden；目的系统业务 Condition 不属于 P0 golden 成功路径。
 
 ## 7. 通过条件
 
 - 四类 IR 逻辑契约与机器格式均已冻结。
-- `configuration-rules/v1` 内容可追溯且经业务负责人确认。
+- `configuration-rules/v1` 与 v2 内容可追溯且经业务负责人确认。
 - 三个 Validator 都能返回可定位的错误。
 - 四个 Draft generator 可运行，且不会绕过人工确认形成 Final。
 - Template 只能基于精确绑定的 Final Standard 生成。

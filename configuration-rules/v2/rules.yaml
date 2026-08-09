@@ -1,0 +1,252 @@
+package:
+  name: configuration-rules
+  version: v2
+  status: RELEASED
+  maintainer: deng
+  businessReviewer: configuration-reviewer
+  confirmationDate: "2026-08-09"
+  scope: BKL_CONFIGURATION_RULES_SUBSET
+
+ruleReference:
+  requiredFields:
+    - rulePackageVersion
+    - ruleId
+  versionValue: v2
+
+dataTypes:
+  xmlInterfaceStandard:
+    - String
+    - Boolean
+    - Date
+    - Number
+    - Node
+    - Object
+  parseFieldCatalog:
+    - STRING
+    - BOOLEAN
+    - DATE
+    - NUMBER
+    - LIST
+  notes:
+    Node: XML 中可重复出现的无值容器节点。
+    Object: XML 中不可重复出现的无值容器节点。
+    List: 只允许出现在 PARSE 固定输出对象字段目录，不得进入 XML InterfaceStandardIR。
+
+constraintStates:
+  - VALUE
+  - NO_CONSTRAINT
+  - UNKNOWN
+
+sourceAuthority:
+  bankFacts: FINAL_SCHEMA_IR
+  targetSystemExports: REPRESENTATION_AND_OBSERVED_CONFIGURATION_EVIDENCE
+  reviewedAbsenceInBankDocument: NO_CONSTRAINT
+  ambiguousOrConflictingEvidence: UNKNOWN
+  differencesMustBePreserved: true
+
+templateBindingKinds:
+  - VALUE
+  - STRUCTURE_ONLY
+  - COLLECTION_ITEM
+
+rules:
+  - id: STD.FIELD.PARENT_PATH
+    domain: STANDARD
+    summary: 目标系统 Path 保存当前字段的父路径。
+  - id: STD.FIELD.FULL_PATH
+    domain: STANDARD
+    summary: 完整路径由 parentPath 与当前 fieldName 组成，用于唯一定位和引用。
+  - id: STD.FIELD.SEQUENCE
+    domain: STANDARD
+    summary: 同一 parentPath 下使用从 1 开始且唯一、连续的 sequence。
+  - id: STD.FIELD.XML_KEYS
+    domain: STANDARD
+    summary: XML attribute 不形成独立标准行，而作为所属 element 的 XML Keys。
+  - id: STD.FIELD.DATA_TYPE
+    domain: STANDARD
+    summary: XML 标准只允许 String、Boolean、Date、Number、Node、Object。
+  - id: STD.CONSTRAINT.VALUE_STATE
+    domain: STANDARD
+    summary: Length、Illegal Characters、Regex 等约束使用 VALUE、NO_CONSTRAINT、UNKNOWN 三态；在当前已人工确认的 raw-doc 范围内，未写即为 NO_CONSTRAINT，证据冲突或无法判定才为 UNKNOWN。
+  - id: STD.CONSTRAINT.BANK_CONDITION
+    domain: STANDARD
+    summary: 银行文档明确且可无歧义结构化的条件约束与基础 required 分开保存。
+  - id: STD.DIFFERENCE.PRESERVE
+    domain: STANDARD
+    summary: SchemaIR 与目标 Standard 值冲突时同时保留两侧值、原因和 Review 结论。
+  - id: TPL.BIND.ASSEMBLY
+    domain: TEMPLATE
+    summary: ASSEMBLY 以 Standard Field 为目标，以 ASSEMBLY FIELD catalog 或其他表达式为数据源。
+  - id: TPL.BIND.PARSE
+    domain: TEMPLATE
+    summary: PARSE 以 Parse Field catalog 为目标；Value Expression 中的 FIELD_REF 引用绑定 Standard 的银行字段。
+  - id: TPL.BIND.STANDARD_PROJECTION
+    domain: TEMPLATE
+    summary: ASSEMBLY 的 standardTarget 显式镜像绑定 Standard 的 required、length 和 dataType；PARSE 通过表达式 FIELD_REF 或 collection standardSource 的 standardFieldRef 从精确绑定的 Final Standard 确定性解析这些约束，不重复保存 projection；没有 Standard source 的 PARSE expression 不适用 projection。
+  - id: TPL.BIND.STRUCTURE_ONLY
+    domain: TEMPLATE
+    summary: Node/Object 可使用 STRUCTURE_ONLY 表达结构或 XML Key 配置，不具有字段值表达式，也不参加 ASSEMBLY omission coverage。
+  - id: TPL.BIND.COLLECTION_ITEM
+    domain: TEMPLATE
+    summary: PARSE 的 COLLECTION_ITEM 将每个重复 Standard Node 映射为目标 Parse List 的一个元素，子字段在当前元素内解析。
+  - id: TPL.COVERAGE.ASSEMBLY_SCALAR_ONLY
+    domain: TEMPLATE
+    summary: ASSEMBLY omission coverage 只适用于应配置值的标量 Standard Field；Node/Object 容器不产生 omission。
+  - id: TPL.PARSE.CONFIGURED_TARGETS_ONLY
+    domain: TEMPLATE
+    summary: PARSE 只校验实际配置的目标字段；未配置 Parse Field 默认不产生 omission 或 warning。
+  - id: TPL.VALUE.FIXED_VALUE
+    domain: TEMPLATE
+    summary: 使用 LITERAL 或 SECURE_INPUT_REF payload；安全引用只保存标识，不保存或展示真实值。
+  - id: TPL.VALUE.EMPTY
+    domain: TEMPLATE
+    summary: 模板行存在且明确取空值；不等同于 omission。
+  - id: TPL.VALUE.FIELD
+    domain: TEMPLATE
+    summary: ASSEMBLY 引用 ASSEMBLY FIELD catalog；PARSE 引用绑定 Standard 中的银行 source field。
+  - id: TPL.VALUE.FUNCTION
+    domain: TEMPLATE
+    summary: 引用已声明 function，参数只允许 FIELD_REF 或 LITERAL。
+  - id: TPL.VALUE.MAPPING
+    domain: TEMPLATE
+    summary: 使用一个 String FIELD_REF 作为输入，并按全局唯一 mappingRuleName 引用预设 Mapping catalog；完整值未匹配时报错。
+  - id: TPL.VALUE.CONCATENATE
+    domain: TEMPLATE
+    summary: 按顺序拼接子表达式；只有 CONCATENATE children 允许递归 Value Expression。
+  - id: TPL.PROCESS.EMPTY_HANDLING
+    domain: TEMPLATE
+    summary: BLANK 表示空值报送，DELETE 表示删除栏位。
+  - id: TPL.PROCESS.OVERLENGTH
+    domain: TEMPLATE
+    summary: 支持校验失败、保留前部、超长换行和保留后部四种处理。
+  - id: TPL.PROCESS.ROW_LIMIT
+    domain: TEMPLATE
+    summary: 使用正整数限制该栏位允许出现的行数。
+  - id: TPL.PROCESS.CHAR_LENGTH
+    domain: TEMPLATE
+    summary: 使用 STANDARD_1 至 STANDARD_6 计算字符长度，具体权重见 processingPolicies。
+  - id: TPL.PROCESS.REPLACEMENT
+    domain: TEMPLATE
+    summary: Value Expression 完成后引用一个预设 mappingRuleName；替换命中片段，空 target 删除片段，未命中内容原样保留。
+  - id: TPL.CONDITION.CAPABILITY_ONLY
+    domain: TEMPLATE
+    implementationStatus: DOCUMENTED_ONLY
+    summary: 目标系统存在业务 Condition；规则包只记录通用能力边界，不保存、推断或执行接口专属条件。
+
+valueExpressions:
+  modes:
+    - FIXED_VALUE
+    - EMPTY
+    - FIELD
+    - FUNCTION
+    - MAPPING
+    - CONCATENATE
+  functionArgumentKinds:
+    - FIELD_REF
+    - LITERAL
+  fixedValuePayloadKinds:
+    - LITERAL
+    - SECURE_INPUT_REF
+  recursiveMode: CONCATENATE
+  documentedOnlyModes: []
+
+processingPolicies:
+  emptyHandling:
+    valueType: CODE
+    allowedValues:
+      - BLANK
+      - DELETE
+    meanings:
+      BLANK: 空值报送。
+      DELETE: 删除栏位。
+    default: UNKNOWN
+  overlengthHandling:
+    valueType: CODE
+    allowedValues:
+      - INTERCEPT
+      - TRUNCATE_FRONT
+      - OVERLONG_LINE_BREAK
+      - TRUNCATE_BACK
+    meanings:
+      INTERCEPT: 超长时校验失败。
+      TRUNCATE_FRONT: 保留前面的内容。
+      OVERLONG_LINE_BREAK: 超长内容换行。
+      TRUNCATE_BACK: 保留后面的内容。
+    default: UNKNOWN
+  rowLimit:
+    valueType: POSITIVE_INTEGER
+    meaning: 该栏位允许出现的行数。
+    minimum: 1
+    observedValues:
+      - 1
+    default: UNKNOWN
+  chineseCharacterLength:
+    valueType: CODE
+    allowedValues:
+      - STANDARD_1
+      - STANDARD_2
+      - STANDARD_3
+      - STANDARD_4
+      - STANDARD_5
+      - STANDARD_6
+    meanings:
+      STANDARD_1:
+        alphabetNumberHalfWidthPunctuation: 1
+        fullWidthPunctuation: 2
+        otherCharacters: 2
+      STANDARD_2:
+        alphabetNumberHalfWidthPunctuation: 1
+        fullWidthPunctuation: 3
+        otherCharacters: 3
+      STANDARD_3:
+        alphabetNumberHalfWidthPunctuation: 1
+        fullWidthPunctuation: 2
+        otherCharacters: 5
+      STANDARD_4:
+        allCharacters: 1
+      STANDARD_5:
+        alphabetNumberHalfWidthPunctuation: 1
+        fullWidthPunctuation: 2
+        otherCharacters: 1
+      STANDARD_6:
+        alphabetNumberHalfWidthPunctuation: 1
+        fullWidthPunctuation: 2
+        otherCharacters: 3
+    default: STANDARD_1
+  replacement:
+    valueType: MAPPING_RULE_NAME
+    catalogFile: mappings.yaml
+    cardinality: ONE
+    applicationStage: AFTER_VALUE_EXPRESSION
+    matchedBehavior: REPLACE_WITH_TARGET
+    emptyTargetBehavior: DELETE_MATCHED_FRAGMENT
+    unmatchedBehavior: KEEP_UNMATCHED_TEXT
+    default: UNKNOWN
+
+bankDocumentConditions:
+  source: BANK_DOCUMENT
+  supportedOperators:
+    - EQUALS
+    - IS_EMPTY
+  supportedEffects:
+    - REQUIRED
+  requirements:
+    - controllingFieldRef must resolve inside the same direction SchemaIR or InterfaceStandardIR.
+    - targetFieldRef must resolve inside the same direction SchemaIR or InterfaceStandardIR.
+    - literal must be compatible with the controlling field data type when a literal is used.
+    - sourceText, evidence and human review are required.
+
+mapping:
+  storage: CATALOG_REFERENCE
+  catalogFile: mappings.yaml
+  presetCatalog: true
+  ruleNameField: mappingRuleName
+  ruleNameScope: GLOBAL_UNIQUE
+  sourceExpressionKind: FIELD_REF
+  sourceDataType: String
+  targetDataType: String
+  ruleCardinality: ONE
+  matchMode: WHOLE_VALUE_EXACT
+  duplicateSourceAllowed: false
+  unmatchedBehavior: ERROR
+  embeddedEntriesAllowedInIR: false

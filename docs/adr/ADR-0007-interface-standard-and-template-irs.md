@@ -37,6 +37,7 @@ LLM 先根据 Final SchemaIR 和指定规则版本生成 InterfaceStandardIR Dra
 - 一个方向标准可以关联多份同方向模板。
 - 标准和模板使用稳定内部 ID 与不可变 artifact version。
 - 模板精确绑定 `standardId + standardVersion + contentHash`，不自动跟随最新版。
+- Standard/Template 的 Final validation result 还必须精确绑定 artifact contract version 和完整 canonical content hash；Human Review 后修改任一语义值都要求重新复验。
 - 新增模板复用已有 Final Standard，不重新生成标准。
 - 标准升级不会静默改变已有模板；迁移必须重新校验和人工 Review。
 
@@ -154,5 +155,5 @@ Why not chosen:
 - Interface Template Review 必须同时展示实际配置行和未覆盖标准字段的 omission 列表。
 - 标准变更需要显式评估所有绑定模板，而不是静默传播。
 - Golden regression 必须覆盖父路径、sequence、Node/Object 无字段值表达式、XML Keys、模板字段子集、omission Review 和标量字段/XML Key Value Expressions。
-- `configuration-rules/v1` 尚未提供，因此两个新 IR 的 wire schema、fixture、Validator 和 Workbook Generator 实现继续 Blocked。
+- `configuration-rules/v1` 已于 2026-08-06 发布并冻结；两个新 IR 的 wire schema、fixture、Validator 和 Workbook Generator 现在只受 Final SchemaIR 与各自实现/Review 门禁阻塞。
 - 如果未来支持同字段多行 condition、JSON `List`、Import JSON 或目标系统 API，必须另行确认契约和兼容成本。

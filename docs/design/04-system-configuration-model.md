@@ -2,7 +2,7 @@
 
 ## Status
 
-Draft. Logical contract confirmed; `configuration-rules/v1` is released and immutable, and machine wire schemas are now P0-T3 implementation work.
+Draft. Logical contract confirmed; `configuration-rules/v1` and the v2 direction-specific projection semantics are released and immutable. InterfaceStandardIR and InterfaceTemplateIR machine wire/Validators plus two reviewed Final fixtures per layer are implemented and frozen.
 
 ## 1. 目的与边界
 
@@ -20,28 +20,32 @@ Draft. Logical contract confirmed; `configuration-rules/v1` is released and immu
 ```mermaid
 stateDiagram-v2
     [*] --> Draft: LLM 基于 Final SchemaIR 与规则版本生成
-    Draft --> Draft: 修改或补充 Review 结论
-    Draft --> Validated: Standard Validator 通过
-    Validated --> Draft: Review 修改导致校验失效
-    Validated --> Final: 人工确认
+    Draft --> DraftValidated: Standard Validator 生成 Draft Result
+    DraftValidated --> Draft: 修正结构或事实
+    DraftValidated --> FinalCandidate: Human 完成 Review 与 Final metadata
+    FinalCandidate --> Draft: Review 修改导致候选失效
+    FinalCandidate --> FinalValidated: Standard Validator 复验完整内容
+    FinalValidated --> Final: hash 匹配且 finalEligible
     Final --> [*]
 ```
 
-每个标准由 `standardId + version` 唯一标识，并属于一个 `interfaceCode + direction`。Final 版本不可原地覆盖；内容摘要用于防止模板错误绑定同名但不同内容的标准。
+每个标准由 `standardId + standardVersion` 唯一标识，并属于一个 `interfaceCode + direction`。Final 版本不可原地覆盖；canonical 内容摘要用于防止模板错误绑定同名但不同内容的标准。
 
 ### 2.2 Interface Template
 
 ```mermaid
 stateDiagram-v2
     [*] --> Draft: LLM 基于 Final Standard 与规则版本生成
-    Draft --> Draft: 修改字段配置或 omission 结论
-    Draft --> Validated: Template Validator 通过
-    Validated --> Draft: Review 修改导致校验失效
-    Validated --> Final: 人工确认
+    Draft --> DraftValidated: Template Validator 生成 Draft Result
+    DraftValidated --> Draft: 修正结构或事实
+    DraftValidated --> FinalCandidate: Human 完成 Review 与 Final metadata
+    FinalCandidate --> Draft: Review 修改导致候选失效
+    FinalCandidate --> FinalValidated: Template Validator 复验完整内容
+    FinalValidated --> Final: hash 匹配且 finalEligible
     Final --> [*]
 ```
 
-每份模板由 `templateId + version` 唯一标识，属于一个 `interfaceCode + direction`，并精确引用 `standardId + standardVersion + contentHash`。
+每份模板由 `templateId + templateVersion` 唯一标识，属于一个 `interfaceCode + direction`，并精确引用 `standardId + standardVersion + contentHash`。
 
 一个标准可以被多份同方向模板复用。新增模板直接消费已有 Final Standard；标准发布新版本不会自动迁移或重新解释旧模板。
 
@@ -51,32 +55,41 @@ stateDiagram-v2
 
 ```text
 InterfaceStandardIR
+├── contractVersion             # interface-standard/v1
 ├── standardId
 ├── interfaceCode
 ├── direction
-├── version
-├── schemaIrReference + schemaIrContentHash
+├── standardVersion
+├── status / review
+├── schemaIrRef
+│   ├── schemaId
+│   ├── schemaVersion
+│   ├── contractVersion
+│   └── contentHash
 ├── rulePackageVersion
-├── xmlEncodingReference         # 指向 SchemaIR message；不是 Standard Field
+├── xmlEncodingRef
+│   ├── functionType
+│   └── value                    # 指向 SchemaIR message；不是 Standard Field
 ├── fields[]
 │   ├── fieldId
 │   ├── sequence
 │   ├── fieldName / fieldDescription
+│   ├── conditionText
 │   ├── parentPath / fullPath
 │   ├── required
-│   ├── lengthLimit
-│   ├── illegalCharacters
-│   ├── xmlKeys[]
-│   ├── regex
+│   ├── lengthLimit              # state / min / max / precision / scale
+│   ├── illegalCharacters        # state / value
+│   ├── xmlKeys[]                # name / schemaIrFieldPath
+│   ├── regex                    # state / value
 │   ├── dataType
 │   ├── conditionalConstraints[]
-│   └── evidence / differences / review
-└── review
+│   ├── schemaIrFieldPath / ruleReferences
+│   └── evidence / differences / confidence / uncertainty / reviewNote
 ```
 
-这些字段描述逻辑契约，不是已经冻结的 JSON wire schema。
+以上字段对应已冻结的 `interface-standard/v1` JSON wire；未知或缺失属性 fail closed。匹配结果使用 `interface-standard-validation-result/v1` 并以 canonical content hash 绑定完整 Standard 内容。
 
-方向级 XML encoding 保存在 Final SchemaIR `messages[].xmlEncoding`。InterfaceStandardIR 只保存可追溯引用，Workbook `Overview` 展示确认值；encoding 不生成 Standard Field。银行文档证据与已确认值冲突时，Validator 必须产生 Warning 并阻止 Final，不能由 Generator 选择；Human Review 给出新结论后才能继续。
+方向级 XML encoding 和显式 evidence 保存在 Final SchemaIR message。InterfaceStandardIR 只保存可追溯引用，Workbook `Overview` 展示确认值；encoding 不生成 Standard Field。`UNRESOLVED_CONFLICT` 必须产生 blocking Warning，不能由 Generator 选择；Human Review 处置 evidence 或给出新确认值并重新复验后才能继续。
 
 ### 3.2 Path 与层级
 
@@ -140,7 +153,7 @@ SchemaIR 与 Standard 值不一致时必须记录：
 - confidence / uncertain reason；
 - 人工 Review 结论。
 
-银行字段、路径、出现次数和约束由 raw-doc/Final SchemaIR 决定；正式导出只证明目标系统配置形态。当前已确认范围内，raw-doc 没写的约束投影为 `NO_CONSTRAINT`，证据冲突或无法判断时为 `UNKNOWN`。b2e0061 Final Standard 保留 `@security`、排除 `vamflag`；正式导出 observed `@lang` 只形成 evidence 和差异 Warning。
+银行字段、路径、出现次数和约束由 raw-doc/Final SchemaIR 决定；正式导出只证明目标系统配置形态。当前已确认范围内，raw-doc 没写的约束投影为 `NO_CONSTRAINT`，证据冲突或无法判断时为 `UNKNOWN`。b2e0061 Final Standard 保留 `@security`、排除 `vamflag`；正式导出 observed `@lang` 只保留在来源和 Review 证据中，不作为 Final SchemaIR 或 Standard 字段。
 
 银行文档明确的条件 required 与基础 `required` 分开保存。P0 条件结构包含 controlling field reference、`EQUALS | IS_EMPTY`、可选 literal、target field reference、`REQUIRED` effect、银行原文 evidence 和 Review。Validator 校验结构与引用，但不执行条件。
 
@@ -153,19 +166,20 @@ InterfaceTemplateIR
 ├── templateId
 ├── interfaceCode
 ├── direction
-├── version
+├── templateVersion
 ├── standardRef
 │   ├── standardId
-│   ├── version
+│   ├── standardVersion
 │   └── contentHash
 ├── rulePackageVersion
 ├── fieldConfigs[]
 │   ├── bindingKind               # VALUE | STRUCTURE_ONLY | COLLECTION_ITEM
-│   ├── standardFieldRef          # ASSEMBLY target；PARSE source
-│   ├── standardProjection        # required / length / dataType 的显式镜像
+│   ├── standardTarget?           # ASSEMBLY standardFieldRef + 显式 standardProjection
+│   ├── standardSource?           # PARSE COLLECTION_ITEM 的 Standard collection ref
 │   ├── parseTarget?              # PARSE ref/name/path/dataType
 │   ├── valueExpression?          # 仅 VALUE 标量绑定
-│   ├── xmlKeyExpressions{}
+│   │   └── standardFieldRef?     # PARSE FIELD_REF source；可为零个或多个
+│   ├── xmlKeyExpressions{}?      # 仅 ASSEMBLY
 │   ├── processingPolicies
 │   └── evidence / review
 ├── omissions[]
@@ -174,7 +188,7 @@ InterfaceTemplateIR
 
 ### 4.2 方向性绑定与 omission
 
-ASSEMBLY 的标量 `fieldConfigs` 以 Standard Field 为 target，是标准标量字段集合的子集。同一 target `standardFieldRef` 最多出现一次；缺失字段不是自动错误，也不生成空模板行。
+ASSEMBLY 的标量 `fieldConfigs` 以 Standard Field 为 target，是标准标量字段集合的子集。同一 `standardTarget.standardFieldRef` 最多出现一次；缺失字段不是自动错误，也不生成空模板行。
 
 Template Validator 为每个未覆盖的 ASSEMBLY 标量 Standard Field 产生 `MISSING_TEMPLATE_FIELD` Warning 和 omission candidate。omission 至少包含：
 
@@ -194,7 +208,7 @@ Node/Object 不参加 ASSEMBLY omission coverage。容器只有在需要配置 X
 - `EMPTY`：存在模板行，字段明确取空值；
 - Empty Handling：存在源值为空时的处理策略。
 
-PARSE 的 target 是固定 Parse Field；Value Expression 的 FIELD_REF 引用绑定 Standard 的银行 source field，也可以使用 literal、function 或 CONCATENATE。Parse Field Catalog 定义最终 JSON/Java 对象的 name、path 和 datatype，不属于银行 Standard。Validator 只检查实际配置的 target；未配置 Parse Field 默认不产生 omission 或 warning，也不推断为代码赋值字段。
+PARSE 的 target 是固定 Parse Field；Value Expression 的每个 FIELD_REF 直接引用绑定 Standard 的银行 source field，也可以使用 literal、function 或 CONCATENATE。一个表达式可以具有零个、一个或多个 Standard source，不声明顶层主 source。Parse Field Catalog 定义最终 JSON/Java 对象的 name、path 和 datatype，不属于银行 Standard。Validator 只检查实际配置的 target；未配置 Parse Field 默认不产生 omission 或 warning，也不推断为代码赋值字段。
 
 三种结构绑定含义：
 
@@ -202,9 +216,9 @@ PARSE 的 target 是固定 Parse Field；Value Expression 的 FIELD_REF 引用�
 - `STRUCTURE_ONLY`：Node/Object 结构或 XML Key 配置，不包含字段值表达式；
 - `COLLECTION_ITEM`：PARSE 每个重复 Standard Node 创建一个 Parse List 元素。
 
-b2e0061 的 `b2e0061-rq` 与 `b2e0061-rs` 按 raw-doc `0..1000` 建模为 `Node`。`b2e0061-rs -> paymentLineList` 使用 `COLLECTION_ITEM`，其子字段写入当前列表元素；Standard source 的 `Node` 与 Parse target 的 `List` 必须分别保存和展示。
+b2e0061 的请求 `b2e0061-rq` 按 `1..1000`、响应 `b2e0061-rs` 按 `0..1000` 建模为 `Node`。`b2e0061-rs -> paymentLineList` 使用 `COLLECTION_ITEM`，其子字段写入当前列表元素；Standard source 的 `Node` 与 Parse target 的 `List` 必须分别保存和展示。
 
-每个 field config 都显式保存 `standardProjection.required/length/dataType`。这三个值完整镜像所绑定 Final Standard 的状态和值，不是 Template 覆盖项；任一不一致必须由 Validator 拒绝。
+ASSEMBLY 在 `standardTarget.standardProjection` 显式保存 required/length/dataType，并要求与 Final Standard 完全一致。PARSE 由 Template 精确绑定的 Final Standard 和表达式/collection 中的 `standardFieldRef` 确定性解析 projection，不重复保存；`COLLECTION_ITEM` 使用 `standardSource.standardFieldRef` 作为集合结构锚点。
 
 ### 4.3 Value Expression
 
@@ -223,10 +237,12 @@ String、Boolean、Date、Number 标量 field config 必须具有一个字段值
 
 ### 4.4 XML Key Expressions
 
-若标准字段存在模板行，则标准定义的每个 XML Key 必须恰好具有一个独立 Value Expression。标量字段值表达式与 XML Key 表达式共享六种 Mode，但使用不同 Scope。Node/Object 没有字段值表达式，但不影响其 XML Key 使用这些 Mode。
+若 ASSEMBLY Standard 字段存在 Template 行，则标准定义的每个 XML Key 必须恰好具有一个独立 Value Expression。标量字段值表达式与 XML Key 表达式共享六种 Mode，但使用不同 Scope。Node/Object 没有字段值表达式，但不影响其 XML Key 使用这些 Mode；PARSE field config 不允许 `xmlKeyExpressions`。
 
 ```text
-standardFieldRef: document-field
+standardTarget:
+  standardFieldRef: document-field
+  standardProjection: ...
 fieldValueExpression: ...
 xmlKeyExpressions:
   @version: FIXED_VALUE("1.0")
@@ -245,7 +261,7 @@ xmlKeyExpressions:
 - Chinese Character Length；
 - 一个 Replacement `mappingRuleName`。
 
-Template 不覆盖 Standard 约束；但每个配置行必须以 `standardProjection` 显式镜像绑定 Standard 的 Required、Length Limit 和 Data Type，用于确定性校验与 Workbook 展示。Illegal Characters 与 Regex 仍只保存在 InterfaceStandardIR。
+Template 不覆盖 Standard 约束。ASSEMBLY 在 `standardTarget.standardProjection` 显式镜像 Required、Length Limit 和 Data Type；PARSE 通过 source `standardFieldRef` 从精确绑定的 Final Standard 派生同一信息，用于确定性校验与 Workbook 展示。Illegal Characters 与 Regex 仍只保存在 InterfaceStandardIR。
 
 Empty Handling 支持 `BLANK`（空值报送）与 `DELETE`（删除栏位）。Overlength 支持 `INTERCEPT`（校验失败）、`TRUNCATE_FRONT`（保留前部）、`OVERLONG_LINE_BREAK`（超长换行）和 `TRUNCATE_BACK`（保留后部）。Row Limit 是该栏位允许出现的行数，必须为正整数。Chinese Character Length 使用 `STANDARD_1..6`，默认值为 `STANDARD_1`，具体字符权重来自规则包。
 
@@ -266,13 +282,13 @@ Standard Validator 必须校验：
 Template Validator 必须校验：
 
 - standard ID、version 和 content hash 精确匹配；
-- 每个 `standardProjection.required/length/dataType` 与 Final Standard 完全一致；
+- 每个 ASSEMBLY `standardTarget.standardProjection.required/length/dataType` 与 Final Standard 完全一致；PARSE source projection 可从表达式/collection reference 确定性解析；
 - `VALUE | STRUCTURE_ONLY | COLLECTION_ITEM` 与方向、Standard 类型和 Parse target 相容；
 - ASSEMBLY target Standard Field reference 存在且不重复；
 - PARSE target Parse Field reference 存在、path/datatype 与 catalog 相容，表达式内 Standard FIELD_REF 存在；
 - 表达式结构、递归顺序和 catalog 引用；
 - String/Boolean/Date/Number field config 必须有字段值表达式，Node/Object field config 不得有字段值表达式；
-- XML Key expressions 完整且无未知 key；
+- ASSEMBLY XML Key expressions 完整且无未知 key；PARSE 不允许该属性；
 - 每个缺失 ASSEMBLY 标量 Standard Field 都有 omission Warning；Node/Object 不参加 omission coverage，未配置 Parse Field 不自动产生 coverage issue；
 - 有 XML Key 或结构绑定需求的容器必须有适用结构行和完整 key expressions；
 - FIXED_VALUE payload 只允许 `LITERAL | SECURE_INPUT_REF`，且安全引用不得包含真实值；

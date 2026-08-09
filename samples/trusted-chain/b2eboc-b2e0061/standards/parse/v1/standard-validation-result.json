@@ -1,0 +1,32 @@
+{
+  "contractVersion": "interface-standard-validation-result/v1",
+  "validatedArtifact": {
+    "kind": "InterfaceStandardIR",
+    "artifactId": "b2e0061-parse-standard",
+    "artifactVersion": "v1",
+    "artifactContractVersion": "interface-standard/v1",
+    "contentHash": "sha256:33efa544460ac19f216734712c1e6ae2610321ea17eb750eff35493ecca9d57e"
+  },
+  "status": "passed",
+  "finalEligible": true,
+  "summary": {
+    "standardId": "b2e0061-parse-standard",
+    "interfaceCode": "b2e0061",
+    "direction": "PARSE",
+    "rulePackageVersion": "v1",
+    "fieldCount": 19,
+    "errorCount": 0,
+    "warningCount": 0,
+    "infoCount": 0,
+    "blockingCount": 0
+  },
+  "coverage": {
+    "scalarFieldCount": 12,
+    "containerFieldCount": 7,
+    "xmlKeyCount": 3,
+    "conditionalConstraintCount": 0,
+    "differenceCount": 4,
+    "uncertainFieldCount": 0
+  },
+  "issues": []
+}

@@ -1,0 +1,514 @@
+packageVersion: v2
+status: RELEASED
+
+catalogs:
+  ASSEMBLY:
+    catalogId: BKL_ASSEMBLY_PAYMENT_A
+    bindingRuleId: TPL.BIND.ASSEMBLY
+    valueRuleId: TPL.VALUE.FIELD
+    source: docs/reference/samples/b2eboc/assemblyFields.txt
+    scope: DIRECTION_GLOBAL_FLAT_NAMES
+    entries:
+      - code: businessType
+        description: "业务类型：AP Payment，Treasury Payment；Smartcom Payment"
+      - code: paymentList
+        description: "(IT) 支付清单"
+      - code: listNo
+        description: "支付指令顺序号，单笔支付请报 1; 发薪支付发送每笔交易号不重复。"
+      - code: paymentNo
+        description: "交易代码，支付凭证号，原二层入参，以后支持多批付款，放第三层"
+      - code: dealNo
+        description: "交易号"
+      - code: valueDate
+        description: "实际支付日期，报送格式为 yyyy-mm-dd"
+      - code: paymentMethod
+        description: "\" 支付方式 CHK 支票付款，DD 坐扣，TRA 账户转账，TRF 信用转账 \""
+      - code: individualSupplier
+        description: "是否个体供应商"
+      - code: paymentAmountUSD
+        description: "美金金额，用于后续打包"
+      - code: paymentCurrency
+        description: "付款币种"
+      - code: paymentAmount
+        description: "付款金额"
+      - code: chargeBearer
+        description: "手续费承担方式"
+      - code: clearingMethod
+        description: "清算方式，RTGS/BKT/ACH/CBT/SEPA/COS/DFT/PRP/PAYROLL"
+      - code: invoiceNum
+        description: "发票号"
+      - code: paymentPurpose
+        description: "支付目的"
+      - code: paymentPurposeCode
+        description: "支付目的编码"
+      - code: paymentPurposeInfo
+        description: "支付目的 Info，后截取"
+      - code: debtorAccountName
+        description: "付款方账户名"
+      - code: debtorAccountNo
+        description: "付款账号"
+      - code: debtorAccountCurrency
+        description: "付款方币种"
+      - code: debtorIban
+        description: "付款方 IBAN 号"
+      - code: debtorEbankAccount
+        description: "付款方网银号"
+      - code: debtorAccountNameLocal
+        description: "付款账号中文名称"
+      - code: debtorCountry
+        description: "付款方所在国家"
+      - code: debtorCountryCode
+        description: "付款方所在国家简称"
+      - code: debtorTown
+        description: "付款方资金管理主体所在城镇"
+      - code: debtorStreet
+        description: "付款方所在街道"
+      - code: debtorAddress
+        description: "付款方地址"
+      - code: debtorTaxId
+        description: "付款方税码"
+      - code: debtorBankAccountType
+        description: "付款账户信息，华为公司用于支付的账户的类型"
+      - code: debtorPostCode
+        description: "付款方，公司邮编"
+      - code: debtorProvince
+        description: "付款方，公司省市名称"
+      - code: multiCcyAccount
+        description: "多币种账号"
+      - code: debtorTaxType
+        description: "纳税类型"
+      - code: debtorBankName
+        description: "付款银行名称"
+      - code: debtorBankShortName
+        description: "付款银行简称"
+      - code: debtorBankBranchName
+        description: "付款银行分行名称"
+      - code: debtorBankCountry
+        description: "付款银行所在国家"
+      - code: debtorBankCountryCode
+        description: "付款银行所在国家简称"
+      - code: debtorBankCity
+        description: "付款银行所在城市"
+      - code: debtorBankBic
+        description: "付款行 BIC"
+      - code: debtorBankNo
+        description: "付款行行号"
+      - code: debtorBankBranchNo
+        description: "付款行分行号"
+      - code: instructDebtorAgentCode
+        description: "给付款行的额外说明 Code，前截取"
+      - code: instructDebtorAgentInfo
+        description: "给付款行的额外说明描述信息，后截取"
+      - code: intermediary1BankAccount
+        description: "中转行，中转银行一账户"
+      - code: intermediary1BankBic
+        description: "中转行，中转银行一 bic"
+      - code: intermediary1BankName
+        description: "中转行，中转银行一名称"
+      - code: intermediary2BankAccount
+        description: "中转行，中转银行二账户"
+      - code: intermediary2BankBic
+        description: "中转行，中转银行二 bic"
+      - code: intermediary2BankName
+        description: "中转行，中转银行二名称"
+      - code: creditorAccountName
+        description: "收款方账户名"
+      - code: creditorAccountNo
+        description: "收款账号"
+      - code: creditorAccountCurrency
+        description: "收款方币种"
+      - code: creditorIban
+        description: "收款方 IBAN 号"
+      - code: creditorEbankAccount
+        description: "收款方网银号"
+      - code: creditorSpecialAccount
+        description: "收款方特殊账号"
+      - code: creditorAccountNameLocal
+        description: "收款账号中文名称"
+      - code: creditorAccountNameEn
+        description: "收款账号英文名称"
+      - code: creditorCountry
+        description: "收款主体所在国家"
+      - code: creditorCountryCode
+        description: "收款方所在国家简称"
+      - code: creditorTown
+        description: "收款方所在城市"
+      - code: creditorStreet
+        description: "收款方所在街道"
+      - code: creditorAddress
+        description: "收款方地址"
+      - code: creditorPhone
+        description: "收款人电话"
+      - code: creditorTaxId
+        description: "收款方税码"
+      - code: creditorCode
+        description: "供应商编码，员工报销场景下是员工编码"
+      - code: creditorName
+        description: "收款方名称，即供应商名称，员工报销场景无值（华为场景使用员工编码，其他场景可能有值）"
+      - code: ultimateCreditorName
+        description: "最终收款方账户名称，代收代付 / 统一托收场景"
+      - code: creditorBankAccountType
+        description: "收款账户，供应商的帐户类型"
+      - code: creditorElectronicAddress
+        description: "收款方，电子汇票地址"
+      - code: creditorPostCode
+        description: "收款方，供应商邮编"
+      - code: creditorProvince
+        description: "收款方，供应商省市"
+      - code: creditorTaxNo
+        description: "收款方，收款方税务登记号"
+      - code: associateFlag
+        description: "关联交易标志"
+      - code: proprietaryIdentification
+        description: "收款方唯一标志"
+      - code: domesticFlag
+        description: "是否境内，境内为 Y，跨境为 N"
+      - code: creditorAccountDescription
+        description: "收款方账户描述"
+      - code: creditorAccOthersDescription
+        description: "收款方账户其他描述"
+      - code: creditorBankName
+        description: "收款账号开户行"
+      - code: creditorBankShortName
+        description: "收款银行简称"
+      - code: creditorBankBranchName
+        description: "收款银行分行名称"
+      - code: creditorBankCountry
+        description: "收款银行所在国家"
+      - code: creditorBankCountryCode
+        description: "收款银行所在国家简称"
+      - code: creditorBankCity
+        description: "收款银行所在城市"
+      - code: creditorBankAddress
+        description: "收款方开户行地址"
+      - code: creditorBankNo
+        description: "收款行行号"
+      - code: creditorBankBranchNo
+        description: "收款行分行号"
+      - code: creditorBankTaxId
+        description: "收款银行的税码"
+      - code: creditorBankBic
+        description: "收款方开户行代码"
+      - code: creditorBankSortCode
+        description: "收款行 SortCode"
+      - code: clearingSystemIdCode
+        description: "收款银行，清算系统代码"
+      - code: creditorBankPostCode
+        description: "收款银行，收款方邮编"
+      - code: creditorBankProvince
+        description: "收款银行，收款银行省市"
+      - code: creditorBankStreet
+        description: "收款银行，收款银行街道 "
+      - code: creditorBankSchemeCode
+        description: "erp cny code"
+      - code: creditorBranchDescription
+        description: "支行描述"
+      - code: creditorBranchCategory
+        description: "支行类别"
+      - code: creditorBankCategory
+        description: "银行类别"
+      - code: creditorBankXmlMsgEmail
+        description: "邮箱"
+      - code: remittanceLocationAddressLine
+        description: "汇款地点地址行"
+      - code: remittanceLocationName
+        description: "汇款地点名称"
+      - code: remittanceLocationCountry
+        description: "汇款地点国家 / 地区"
+      - code: remittanceLocationPostal
+        description: "汇款地点邮政"
+      - code: instructCreditorAgent
+        description: "指令收款代理信息（仅 TMC 用）"
+      - code: instructCreditorAgentCode
+        description: "交易数据，instructionforcreditoragencode 编码"
+      - code: instructCreditorAgentInfo
+        description: "交易数据，描述信息"
+      - code: postscript
+        description: "附言"
+      - code: remark
+        description: "银行间的附加信息"
+      - code: regulatoryReportingCode
+        description: "国家附言 CODE 信息"
+      - code: regulatoryReportingInfo
+        description: "国家附言详细信息"
+      - code: categoryPurpose
+        description: "支付属性"
+      - code: clearingChannel
+        description: "本地清算要素信息，清算类型"
+      - code: busType
+        description: "业务种类"
+      - code: payType
+        description: "汇款方式"
+      - code: payeeIdType
+        description: "收款人证件类型"
+      - code: payeeIdNum
+        description: "收款人证件号"
+      - code: bookCurrency
+        description: "交易数据，帐套对应的币种，记账币种"
+      - code: paymentDocumentName
+        description: "交易数据，支付文档名称"
+      - code: taxPayDescription
+        description: "交易数据，纳税描述"
+      - code: printLocation
+        description: "交易数据，付款相关的说明"
+      - code: deliveryMethodCode
+        description: "交易数据，支票投送方式"
+      - code: checkType
+        description: "交易数据，支票类型"
+      - code: taxReferenceNumber
+        description: "交易数据，税务参考号"
+      - code: vatAmount
+        description: "交易数据，增值税金"
+      - code: vatAmountCurrency
+        description: "交易数据，增值税金币种"
+      - code: rateType
+        description: "交易数据，汇率类型"
+      - code: serviceLevel
+        description: "支付通道"
+      - code: serviceLevelPrtry
+        description: "支付通道（描述）"
+      - code: structuredReferredDocno
+        description: "境外付款支付结构文档号"
+      - code: referredDocumentNumber
+        description: "单据唯一标志"
+      - code: referredDocRelatedDate
+        description: "单据相关日期"
+      - code: referredDocAdjustmentAmount
+        description: "单据相关金额"
+      - code: referredDocAdjustmentCurrency
+        description: "单据相关币种"
+      - code: referredDocTypeProprietary
+        description: "汇款单据类型的专有标志"
+      - code: referredDocTypeIssuer
+        description: "单据类型签发人标志"
+      - code: privateTaxID
+        description: "个人税码"
+      - code: pmtCategoryPurposeCode
+        description: "付款方用途代码"
+      - code: pmtCategoryPurpose
+        description: "付款方用途"
+      - code: batchBooking
+        description: "是否批处理"
+      - code: taxType
+        description: "纳税类型"
+      - code: localInstrumentProprietary
+        description: "本地仪表专有"
+      - code: exchangeRate
+        description: "非原币询价汇率"
+      - code: inquiryFlag
+        description: "询价标识"
+      - code: contractNo
+        description: "合同号"
+      - code: exchangeType
+        description: "购汇、结汇类型代码"
+      - code: exchangePurpose
+        description: "结售汇用途代码"
+      - code: exchangePurposeDetail
+        description: "结售汇详细用途"
+      - code: creditorTaxType
+        description: "供应商税码类型 - 收款方税码类型"
+      - code: socialSecurityNumber
+        description: "员工税码类型 - 收款方税码类型"
+      - code: creditorReference
+        description: "收款方参考信息"
+      - code: creditorRefTypeProprietary
+        description: "收款方专有引用类型"
+      - code: localInstrumentCode
+        description: "本地代码"
+      - code: debtorPhoneNumber
+        description: "付款方电话号码"
+      - code: administrationZone
+        description: "管理区"
+      - code: referenceNumber
+        description: "参考编号"
+      - code: taxMethod
+        description: "税金方式"
+      - code: taxFromDate
+        description: "计税开始日期"
+      - code: taxToDate
+        description: "计税结束日期"
+      - code: taxCategory
+        description: "税金类别"
+      - code: debtorTaxIdOfCreditor
+        description: "付款方税码"
+      - code: branchAccountNumber
+        description: "收款方分行银行账号"
+      - code: debtorTaxIdentification
+        description: "出款行税金账号"
+      - code: duePayableAmount
+        description: "到期应付金额"
+      - code: duePayableAmountCurrency
+        description: "到期应付币种"
+      - code: remittanceLocationMethod
+        description: "汇款位置方式"
+      - code: chequeInstructionPriority
+        description: "支票指令优先级"
+      - code: privateProprietaryId
+        description: "私有专有标识"
+      - code: additionalRemittanceInfo
+        description: "附加汇款信息"
+      - code: applyType
+        description: "支付业务类型，ERP：AP/SE，TMC：TR；"
+      - code: instructionId
+        description: "支付 id，原二层入参，以后支持多批付款，放第三层"
+      - code: cashier
+        description: "业务结算人员"
+      - code: companyCode
+        description: "公司编码，多批付款仅允许相同付款方国家"
+      - code: unitCode
+        description: "管理单元编码"
+      - code: managementEntityCode
+        description: "(IT) 管理主体编码 - ME0056"
+      - code: debtorAccountNameEn
+        description: "付款账号英文名称"
+      - code: approveAmount
+        description: "权签金额"
+      - code: endToEndId
+        description: "交易数据，支付号"
+      - code: accountantDescription
+        description: "交易数据，支付会计的描述"
+      - code: adjstmntAddtlInf
+        description: "附加汇款信息"
+      - code: categoryPurposeCode
+        description: "用途目的"
+      - code: cashFlowId
+        description: "交易数据，tms 现金流 id"
+      - code: paymentCreationDate
+        description: "支付创建日期"
+      - code: instructionPriority
+        description: "紧急程度"
+      - code: paymentAmountDetail
+        description: "发票金额汇总"
+      - code: invoiceAmount
+        description: "发票金额"
+      - code: fromBatchNo
+        description: "慧通 erp 批次号"
+      - code: debtorCity
+        description: "付款方所在城市"
+      - code: debtorAddress1
+        description: "付款方地址"
+      - code: debtorAddress2
+        description: "付款方地址"
+      - code: debtorAddress3
+        description: "付款方地址"
+      - code: localAccountName
+        description: "本地语言的账号名称"
+      - code: creditorAddress1
+        description: "收款方地址"
+      - code: creditorAddress2
+        description: "收款方地址"
+      - code: creditorAddress3
+        description: "收款方地址"
+      - code: creditorAddress4
+        description: "收款方地址"
+      - code: inquiryNumber
+        description: "询价编号"
+      - code: creditorAccountTaxPayerId
+        description: "收款方账户层面的税码"
+      - code: taxClassification
+        description: "税收分类"
+      - code: creditorNationality
+        description: "个体的国籍"
+      - code: creditorAccountType
+        description: "收款方账号类型"
+      - code: billAccountNumber
+        description: "手续费账号"
+      - code: referredDocAdjustmentReason
+        description: "单据调整原因"
+      - code: clearingCode
+        description: "清算编码"
+      - code: debtorBankCodeType
+        description: "付款银行行号类型"
+      - code: debtorBankAddress
+        description: "付款银行所在地址"
+      - code: creditorBankTown
+        description: "收款银行城镇"
+  PARSE:
+    catalogId: BKL_PARSE_PAYMENT_A
+    bindingRuleId: TPL.BIND.PARSE
+    coverageRuleId: TPL.PARSE.CONFIGURED_TARGETS_ONLY
+    source: docs/reference/samples/b2eboc/parseFields.txt
+    scope: FIXED_OUTPUT_OBJECT
+    entries:
+      - code: bankReturnCode
+        description: 银行返回编码
+        dataType: STRING
+        parentPath: Root
+        fullPath: Root.bankReturnCode
+      - code: bankReturnMessage
+        description: 银行返回信息
+        dataType: STRING
+        parentPath: Root
+        fullPath: Root.bankReturnMessage
+      - code: failReason
+        description: 失败原因
+        dataType: STRING
+        parentPath: Root
+        fullPath: Root.failReason
+      - code: instructionId
+        description: null
+        dataType: STRING
+        parentPath: Root.paymentLineList
+        fullPath: Root.paymentLineList.instructionId
+      - code: lineBankReturnCode
+        description: 银行返回码
+        dataType: STRING
+        parentPath: Root.paymentLineList
+        fullPath: Root.paymentLineList.lineBankReturnCode
+      - code: lineBankReturnMessage
+        description: 银行返回消息
+        dataType: STRING
+        parentPath: Root.paymentLineList.lineReturnMessageList
+        fullPath: Root.paymentLineList.lineReturnMessageList.lineBankReturnMessage
+      - code: lineReturnMessageList
+        description: 银行返回行信息列表
+        dataType: LIST
+        parentPath: Root.paymentLineList
+        fullPath: Root.paymentLineList.lineReturnMessageList
+      - code: paymentFailReason
+        description: 支付失败原因
+        dataType: STRING
+        parentPath: Root.paymentLineList
+        fullPath: Root.paymentLineList.paymentFailReason
+      - code: paymentLineList
+        description: 循环 LIST
+        dataType: LIST
+        parentPath: Root
+        fullPath: Root.paymentLineList
+      - code: paymentNumber
+        description: 支付凭证号；用于识别一笔支付及与银行沟通。
+        dataType: STRING
+        parentPath: Root.paymentLineList
+        fullPath: Root.paymentLineList.paymentNumber
+      - code: paymentStatus
+        description: 支付状态
+        dataType: STRING
+        parentPath: Root.paymentLineList
+        fullPath: Root.paymentLineList.paymentStatus
+      - code: queryStatus
+        description: 查询状态
+        dataType: STRING
+        parentPath: Root
+        fullPath: Root.queryStatus
+      - code: sourceCode
+        description: null
+        dataType: STRING
+        parentPath: Root.paymentLineList
+        fullPath: Root.paymentLineList.sourceCode
+      - code: sourceMessageId
+        description: 来源报文 ID；由上游传送或支付头 send_message_id 提供。
+        dataType: STRING
+        parentPath: Root
+        fullPath: Root.sourceMessageId
+
+validation:
+  requireDirection: true
+  requireDescriptionByDirection:
+    ASSEMBLY: true
+    PARSE: false
+  preserveMissingDescription: true
+  requireUniqueCodeWithinDirection: true
+  assemblyReferenceForm: FLAT_CODE
+  parseReferenceForm: CODE_WITH_PARENT_PATH_AND_DATA_TYPE
+  parseCatalogRequiresTemplateCoverage: false
+  inferCodePopulatedFields: false

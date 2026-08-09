@@ -1,0 +1,137 @@
+# Function 条目模板；注释用于说明字段，不会被 yaml.safe_load 解析为 catalog 数据。
+# - code: <唯一函数代码>                 # Template 中保存和引用的稳定标识。
+#   name: <函数名称>                     # 面向配置人员的显示名称。
+#   source: TARGET_SYSTEM_FORMAL_EXPORT  # Function catalog 只接受正式导出中实际观察到的条目。
+#   contractStatus: OBSERVED             # 当前 v2 继承 v1 已在正式导出观察到的 function。
+#   description: <函数说明>              # 业务用途，不用于推断执行逻辑。
+#   parameters:                          # 按 position 从 1 连续排列。
+#     - position: 1                      # 参数位置。
+#       name: <参数名称>                 # 目标系统参数标识。
+#       required: true                   # 是否必须配置。
+#       default: <可选默认字符串>         # 仅在来源明确给出时保存。
+#       allowedArgumentKinds:            # 只允许 FIELD_REF 或 LITERAL。
+#         - FIELD_REF
+#       dataType: String                 # 所有参数和输入值均为 String。
+#   resultDataType: String               # 所有函数输出均为 String。
+
+packageVersion: v2
+status: RELEASED
+
+evidenceSources:
+  - source: TARGET_SYSTEM_FORMAL_EXPORT
+    paths:
+      - docs/reference/samples/b2eboc/b2e0061-assembly-template.json
+      - docs/reference/samples/b2eboc/b2e0061-parse-template.json
+
+dataTypeContract:
+  source: BUSINESS_CONFIRMATION
+  fieldReferenceInput: String
+  literalInput: String
+  parameter: String
+  result: String
+
+invocationRuleId: TPL.VALUE.FUNCTION
+
+argumentKinds:
+  - FIELD_REF
+  - LITERAL
+
+functions:
+  - code: SystemDateFormat
+    name: 当前日期-定义格式
+    source: TARGET_SYSTEM_FORMAL_EXPORT
+    contractStatus: OBSERVED
+    parameters:
+      - position: 1
+        name: Format
+        required: true
+        allowedArgumentKinds:
+          - LITERAL
+        dataType: String
+    resultDataType: String
+  - code: SeqNoGenerate
+    name: 自增序列号生成
+    source: TARGET_SYSTEM_FORMAL_EXPORT
+    contractStatus: OBSERVED
+    parameters:
+      - position: 1
+        name: SeqCode
+        required: true
+        allowedArgumentKinds:
+          - LITERAL
+        dataType: String
+      - position: 2
+        name: SeqLength
+        required: true
+        allowedArgumentKinds:
+          - LITERAL
+        dataType: String
+    resultDataType: String
+  - code: TotalAmountWithDecimalPlace
+    name: 总金额（指定小数位范围）
+    source: TARGET_SYSTEM_FORMAL_EXPORT
+    contractStatus: OBSERVED
+    parameters:
+      - position: 1
+        name: digit
+        required: true
+        allowedArgumentKinds:
+          - LITERAL
+        dataType: String
+      - position: 2
+        name: minDecimalPlace
+        required: true
+        allowedArgumentKinds:
+          - LITERAL
+        dataType: String
+      - position: 3
+        name: maxDecimalPlace
+        required: true
+        allowedArgumentKinds:
+          - LITERAL
+        dataType: String
+    resultDataType: String
+  - code: DateFormat
+    name: 日期格式转换
+    source: TARGET_SYSTEM_FORMAL_EXPORT
+    contractStatus: OBSERVED
+    parameters:
+      - position: 1
+        name: Date
+        required: true
+        allowedArgumentKinds:
+          - FIELD_REF
+        dataType: String
+      - position: 2
+        name: SourceFormat
+        required: true
+        allowedArgumentKinds:
+          - LITERAL
+        dataType: String
+      - position: 3
+        name: TargetFormat
+        required: true
+        allowedArgumentKinds:
+          - LITERAL
+        dataType: String
+    resultDataType: String
+  - code: SinglePaymentGetPaymentNo
+    name: 单笔支付获取支付号
+    source: TARGET_SYSTEM_FORMAL_EXPORT
+    contractStatus: OBSERVED
+    parameters:
+      - position: 1
+        name: sendMessageId
+        required: true
+        allowedArgumentKinds:
+          - FIELD_REF
+        dataType: String
+    resultDataType: String
+
+validation:
+  requireUniqueCode: true
+  requireContiguousParameterPositions: true
+  rejectUnknownArgumentKind: true
+  rejectRecursiveFunctionArgument: true
+  semanticDataTypeValidation: STRICT_STRING
+  aliasInferenceAllowed: false

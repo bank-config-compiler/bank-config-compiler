@@ -45,9 +45,9 @@ IR 是 Intermediate Representation（中间表示）。它把来源不同、结�
 
 三者不得相互覆盖。SchemaIR 与 InterfaceStandardIR 的 required、length、type 或其他约束存在差异时，必须同时保留两侧值；InterfaceStandardIR 记录差异原因、Rule ID 和人工 Review 结论，差异进入 Workbook `Warnings`。
 
-银行字段、path、出现次数和约束以 raw-doc 经人工确认形成的 Final SchemaIR 为准；正式 Standard/Template 导出只证明目标系统表示方式和已观察配置，不能覆盖银行事实。b2e0061 Final Standard 因此保留 raw-doc 定义的 `@security` XML Key、排除只存在于正式导出的 `vamflag`，并将样例中观察到但协议说明未定义的 `@lang` 保留在 SchemaIR 和差异 Warning 中而不进入 Final Standard。
+银行字段、path、出现次数和约束以 raw-doc 经人工确认形成的 Final SchemaIR 为准；正式 Standard/Template 导出只证明目标系统表示方式和已观察配置，不能覆盖银行事实。b2e0061 Final Standard 因此保留 raw-doc 定义的 `@security` XML Key、排除只存在于正式导出的 `vamflag`。样例中观察到但协议说明未定义的 `@lang` 只保留在来源和 Review 证据中，不作为 Final SchemaIR 字段，也不进入 Final Standard。
 
-每个 SchemaIR message 使用 `xmlEncoding` 保存当前方向 XML declaration 的 encoding。b2e0061 的 ASSEMBLY、PARSE 两个方向已由 Human 与银行线下确认均为 `UTF-8`。后续协议建议值、报文示例值或其他银行文档证据与已确认值冲突时，Validator 必须产生 Warning 并阻止 Final，直到 Human Review 给出新结论。Final 值只作为报文级元数据展示在 Workbook `Overview`，不生成 Interface Standard 字段或 XML Key。
+每个 SchemaIR message 使用 `xmlEncoding` 保存当前方向 XML declaration 的 encoding，并以 `xmlEncodingEvidence[]` 保存 `sourceKind`、`sourceRef`、`observedValue`、`disposition` 和 Review 说明。b2e0061 的 ASSEMBLY、PARSE 两个方向已由 Human 与银行线下确认均为 canonical `UTF-8`。显式 evidence 与确认值冲突时，Validator 产生 blocking Warning；Human 必须将其处置为 `RESOLVED_CONFLICT` 并说明原因，或更新确认值后重新 Review。Final 值只作为报文级元数据展示在 Workbook `Overview`，不生成 Interface Standard 字段或 XML Key。
 
 一个方向标准可以被多份同方向模板复用。模板必须绑定不可变的 `standardId + standardVersion + contentHash`，不能仅凭 `interfaceCode` 自动跟随最新标准。标准升级后，已有模板仍指向原版本；迁移必须重新校验和 Review。
 
@@ -57,6 +57,8 @@ Configuration Workbook 不是事实源，不反向更新任何 IR。人工填写
 
 - Human-in-the-loop 是必需能力。LLM 只能产生四类 IR Draft。
 - Draft 未经对应 Validator（适用时）和人工 Review，不得成为 Final 产物。
+- 三类 IR 使用显式 stable ID、不可变 artifact version、`DRAFT | FINAL` 状态和 `PENDING | APPROVED` Review。任何 `uncertain=true`、`UNKNOWN`、未决差异、未决 omission 或 blocking Warning 都阻止 Final eligibility。
+- Human 先完成完整 Final candidate 和 Review metadata，再运行 Validator。Validation result 使用 canonical UTF-8 JSON SHA-256 绑定包括 Review 在内的全部语义内容；空白和属性顺序不影响 hash，任何语义值变化都使旧结果失效。
 - 接口标准必须在接口模板之前形成 Final；新增模板直接复用已确认的标准，不重新生成标准。
 - Validator 只校验结构、引用和确定性 invariant，不能代替人工判断 function、mapping 或场景性字段省略是否符合业务语义。
 - Workbook Generator 只做确定性格式化和配置指导，不补业务字段、不临时推断配置逻辑、不对接目标系统、不承诺导入兼容性。
@@ -113,7 +115,7 @@ XML attribute 不形成独立接口标准行，而作为所属 element 标准行
 
 银行文档明确、无歧义且落在规则包支持子集内的条件必须结构化保存，不能只压缩为基础 Required。例如 b2e0061 的 `obssid` 基础 Required 为 `false`，同时保存 `transtype EQUALS "2" => obssid REQUIRED`。
 
-P0 只支持 `EQUALS`、`IS_EMPTY` 谓词和 `REQUIRED` 效果。条件必须引用同方向已存在字段，并保留银行原文 evidence 与人工 Review。复杂或无法可靠结构化的约束继续保存为 `conditionText` 和 Review 提示，不得丢失或猜测。
+P0 只支持 `EQUALS`、`IS_EMPTY` 谓词和 `REQUIRED` 效果。条件必须引用同方向已存在字段，并保留银行原文 evidence 与人工 Review。复杂或无法可靠结构化的约束继续在 SchemaIR 与其 Standard 字段投影中保存为 `conditionText` 和 Review 提示，不得丢失或猜测。
 
 ## 6. InterfaceTemplateIR 能力
 
@@ -123,7 +125,7 @@ P0 只支持 `EQUALS`、`IS_EMPTY` 谓词和 `REQUIRED` 效果。条件必须引
 
 ### 6.2 方向性字段绑定与 omission
 
-每个 Template field config 必须显式保存 `standardProjection`，其中的 Required、Length 和 Data Type 完整镜像所绑定 Final Standard 的约束状态和值。Template Validator 必须逐项校验完全相等；当前项目不接受出于内部业务需要缩短 Length、改变 Required 或改变 Standard Data Type。
+ASSEMBLY Template field config 必须在 `standardTarget` 中显式保存 `standardFieldRef + standardProjection`，其中 Required、Length 和 Data Type 完整镜像所绑定 Final Standard。PARSE VALUE config 只声明 `parseTarget`，其表达式 FIELD_REF 各自保存 `standardFieldRef`；`COLLECTION_ITEM` 通过 `standardSource.standardFieldRef` 标识集合来源。PARSE projection 由精确绑定的 Final Standard 确定性解析，不重复保存，也不选择顶层“主” Standard source。
 
 模板字段使用以下结构绑定类型：
 
@@ -146,7 +148,7 @@ Node/Object 不参加 ASSEMBLY omission coverage。无 XML Key、无需结构绑
 
 PARSE 模板行以 Parse Field catalog 为目标；Value Expression 中的 FIELD_REF 引用绑定 Standard 的银行字段，也可以使用受支持的 literal、function 或 CONCATENATE。Standard source 与 Parse target 的 name、path 和 datatype 必须分别保存和展示，不能用 Standard Data Type 代替 Parse target Data Type。Validator 只校验实际配置的 Parse Field 引用、path 和 datatype；未配置 Parse Field 默认不产生 omission 或 warning，也不能根据 b2e0061 的配置情况将其全局分类为代码赋值字段。
 
-b2e0061 raw-doc 将 `b2e0061-rq` 和 `b2e0061-rs` 都定义为 `0..1000`，因此两者在 Final Standard 中均为 `Node`，不能沿用正式导出的 `Object`。PARSE 使用 `COLLECTION_ITEM` 将每个 `b2e0061-rs` 映射为 `paymentLineList` 的一个 `List` 元素；其 `status`、`insid`、`obssid` 等子字段写入当前元素。
+b2e0061 经 Human Review 确认请求 `b2e0061-rq` 为 `1..1000`、响应 `b2e0061-rs` 为 `0..1000`，因此两者在 Final Standard 中均为 `Node`，不能沿用正式导出的 `Object`。PARSE 使用 `COLLECTION_ITEM` 将每个 `b2e0061-rs` 映射为 `paymentLineList` 的一个 `List` 元素；其 `status`、`insid`、`obssid` 等子字段写入当前元素。
 
 同一目标字段通过目的系统业务 Condition 配置多条模板行是已知 future candidate。本期不支持多行、不定义通用 Template Condition wire 字段，Validator 必须拒绝超出当前 contract 的重复目标引用。第 5.4 节的银行文档条件属于 Standard 约束，不属于这里的业务 Condition。
 
@@ -198,6 +200,8 @@ InterfaceStandardIR 与 InterfaceTemplateIR 的权威目标系统规则来源位
 
 `configuration-rules/v1` 是根据正式导出、`bkl.md`、ASSEMBLY/PARSE 字段清单、Mapping 样例和业务确认建立的 BKL configuration rules 子集，不绑定具体银行接口，也不声称覆盖全量 catalog。Function catalog 只包含正式导出中实际观察到的条目，不使用 `bkl.md` 的 function 内容；Function 类型统一为 String。v1 已于 2026-08-06 发布为不可变的 `RELEASED` 版本，可以被 Final IR 精确引用。字符长度默认值已确认为 `STANDARD_1`；其他仍未知的系统默认值必须保持 `UNKNOWN`，不得从相近概念推断。
 
+`configuration-rules/v2` 继承 v1 的 Rule ID、FIELD、Function、Mapping 和 processing-policy catalog，只修订 `TPL.BIND.STANDARD_PROJECTION` 的方向相关语义。v2 已经双 reviewer 对准确候选确认并发布为 `RELEASED`；现有 Final SchemaIR/Standard 继续引用 v1，后续 Template 独立引用 v2，不自动迁移既有 Final IR。
+
 ## 8. 可信流程
 
 ```mermaid
@@ -208,30 +212,39 @@ flowchart TD
     C -->|"确认"| D["Final DocIR"]
 
     D --> E["LLM 生成 SchemaIR Draft"]
-    E --> F["SchemaIR Validator"]
-    F -->|"校验失败：修正后重新校验"| E
-    F -->|"校验通过"| SV["SchemaIR Validation Result"]
-    SV --> G["人工 Review SchemaIR"]
-    G -->|"修正后重新校验"| E
-    G -->|"确认"| H["Final SchemaIR"]
+    E --> F["SchemaIR Validator / Draft Result"]
+    F -->|"结构错误：修正后重新校验"| E
+    F --> G["人工 Review SchemaIR"]
+    G -->|"修改事实"| E
+    G -->|"完成 Final metadata"| HC["完整 Final SchemaIR Candidate"]
+    HC --> FV["SchemaIR Validator 复验"]
+    FV -->|"失败：返回 Review"| G
+    FV -->|"通过且 hash 匹配"| SV["Final SchemaIR Validation Result"]
+    SV --> H["Eligible Final SchemaIR"]
 
     H --> I["LLM 生成 InterfaceStandardIR Draft"]
     RS["Standard 使用的 configuration-rules 版本"] --> I
-    I --> J["Standard Validator"]
-    J -->|"校验失败：修正后重新校验"| I
-    J -->|"校验通过"| STV["Standard Validation Result"]
-    STV --> K["人工 Review Interface Standard"]
-    K -->|"修正后重新校验"| I
-    K -->|"确认"| L["Final InterfaceStandardIR"]
+    I --> J["Standard Validator / Draft Result"]
+    J -->|"结构错误：修正后重新校验"| I
+    J --> K["人工 Review Interface Standard"]
+    K -->|"修改事实"| I
+    K -->|"完成 Final metadata"| LC["完整 Final Standard Candidate"]
+    LC --> JV["Standard Validator 复验"]
+    JV -->|"失败：返回 Review"| K
+    JV -->|"通过且 hash 匹配"| STV["Final Standard Validation Result"]
+    STV --> L["Eligible Final InterfaceStandardIR"]
 
     L --> M["LLM 生成 InterfaceTemplateIR Draft"]
     RT["Template 使用的 configuration-rules 版本"] --> M
-    M --> N["Template Validator"]
-    N -->|"校验失败：修正后重新校验"| M
-    N -->|"校验通过"| TV["Template Validation Result"]
-    TV --> O["人工 Review Interface Template / Omissions"]
-    O -->|"修正后重新校验"| M
-    O -->|"确认"| P["Final InterfaceTemplateIR"]
+    M --> N["Template Validator / Draft Result"]
+    N -->|"结构错误：修正后重新校验"| M
+    N --> O["人工 Review Interface Template / Omissions"]
+    O -->|"修改事实"| M
+    O -->|"完成 Final metadata"| PC["完整 Final Template Candidate"]
+    PC --> NV["Template Validator 复验"]
+    NV -->|"失败：返回 Review"| O
+    NV -->|"通过且 hash 匹配"| TV["Final Template Validation Result"]
+    TV --> P["Eligible Final InterfaceTemplateIR"]
 
     H --> Q["确定性 Workbook Generator"]
     L --> Q
@@ -245,7 +258,7 @@ flowchart TD
     Q --> W["Configuration Workbook"]
 ```
 
-人工 Review 修改 Draft 后必须重新运行对应 Validator，旧校验结果不得复用。Generator 只能接收三份 Final 模型、三份与 Final 内容匹配的通过校验结果、各自产物记录的精确规则版本和显式 Standard Action。
+人工 Review 修改 Draft 后，必须先形成完整 Final candidate，再重新运行对应 Validator，旧校验结果不得复用。每份 validation result 保存 artifact kind、stable ID、artifact version、contract version、canonical content hash、`finalEligible` 和带 `blocking` 标记的 issues。Generator 只能接收三份 Final 模型、三份 identity/version/contract/hash 全部匹配且 `finalEligible=true` 的结果、各自产物记录的精确规则版本和显式 Standard Action。
 
 ## 9. Configuration Workbook 成功标准
 
@@ -261,7 +274,7 @@ flowchart TD
 
 `Interface Standard` 保存模板所绑定标准的完整快照；`Interface Template` 只列出当前模板实际配置的字段。`Overview` 记录标准与模板身份、版本、内容摘要、规则版本、当前方向 Final `xmlEncoding`、校验结果和调用者指定的 `Standard Action = CREATE | REUSE | UPDATE`。
 
-`Interface Template` 必须将 Standard snapshot、Template `standardProjection` 和 Parse target 分列展示。ASSEMBLY 的 Standard 是 target；PARSE 的 Standard 是 source，并额外展示 Parse target 的 name/path/datatype。例如 `b2e0061-rs(Node)` 与 `paymentLineList(List)` 必须同时可见，不能合并为一个含糊的 Data Type 列。
+`Interface Template` 必须将 Standard snapshot、Template projection 和 Parse target 分列展示。ASSEMBLY projection 来自显式 `standardTarget.standardProjection`；PARSE projection 由表达式/collection 的每个 `standardFieldRef` 从 Final Standard 派生，并额外展示 Parse target 的 name/path/datatype。例如 `b2e0061-rs(Node)` 与 `paymentLineList(List)` 必须同时可见，不能合并为一个含糊的 Data Type 列。
 
 `Value Expressions` 是模板表达式的结构化明细视图，不是额外事实源。主 sheet 对标量字段展示 Value Mode 和可读摘要；`Node`、`Object` 行的 Value Mode 和 Value Summary 留空，并由 `Legend` 说明该字段没有值表达式。该 sheet 按树展开递归 `CONCATENATE`、function 参数和 mapping 引用，并通过 Expression Scope 区分标量字段值表达式与 XML Key 表达式。
 
@@ -295,7 +308,7 @@ flowchart TD
 - ASSEMBLY 目标是 Standard Field；PARSE 目标是 Parse Field，表达式内 FIELD_REF 引用绑定 Standard。
 - ASSEMBLY 缺失的适用标量字段产生 Warning；Node/Object 不产生 omission；未确认 omission 阻止 Final，确认后允许 Final 且继续显示在 Workbook。
 - PARSE 只校验实际配置的 Parse Field；未配置 catalog 字段默认不产生 omission 或 Warning。
-- Template `standardProjection.required/length/dataType` 与绑定 Standard 完全相等，Workbook 分别展示 Standard、Template 镜像和 Parse target。
+- ASSEMBLY `standardTarget.standardProjection` 与绑定 Standard 完全相等；PARSE 从表达式/collection 的全部 `standardFieldRef` 展开 Standard source projection，Workbook 将这些 source 与 Parse target 分列展示。
 - `b2e0061-rs(Node) → paymentLineList(List)` 使用 `COLLECTION_ITEM`，每个响应节点生成一个列表元素。
 - omission 与 `EMPTY` 明确区分。
 - 六种 Value Mode 均进入 P0；MAPPING 使用单一预设规则引用并对未匹配完整值报错。
@@ -304,7 +317,9 @@ flowchart TD
 - String/Boolean/Date/Number 标量模板行必须有字段值表达式，Node/Object 模板行不得有字段值表达式。
 - 存在模板行时，每个 XML Key 都具有独立表达式；未知或缺失 Key 是错误。
 - 银行文档明确条件在 SchemaIR/InterfaceStandardIR/Workbook 可追溯，基础 Required 不覆盖条件 Required。
-- `messages[].xmlEncoding` 经人工 Review 后进入 Workbook Overview，不生成 Standard 字段；银行文档证据冲突时 Warning 并阻止 Final，直到 Human Review。
+- `messages[].xmlEncoding` 与显式 evidence 经人工 Review 后进入 Workbook Overview，不生成 Standard 字段；未处置的银行文档 evidence 冲突产生 blocking Warning。
+- SchemaIR v2 明确拒绝 legacy contract、JSON message format、JSON node kind、未知属性、bool 冒充整数以及非 object/重复 key/NaN JSON 输入。
+- Validation result 的 canonical hash 对格式和属性顺序稳定，对任一语义值变化敏感；旧结果不能与修改后的 Final artifact 配对。
 - ASSEMBLY 与 PARSE 使用同一表达结构但具有相反 source/target 端点。
 - `Value Expressions` 能还原标量字段值和 XML Key 的递归表达式树。
 - 当前 XML Standard 拒绝 `List`；Parse Field Catalog 可以使用 `List`。

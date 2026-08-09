@@ -2,7 +2,7 @@
 
 ## Status
 
-Draft. DocIR / SchemaIR golden baseline exists; `configuration-rules/v1` is released and formal Standard/Template exports are available, so InterfaceStandardIR / InterfaceTemplateIR and Configuration Workbook golden work is now P0-T3 in progress.
+Implemented for P0-T3. The immutable P0-T2 Review Golden remains separate from the reviewed P0-T3 Final chain. Released v1/v2 rules, both Final Standard/Template directions, matching validation results, committed ASSEMBLY/PARSE Configuration Workbooks and full structured/CLI regression now exist.
 
 ## 1. 目的
 
@@ -28,11 +28,11 @@ Golden sample 是 Prompt、四类 IR、三个 Validator、Workbook Generator 和
 - workbook 结构化 assertions；
 - Review notes 和规则来源。
 
-当前 `samples/golden/b2eboc-b2e0061/` 只证明 DocIR/SchemaIR Review baseline 与 SchemaIR Validator，不证明后续目标配置链路已经实现。
+`samples/golden/b2eboc-b2e0061/` 只证明 P0-T2 审查前 Review baseline，其 byte hash 固定且 legacy SchemaIR 被 v2 Validator 拒绝。`samples/trusted-chain/b2eboc-b2e0061/` 保存已评审 Final SchemaIR v2、双方向 Final Standard/Template、匹配 results 和 APPROVED reviews。SchemaIR hash 为 `sha256:4729131ad59fd29899895b1149a476c1f95b71f304cb43bd17749985f19e7162`；ASSEMBLY Standard hash 为 `sha256:9c77e0e92447907fa89d6ef705501dc0947d695998b80bb154476f696e9b982e`，PARSE Standard hash 为 `sha256:33efa544460ac19f216734712c1e6ae2610321ea17eb750eff35493ecca9d57e`。SchemaIR 与两份 Standard 均为 0 ERROR、0 WARNING、0 blocking issue，`finalEligible=true`。ASSEMBLY Template hash 为 `sha256:b9966a449ddc29e08fa29c6cf7838273ce3cab91e00dbb38092767d21af2f561`，保留 4 个经接受 omission 和 4 个非阻塞 Warning；PARSE Template hash 为 `sha256:16eb305b6ac3944f28cb1060b943fdfc2d471f69e6bf8ea52ce059c797fb22f9`，0 WARNING；两者均为 0 ERROR、0 blocking issue，`finalEligible=true`。
 
 ## 3. 规则来源边界
 
-具体 Rule ID、FIELD、FUNCTION 和 `mappingRuleName` 只能来自已确认的 `configuration-rules/v1`。正式导出可以证明 b2e0061 实际配置和调用形态，但必须先经规则包治理和人工确认，不能被测试直接当作 expected IR。不得为满足覆盖创建占位业务标识或内联 Mapping entries。
+具体 Rule ID、FIELD、FUNCTION 和 `mappingRuleName` 只能来自适用的已发布规则版本。现有 Final Standard 精确引用 `configuration-rules/v1`，Final Template 精确引用 `configuration-rules/v2`。正式导出可以证明 b2e0061 实际配置和调用形态，但必须先经规则包治理和人工确认，不能被测试直接当作 expected IR。不得为满足覆盖创建占位业务标识或内联 Mapping entries。
 
 Standard 与 Template fixture 必须分别记录实际使用的规则版本。模板必须绑定 expected Standard 的 stable ID、version 和 content hash。
 
@@ -51,7 +51,7 @@ Golden 至少覆盖：
 - SchemaIR/Standard required、length、type 或其他差异；
 - `transtype EQUALS "2" => obssid REQUIRED` 等银行文档条件与基础 Required 分离；
 - 当前 XML 流程拒绝 JSON-only List。
-- b2e0061 `b2e0061-rq` 与 `b2e0061-rs` 按 `0..1000` 为 Node；`@security` 保留、`vamflag` 排除，`@lang` 仅作为 observed evidence/difference Warning。
+- b2e0061 请求 `b2e0061-rq` 按 `1..1000`、响应 `b2e0061-rs` 按 `0..1000` 为 Node；`@security` 保留、`vamflag` 排除，observed `@lang` 只保留在来源和 Review 证据中。
 - 方向级 `messages[].xmlEncoding` 冲突 Warning、Final 阻塞、Human Review 与 Workbook Overview 展示。
 
 具体样例无法自然覆盖的类型或差异，应使用最小受控 fixture 补充，不能污染真实 golden 事实。
@@ -63,7 +63,7 @@ Golden 至少覆盖：
 - 六种 Value Mode；MAPPING 覆盖单一 FIELD input、预设规则引用和 unmatched error；
 - Replacement 覆盖单一预设规则、片段替换、空 target 删除和未命中内容保留；
 - ASSEMBLY 与 PARSE 使用同一表达结构，但 ASSEMBLY target 为 Standard Field、PARSE target 为 Parse Field；
-- 每个配置行显式镜像 Standard required/length/dataType，任一不一致校验失败；
+- ASSEMBLY 配置行在 `standardTarget.standardProjection` 显式镜像 Standard required/length/dataType，任一不一致校验失败；PARSE 从表达式/collection source 的 Standard reference 派生；
 - `VALUE`、`STRUCTURE_ONLY`、`COLLECTION_ITEM`，包括 `b2e0061-rs(Node) -> paymentLineList(List)`；
 - String/Boolean/Date/Number 标量字段必须有字段值表达式，Node/Object 不得有字段值表达式；
 - ASSEMBLY 模板 target 是标准字段子集；
@@ -72,7 +72,7 @@ Golden 至少覆盖：
 - 未确认 omission 阻止 Final；
 - 已确认 omission 带原因进入 Final，并继续出现在 Workbook Warnings；
 - omission、EMPTY 与 Empty Handling 三者不同；
-- 同一 standardFieldRef 重复时校验失败；
+- 同一 ASSEMBLY `standardTarget.standardFieldRef` 或 PARSE `parseTarget.parseFieldRef` 重复时校验失败；
 - 存在模板行时，每个标准 XML Key 有独立表达式；
 - 未知或缺失 XML Key expression 校验失败；
 - FIXED_VALUE 同时覆盖 `LITERAL` 与只保存引用标识的 `SECURE_INPUT_REF`；
@@ -129,10 +129,6 @@ Legend
 
 ## 8. 当前执行边界
 
-`configuration-rules/v1` 已发布并冻结，P0-T3 可以继续以下工作：
+`configuration-rules/v1`、`configuration-rules/v2`、Standard/Template runtime、双方向 Final Standard/Template、匹配 validation results 与 expected Configuration Workbook 已冻结。结构化 assertions 会以固定任务上下文重新生成两份 Workbook，并比较 sheet/row/cell type、关键样式、data validation、warnings 和 ZIP 安全边界；不比较 `.xlsx` ZIP 字节。
 
-- Final InterfaceStandardIR / InterfaceTemplateIR fixture；
-- Standard / Template Validator expected result；
-- expected Configuration Workbook 和相关 assertions。
-
-这些资产必须按 SchemaIR wire amendment → Standard → Template → Workbook 顺序补齐。现有 P0-T2 DocIR、SchemaIR 和 review-notes expected artifacts 是审查前 Golden，本批次不改写；其 README 指向 ADR-0008。b2e0061 两个方向的 `xmlEncoding` 已由 Human 与银行线下确认为 `UTF-8`，后续 P0-T3 fixture 必须落实该结论；未来银行文档冲突必须 Warning 并阻塞 Final，直到 Human Review。规则包 v1 已冻结；正式导出观察到的 5 个 Function、String 类型、字符长度默认 `STANDARD_1`、MAPPING 和 Replacement 契约必须进入专项 golden，但不得把 Function 或 Mapping 子集扩张成全量 catalog。P0-T3 完成后再冻结相关 Final fixture。
+这些资产必须按 Final SchemaIR → Standard → RELEASED Template rules → Template → Workbook 顺序补齐。P0-T2 expected artifacts 不改写；SchemaIR v2 Final fixture 已落实两个方向的 `UTF-8` Human/银行 evidence，并按已确认 canonical content hash 冻结。ASSEMBLY Final Standard 为 36 fields、3 XML Keys、1 condition，hash 为 `sha256:9c77e0e92447907fa89d6ef705501dc0947d695998b80bb154476f696e9b982e`；PARSE Final Standard 为 19 fields、3 XML Keys、4 approved differences，hash 为 `sha256:33efa544460ac19f216734712c1e6ae2610321ea17eb750eff35493ecca9d57e`。规则包 v1/v2 均保持冻结；v2 仍使用正式导出观察到的 5 个 Function、String 类型、字符长度默认 `STANDARD_1`、MAPPING 和 Replacement 契约，不得把 Function 或 Mapping 子集扩张成全量 catalog。

@@ -1,0 +1,32 @@
+{
+  "contractVersion": "interface-standard-validation-result/v1",
+  "validatedArtifact": {
+    "kind": "InterfaceStandardIR",
+    "artifactId": "b2e0061-assembly-standard",
+    "artifactVersion": "v1",
+    "artifactContractVersion": "interface-standard/v1",
+    "contentHash": "sha256:9c77e0e92447907fa89d6ef705501dc0947d695998b80bb154476f696e9b982e"
+  },
+  "status": "passed",
+  "finalEligible": true,
+  "summary": {
+    "standardId": "b2e0061-assembly-standard",
+    "interfaceCode": "b2e0061",
+    "direction": "ASSEMBLY",
+    "rulePackageVersion": "v1",
+    "fieldCount": 36,
+    "errorCount": 0,
+    "warningCount": 0,
+    "infoCount": 0,
+    "blockingCount": 0
+  },
+  "coverage": {
+    "scalarFieldCount": 29,
+    "containerFieldCount": 7,
+    "xmlKeyCount": 3,
+    "conditionalConstraintCount": 1,
+    "differenceCount": 0,
+    "uncertainFieldCount": 0
+  },
+  "issues": []
+}

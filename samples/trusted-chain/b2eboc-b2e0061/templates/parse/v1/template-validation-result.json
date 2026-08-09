@@ -1,0 +1,37 @@
+{
+  "contractVersion": "interface-template-validation-result/v1",
+  "validatedArtifact": {
+    "kind": "InterfaceTemplateIR",
+    "artifactId": "b2e0061-parse-common",
+    "artifactVersion": "v1",
+    "artifactContractVersion": "interface-template/v1",
+    "contentHash": "sha256:16eb305b6ac3944f28cb1060b943fdfc2d471f69e6bf8ea52ce059c797fb22f9"
+  },
+  "status": "passed",
+  "finalEligible": true,
+  "summary": {
+    "templateId": "b2e0061-parse-common",
+    "interfaceCode": "b2e0061",
+    "direction": "PARSE",
+    "rulePackageVersion": "v2",
+    "fieldConfigCount": 8,
+    "errorCount": 0,
+    "warningCount": 0,
+    "infoCount": 0,
+    "blockingCount": 0
+  },
+  "coverage": {
+    "valueBindingCount": 7,
+    "structureBindingCount": 0,
+    "collectionBindingCount": 1,
+    "fieldValueExpressionCount": 7,
+    "xmlKeyExpressionCount": 0,
+    "omissionCount": 0,
+    "approvedOmissionCount": 0,
+    "uncertainFieldConfigCount": 0,
+    "functionInvocationCount": 1,
+    "mappingExpressionCount": 0,
+    "replacementCount": 0
+  },
+  "issues": []
+}
