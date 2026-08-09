@@ -45,7 +45,7 @@ IR 是 Intermediate Representation（中间表示）。它把来源不同、结�
 
 三者不得相互覆盖。SchemaIR 与 InterfaceStandardIR 的 required、length、type 或其他约束存在差异时，必须同时保留两侧值；InterfaceStandardIR 记录差异原因、Rule ID 和人工 Review 结论，差异进入 Workbook `Warnings`。
 
-银行字段、path、出现次数和约束以 raw-doc 经人工确认形成的 Final SchemaIR 为准；正式 Standard/Template 导出只证明目标系统表示方式和已观察配置，不能覆盖银行事实。b2e0061 Final Standard 因此保留 raw-doc 定义的 `@security` XML Key、排除只存在于正式导出的 `vamflag`，并将样例中观察到但协议说明未定义的 `@lang` 保留在 SchemaIR 和差异 Warning 中而不进入 Final Standard。
+银行字段、path、出现次数和约束以 raw-doc 经人工确认形成的 Final SchemaIR 为准；正式 Standard/Template 导出只证明目标系统表示方式和已观察配置，不能覆盖银行事实。b2e0061 Final Standard 因此保留 raw-doc 定义的 `@security` XML Key、排除只存在于正式导出的 `vamflag`。样例中观察到但协议说明未定义的 `@lang` 只保留在来源和 Review 证据中，不作为 Final SchemaIR 字段，也不进入 Final Standard。
 
 每个 SchemaIR message 使用 `xmlEncoding` 保存当前方向 XML declaration 的 encoding，并以 `xmlEncodingEvidence[]` 保存 `sourceKind`、`sourceRef`、`observedValue`、`disposition` 和 Review 说明。b2e0061 的 ASSEMBLY、PARSE 两个方向已由 Human 与银行线下确认均为 canonical `UTF-8`。显式 evidence 与确认值冲突时，Validator 产生 blocking Warning；Human 必须将其处置为 `RESOLVED_CONFLICT` 并说明原因，或更新确认值后重新 Review。Final 值只作为报文级元数据展示在 Workbook `Overview`，不生成 Interface Standard 字段或 XML Key。
 
@@ -148,7 +148,7 @@ Node/Object 不参加 ASSEMBLY omission coverage。无 XML Key、无需结构绑
 
 PARSE 模板行以 Parse Field catalog 为目标；Value Expression 中的 FIELD_REF 引用绑定 Standard 的银行字段，也可以使用受支持的 literal、function 或 CONCATENATE。Standard source 与 Parse target 的 name、path 和 datatype 必须分别保存和展示，不能用 Standard Data Type 代替 Parse target Data Type。Validator 只校验实际配置的 Parse Field 引用、path 和 datatype；未配置 Parse Field 默认不产生 omission 或 warning，也不能根据 b2e0061 的配置情况将其全局分类为代码赋值字段。
 
-b2e0061 raw-doc 将 `b2e0061-rq` 和 `b2e0061-rs` 都定义为 `0..1000`，因此两者在 Final Standard 中均为 `Node`，不能沿用正式导出的 `Object`。PARSE 使用 `COLLECTION_ITEM` 将每个 `b2e0061-rs` 映射为 `paymentLineList` 的一个 `List` 元素；其 `status`、`insid`、`obssid` 等子字段写入当前元素。
+b2e0061 经 Human Review 确认请求 `b2e0061-rq` 为 `1..1000`、响应 `b2e0061-rs` 为 `0..1000`，因此两者在 Final Standard 中均为 `Node`，不能沿用正式导出的 `Object`。PARSE 使用 `COLLECTION_ITEM` 将每个 `b2e0061-rs` 映射为 `paymentLineList` 的一个 `List` 元素；其 `status`、`insid`、`obssid` 等子字段写入当前元素。
 
 同一目标字段通过目的系统业务 Condition 配置多条模板行是已知 future candidate。本期不支持多行、不定义通用 Template Condition wire 字段，Validator 必须拒绝超出当前 contract 的重复目标引用。第 5.4 节的银行文档条件属于 Standard 约束，不属于这里的业务 Condition。
 

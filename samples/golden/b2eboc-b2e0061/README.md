@@ -8,7 +8,7 @@ Review Golden.
 
 本样例冻结 `b2e0061` raw document 对应的 expected DocIR、SchemaIR 和 review notes。它不是最终业务答案，也不是运行时最终契约。
 
-这些 expected artifacts 是 ADR-0008 修订前形成的“审查前”Golden，四份核心文件继续保持 byte-identical。Human 与银行线下确认的 ASSEMBLY/PARSE `xmlEncoding=UTF-8` 已落实到 [`samples/trusted-chain/b2eboc-b2e0061/`](../../trusted-chain/b2eboc-b2e0061/README.md) 的 SchemaIR v2 Draft evidence；该 Draft 仍有 blocking review issues，不是 Final。银行事实投影、Standard 镜像和结构绑定继续留给后续 Final fixture。
+这些 expected artifacts 是 ADR-0008 修订前形成的“审查前”Golden，四份核心文件继续保持 byte-identical。Human 与银行线下确认的 ASSEMBLY/PARSE `xmlEncoding=UTF-8` 已落实到 [`samples/trusted-chain/b2eboc-b2e0061/`](../../trusted-chain/b2eboc-b2e0061/README.md) 的 Final SchemaIR v2 fixture；该 fixture 已按准确 content hash 完成 Review 和复验。Standard 镜像和结构绑定继续留给后续 Final fixture。
 
 `review-notes.expected.md` 中的未确认问题是有意保留的。它们定义后续生成器必须保留的 review 输出，包括不确定性、confidence、evidence 和人工确认点。
 

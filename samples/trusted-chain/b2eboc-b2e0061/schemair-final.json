@@ -2,17 +2,17 @@
   "contractVersion": "schemair/v2",
   "schemaId": "b2eboc-b2e0061-schema",
   "schemaVersion": "v1",
-  "status": "DRAFT",
+  "status": "FINAL",
   "review": {
-    "status": "PENDING",
-    "reviewer": null,
-    "reviewedAt": null,
-    "note": null
+    "status": "APPROVED",
+    "reviewer": "deng",
+    "reviewedAt": "2026-08-09T12:48:17+08:00",
+    "note": "Human Review 已确认 b2e0061 SchemaIR 样例中的协议结构事实；目标系统默认值继续由后续 Standard 表达。"
   },
   "interfaceCode": "b2e0061",
   "interfaceName": "公对私转账汇款",
   "messageFormat": "XML",
-  "protocolVersion": "120",
+  "protocolVersion": "100",
   "sourceDocument": "samples/golden/b2eboc-b2e0061/raw-doc.md",
   "envelope": {
     "rootPath": "Root.bocb2e",
@@ -67,16 +67,16 @@
         "hasChildren": false,
         "occurs": "0..1",
         "description": "BOCB2E 协议的版本号。",
-        "conditionText": "协议说明推荐 BOCNET 3.0 表示为 120；若使用数字型货币码，version 值用 100。",
+        "conditionText": "Human 与银行确认该接口使用版本 100。",
         "sourceText": "<bocb2e version=\"120\" security=\" true\" locale=\"zh_CN\">；示例也出现 <bocb2e version=\"100\" security=\"true\" lang=\"chs\">。",
         "evidence": {
-          "kind": "DERIVED",
-          "note": "顶层 version 暂取协议推荐值 120；示例中存在 100，需人工确认配置口径。"
+          "kind": "DIRECT",
+          "note": "Human 与银行确认 b2e0061 样例使用协议版本 100。"
         },
-        "confidence": 0.75,
-        "uncertain": true,
-        "uncertainReason": "协议说明与示例值不一致。",
-        "reviewNote": "确认 SchemaIR 顶层 version 与 envelope @version 应表示协议推荐值、样例观察值还是目标配置默认值。"
+        "confidence": 1,
+        "uncertain": false,
+        "uncertainReason": null,
+        "reviewNote": "deng 确认使用 100。"
       },
       {
         "path": "Root.bocb2e.@security",
@@ -137,36 +137,6 @@
         "uncertain": false,
         "uncertainReason": null,
         "reviewNote": null
-      },
-      {
-        "path": "Root.bocb2e.@lang",
-        "fieldName": "@lang",
-        "displayName": "历史语言属性",
-        "parentPath": "Root.bocb2e",
-        "level": 2,
-        "nodeKind": "XML_ATTRIBUTE",
-        "dataType": "string",
-        "format": null,
-        "length": {
-          "min": null,
-          "max": null,
-          "raw": null
-        },
-        "required": false,
-        "multiple": false,
-        "hasChildren": false,
-        "occurs": "0..1",
-        "description": "报文示例中观察到的语言属性。",
-        "conditionText": "协议说明使用 locale，示例使用 lang=chs；是否作为 locale 的历史别名需确认。",
-        "sourceText": "<bocb2e version=\"100\" security=\"true\" lang=\"chs\">",
-        "evidence": {
-          "kind": "DIRECT",
-          "note": "来自 raw-doc 报文示例，不来自协议属性说明。"
-        },
-        "confidence": 0.7,
-        "uncertain": true,
-        "uncertainReason": "协议属性说明未定义 lang，但示例中存在。",
-        "reviewNote": "确认是否需要在配置模型中兼容 lang。"
       },
       {
         "path": "Root.bocb2e.head",
@@ -362,21 +332,21 @@
           "max": null,
           "raw": null
         },
-        "required": false,
+        "required": true,
         "multiple": false,
         "hasChildren": false,
-        "occurs": "0..1",
+        "occurs": "1..1",
         "description": "交易验证标识，签到时生成、签退时注销。",
         "conditionText": "Base64字符串0-64位；检查令牌是否正确。请求示例可缺省，响应示例出现。",
         "sourceText": "|  |  | <token> | 交易验证标识，签到时生成、签退时注销 | Base64字符串0-64位 | 检查令牌是否正确 |",
         "evidence": {
           "kind": "DIRECT",
-          "note": "来自 raw-doc 消息头字段行；required=false 基于请求示例未出现 token。"
+          "note": "来自 raw-doc 消息头字段行；Human 与银行确认请求和响应均必填。"
         },
-        "confidence": 0.8,
-        "uncertain": true,
-        "uncertainReason": "消息头字段表未显式给出必填性；请求示例缺少 token，响应示例包含 token。",
-        "reviewNote": "确认 token 在 ASSEMBLY 和 PARSE 方向是否有不同必填性。"
+        "confidence": 1,
+        "uncertain": false,
+        "uncertainReason": null,
+        "reviewNote": "deng 确认请求和响应均必填。"
       },
       {
         "path": "Root.bocb2e.trans",
@@ -534,7 +504,7 @@
           "required": true,
           "multiple": true,
           "hasChildren": true,
-          "occurs": "0..1000",
+          "occurs": "1..1000",
           "description": "转账请求内容。",
           "conditionText": null,
           "sourceText": "|  | <b2e0061-rq> |  |  | 转账请求内容 | 不超过1000笔 |  |",
@@ -542,10 +512,10 @@
             "kind": "DIRECT",
             "note": "交易消息节点来自 raw-doc 请求/响应表；path 由 envelope 层级推导。"
           },
-          "confidence": 0.8,
-          "uncertain": true,
-          "uncertainReason": "原文只写不超过1000笔，未明确最小出现次数。",
-          "reviewNote": "确认请求 payload 最小出现次数是否应为 1。"
+          "confidence": 1,
+          "uncertain": false,
+          "uncertainReason": null,
+          "reviewNote": "deng 确认最小出现次数为 1。"
         },
         {
           "path": "Root.bocb2e.trans.trn-b2e0061-rq.b2e0061-rq.insid",
@@ -621,21 +591,21 @@
             "max": null,
             "raw": null
           },
-          "required": true,
+          "required": false,
           "multiple": false,
           "hasChildren": true,
-          "occurs": "1..1",
+          "occurs": "0..1",
           "description": "付款人账户分组。",
           "conditionText": null,
           "sourceText": "|  |  | <fractn> |  | 付款人账户 |  |  |",
           "evidence": {
             "kind": "DIRECT",
-            "note": "字段来自 raw-doc 字段行；必填性由子字段推导。"
+            "note": "字段来自 raw-doc 字段行；Human 确认为可选 Object 容器，本身不取值。"
           },
-          "confidence": 0.85,
-          "uncertain": true,
-          "uncertainReason": "容器必填性由必填子字段推导。",
-          "reviewNote": null
+          "confidence": 1,
+          "uncertain": false,
+          "uncertainReason": null,
+          "reviewNote": "deng 确认为非必填 Object。"
         },
         {
           "path": "Root.bocb2e.trans.trn-b2e0061-rq.b2e0061-rq.fractn.fribkn",
@@ -645,11 +615,11 @@
           "level": 6,
           "nodeKind": "XML_ELEMENT",
           "dataType": "string",
-          "format": null,
+          "format": "digits",
           "length": {
             "min": 0,
-            "max": 12,
-            "raw": "可空数码5位或12位"
+            "max": 5,
+            "raw": "5 digits when non-empty"
           },
           "required": false,
           "multiple": false,
@@ -660,12 +630,12 @@
           "sourceText": "|  |  |  | <fribkn> | 付款行联行号 | 可空数码5位或12位 | 1、可空，数码5位；<br>2、联行号有对应的省行联行号，旧线账号建议上送。 |",
           "evidence": {
             "kind": "DIRECT",
-            "note": "字段来自 raw-doc 字段行；前置机与平台约束不一致。"
+            "note": "字段来自 raw-doc 字段行；Human 确认非空时为 5 位数字。"
           },
-          "confidence": 0.8,
-          "uncertain": true,
-          "uncertainReason": "前置机格式允许5或12位，平台说明只明确5位。",
-          "reviewNote": "确认付款行联行号是否允许12位。"
+          "confidence": 1,
+          "uncertain": false,
+          "uncertainReason": null,
+          "reviewNote": "deng 确认 5 位。"
         },
         {
           "path": "Root.bocb2e.trans.trn-b2e0061-rq.b2e0061-rq.fractn.actacn",
@@ -679,7 +649,7 @@
           "length": {
             "min": 1,
             "max": 35,
-            "raw": "1-35 / platform 1-20"
+            "raw": "1-35"
           },
           "required": true,
           "multiple": false,
@@ -690,12 +660,12 @@
           "sourceText": "|  |  |  | <actacn> | 付款账号 | 非空字符串<br>1-35位 | 1、非空字符1-20位；<br>2、账户已在网银维护，操作员有权限（不支持中文）；<br>3、支持现金管理虚拟账号，如果虚拟账号包含I/O，此处请送主账号，子号放在用途栏位。 |",
           "evidence": {
             "kind": "DIRECT",
-            "note": "字段来自 raw-doc 字段行；前置机与平台约束不一致。"
+            "note": "字段来自 raw-doc 字段行；Human 确认长度 1-35。"
           },
-          "confidence": 0.85,
-          "uncertain": true,
-          "uncertainReason": "前置机长度1-35与平台长度1-20不一致。",
-          "reviewNote": null
+          "confidence": 1,
+          "uncertain": false,
+          "uncertainReason": null,
+          "reviewNote": "deng 确认长度 1-35。"
         },
         {
           "path": "Root.bocb2e.trans.trn-b2e0061-rq.b2e0061-rq.fractn.actnam",
@@ -741,21 +711,21 @@
             "max": null,
             "raw": null
           },
-          "required": true,
+          "required": false,
           "multiple": false,
           "hasChildren": true,
-          "occurs": "1..1",
+          "occurs": "0..1",
           "description": "收款人账户信息分组。",
           "conditionText": null,
           "sourceText": "|  |  | <toactn> |  | 收款人账户信息 |  |  |",
           "evidence": {
             "kind": "DIRECT",
-            "note": "字段来自 raw-doc 字段行；必填性由子字段推导。"
+            "note": "字段来自 raw-doc 字段行；Human 确认为可选 Object 容器，本身不取值。"
           },
-          "confidence": 0.85,
-          "uncertain": true,
-          "uncertainReason": "容器必填性由必填子字段推导。",
-          "reviewNote": null
+          "confidence": 1,
+          "uncertain": false,
+          "uncertainReason": null,
+          "reviewNote": "deng 确认为非必填 Object。"
         },
         {
           "path": "Root.bocb2e.trans.trn-b2e0061-rq.b2e0061-rq.toactn.toibkn",
@@ -975,11 +945,11 @@
           "level": 5,
           "nodeKind": "XML_ELEMENT",
           "dataType": "decimal",
-          "format": "amount",
+          "format": "decimal(22,2)",
           "length": {
             "min": null,
             "max": null,
-            "raw": "前置机(22,2) / 平台15,2"
+            "raw": "(22,2)"
           },
           "required": true,
           "multiple": false,
@@ -990,12 +960,12 @@
           "sourceText": "|  |  | <trnamt> |  | 转账金额 | 非空正数字<br>长度(22,2) | 1、非空正数15,2位（最多13位整数 + 最多2位小数）；<br>2、根据交易币种的辅币位数检查金额的格式；<br>不超过转账限额。 |",
           "evidence": {
             "kind": "DIRECT",
-            "note": "字段来自 raw-doc 字段行；前置机与平台约束不一致。"
+            "note": "字段来自 raw-doc 字段行；Human 确认金额格式为 (22,2)。"
           },
-          "confidence": 0.8,
-          "uncertain": true,
-          "uncertainReason": "前置机金额长度(22,2)与平台15,2不一致。",
-          "reviewNote": null
+          "confidence": 1,
+          "uncertain": false,
+          "uncertainReason": null,
+          "reviewNote": "deng 确认使用 (22,2)。"
         },
         {
           "path": "Root.bocb2e.trans.trn-b2e0061-rq.b2e0061-rq.trncur",
@@ -1155,11 +1125,11 @@
           "level": 5,
           "nodeKind": "XML_ELEMENT",
           "dataType": "string",
-          "format": "HHMMSS",
+          "format": "HH0000",
           "length": {
             "min": 6,
             "max": 6,
-            "raw": "HHMMSS"
+            "raw": "HH0000 (000000-230000)"
           },
           "required": false,
           "multiple": false,
@@ -1172,10 +1142,10 @@
             "kind": "DIRECT",
             "note": "字段来自用户修正后的 raw-doc 字段行。"
           },
-          "confidence": 0.85,
-          "uncertain": true,
-          "uncertainReason": "raw-doc 已修正为 HH0000（000000-230000），但仍需确认是否只允许整点时间。",
-          "reviewNote": "确认 trftime 是否应限制为整点 HH0000。"
+          "confidence": 1,
+          "uncertain": false,
+          "uncertainReason": null,
+          "reviewNote": "deng 确认只允许 HH0000（000000-230000）。"
         },
         {
           "path": "Root.bocb2e.trans.trn-b2e0061-rq.b2e0061-rq.comacn",
@@ -1189,7 +1159,7 @@
           "length": {
             "min": 0,
             "max": 35,
-            "raw": "0-35 / platform 1-20 when non-empty"
+            "raw": "0-35"
           },
           "required": false,
           "multiple": false,
@@ -1200,12 +1170,12 @@
           "sourceText": "|  |  | <comacn> |  | 支付费用账号 | 可空字符串<br>0-35位 | 1、如果不为空则字符1-20位；<br>2、账户已在网银维护，操作员有权限。如果为空则使用付款账户代替。付款账号和付费账号必须：都是BANCS账号或者都不是BANCS账号。 |",
           "evidence": {
             "kind": "DIRECT",
-            "note": "字段来自 raw-doc 字段行；前置机与平台约束不一致。"
+            "note": "字段来自 raw-doc 字段行；Human 确认可空且最大 35 位。"
           },
-          "confidence": 0.85,
-          "uncertain": true,
-          "uncertainReason": "前置机长度0-35与平台非空1-20不一致。",
-          "reviewNote": null
+          "confidence": 1,
+          "uncertain": false,
+          "uncertainReason": null,
+          "reviewNote": "deng 确认可空且最大 35 位。"
         },
         {
           "path": "Root.bocb2e.trans.trn-b2e0061-rq.b2e0061-rq.bocflag",
@@ -1251,10 +1221,10 @@
             "note": "条件和值来自 raw-doc 中 obssid 字段说明。"
           },
           "review": {
-            "status": "PENDING",
-            "reviewer": null,
-            "reviewedAt": null,
-            "note": null
+            "status": "APPROVED",
+            "reviewer": "deng",
+            "reviewedAt": "2026-08-09T12:48:17+08:00",
+            "note": "确认 transtype=2 时 obssid 必填。"
           }
         }
       ]
@@ -1349,21 +1319,21 @@
             "max": null,
             "raw": null
           },
-          "required": true,
+          "required": false,
           "multiple": false,
           "hasChildren": false,
-          "occurs": "1..1",
+          "occurs": "0..1",
           "description": "报文处理状态码。",
           "conditionText": null,
           "sourceText": "|  |  | <rspcod> |  |  |  |  |",
           "evidence": {
             "kind": "DIRECT",
-            "note": "字段来自 raw-doc 响应字段行；长度、格式或必填性缺失，需 review。"
+            "note": "字段来自 raw-doc 响应字段行；Human 确认为可选 String，银行未规定长度。"
           },
-          "confidence": 0.8,
-          "uncertain": true,
-          "uncertainReason": "b2e0061响应表未给出字段说明、长度和格式。",
-          "reviewNote": null
+          "confidence": 1,
+          "uncertain": false,
+          "uncertainReason": null,
+          "reviewNote": "deng 确认为非必填 String；code=50 属于后续 Standard 默认值。"
         },
         {
           "path": "Root.bocb2e.trans.trn-b2e0061-rs.status.rspmsg",
@@ -1379,21 +1349,21 @@
             "max": null,
             "raw": null
           },
-          "required": true,
+          "required": false,
           "multiple": false,
           "hasChildren": false,
-          "occurs": "1..1",
+          "occurs": "0..1",
           "description": "报文处理状态说明。",
           "conditionText": null,
           "sourceText": "|  |  | <rspmsg> |  |  |  |  |",
           "evidence": {
             "kind": "DIRECT",
-            "note": "字段来自 raw-doc 字段行；path 由 XML 层级推导。"
+            "note": "字段来自 raw-doc 响应字段行；Human 确认正式 tag 为 rspmsg、类型为可选 String，银行未规定长度。"
           },
-          "confidence": 0.8,
-          "uncertain": true,
-          "uncertainReason": "通用响应示例出现 errmsg，b2e0061响应表使用 rspmsg，需要确认正式tag。",
-          "reviewNote": "确认 rspmsg 与通用示例 errmsg 的关系。"
+          "confidence": 1,
+          "uncertain": false,
+          "uncertainReason": null,
+          "reviewNote": "deng 确认正式 tag 为 rspmsg；msg=500 属于后续 Standard 默认值。"
         },
         {
           "path": "Root.bocb2e.trans.trn-b2e0061-rs.b2e0061-rs",
@@ -1469,21 +1439,21 @@
             "max": null,
             "raw": null
           },
-          "required": true,
+          "required": false,
           "multiple": false,
           "hasChildren": false,
-          "occurs": "1..1",
+          "occurs": "0..1",
           "description": "每条划账指令处理状态码。",
           "conditionText": null,
           "sourceText": "|  |  |  | <rspcod> |  |  |  |",
           "evidence": {
             "kind": "DIRECT",
-            "note": "字段来自 raw-doc 响应字段行；长度、格式或必填性缺失，需 review。"
+            "note": "字段来自 raw-doc 响应字段行；Human 确认为可选 String，银行未规定长度。"
           },
-          "confidence": 0.8,
-          "uncertain": true,
-          "uncertainReason": "响应表未给出长度和格式。",
-          "reviewNote": null
+          "confidence": 1,
+          "uncertain": false,
+          "uncertainReason": null,
+          "reviewNote": "deng 确认为非必填 String；code=50 属于后续 Standard 默认值。"
         },
         {
           "path": "Root.bocb2e.trans.trn-b2e0061-rs.b2e0061-rs.status.rspmsg",
@@ -1499,21 +1469,21 @@
             "max": null,
             "raw": null
           },
-          "required": true,
+          "required": false,
           "multiple": false,
           "hasChildren": false,
-          "occurs": "1..1",
+          "occurs": "0..1",
           "description": "每条划账指令处理状态说明。",
           "conditionText": null,
           "sourceText": "|  |  |  | <rspmsg> |  |  |  |",
           "evidence": {
             "kind": "DIRECT",
-            "note": "字段来自 raw-doc 响应字段行；长度、格式或必填性缺失，需 review。"
+            "note": "字段来自 raw-doc 响应字段行；Human 确认正式 tag 为 rspmsg、类型为可选 String，银行未规定长度。"
           },
-          "confidence": 0.8,
-          "uncertain": true,
-          "uncertainReason": "响应表未给出长度和格式。",
-          "reviewNote": null
+          "confidence": 1,
+          "uncertain": false,
+          "uncertainReason": null,
+          "reviewNote": "deng 确认正式 tag 为 rspmsg；msg=500 属于后续 Standard 默认值。"
         },
         {
           "path": "Root.bocb2e.trans.trn-b2e0061-rs.b2e0061-rs.insid",
@@ -1525,25 +1495,25 @@
           "dataType": "string",
           "format": null,
           "length": {
-            "min": null,
-            "max": null,
-            "raw": null
+            "min": 1,
+            "max": 32,
+            "raw": "1-32"
           },
           "required": true,
           "multiple": false,
           "hasChildren": false,
           "occurs": "1..1",
-          "description": "指令ID，请求时给出的ID。",
+          "description": "指令ID。该值由本系统在请求中生成，银行在响应中原样返回，供系统关联原支付请求。",
           "conditionText": null,
           "sourceText": "|  |  | <insid> |  | 指令ID，请求时给出的ID |  |  |",
           "evidence": {
             "kind": "DIRECT",
-            "note": "字段来自 raw-doc 响应字段行；长度、格式或必填性缺失，需 review。"
+            "note": "字段来自 raw-doc 响应字段行；Human 确认银行负责原样返回请求 insid，该语义不形成配置校验。"
           },
-          "confidence": 0.9,
-          "uncertain": true,
-          "uncertainReason": "响应表未给出长度和格式；应与请求 insid 关联确认。",
-          "reviewNote": null
+          "confidence": 1,
+          "uncertain": false,
+          "uncertainReason": null,
+          "reviewNote": "deng 确认为必填 String、长度 1-32；请求/响应一致性由银行保证，不做配置校验。"
         },
         {
           "path": "Root.bocb2e.trans.trn-b2e0061-rs.b2e0061-rs.obssid",
@@ -1553,11 +1523,11 @@
           "level": 5,
           "nodeKind": "XML_ELEMENT",
           "dataType": "string",
-          "format": null,
+          "format": "digits",
           "length": {
-            "min": null,
-            "max": null,
-            "raw": null
+            "min": 0,
+            "max": 30,
+            "raw": "1-30 when non-empty"
           },
           "required": false,
           "multiple": false,
@@ -1568,12 +1538,12 @@
           "sourceText": "|  |  | <obssid> |  | 每条划账指令的网银划账流水号 |  |  |",
           "evidence": {
             "kind": "DIRECT",
-            "note": "字段来自 raw-doc 响应字段行；长度、格式或必填性缺失，需 review。"
+            "note": "字段来自 raw-doc 响应字段行；Human 确认为可选、非空时 1-30 位纯数字 String。"
           },
-          "confidence": 0.85,
-          "uncertain": true,
-          "uncertainReason": "响应表未给出必填性、长度和格式；候选按可空处理。",
-          "reviewNote": null
+          "confidence": 1,
+          "uncertain": false,
+          "uncertainReason": null,
+          "reviewNote": "deng 确认为非必填、1-30 位纯数字 String。"
         }
       ],
       "conditionalConstraints": []

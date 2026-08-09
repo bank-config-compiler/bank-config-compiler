@@ -21,7 +21,7 @@ LLM / Agent 只能生成 DocIR、SchemaIR、InterfaceStandardIR 和 InterfaceTem
 - DocIR / SchemaIR Review Golden sample 已落地；`configuration-rules/v1` 已发布为接口无关、非全量且不可变的 BKL configuration rules 子集，包含方向字段、正式导出观察到的 5 个 String Function、预设 Mapping catalog 样例、MAPPING/Replacement、processing policy、Standard 镜像、结构绑定和安全固定值契约；字符长度默认值为 `STANDARD_1`。
 - 规则包 loader/validator 已作为库实现：只使用 `yaml.safe_load`，校验 UTF-8 no BOM、严格结构、生命周期、唯一性、值域、redaction 和跨文件引用。默认加载已接受 `RELEASED` v1；未来 Draft 候选检查必须显式使用 `require_released=False`。
 
-P0-T3 为 `In Progress`：规则包运行时和 SchemaIR v2 runtime 已完成，`configuration-rules/v1` 经 maintainer 与 business reviewer 对候选 `60c3ca18665cc0e3c85bb7f1c6f2212bba1d4c4d` 双签，于 2026-08-06 发布为 `RELEASED`。b2e0061 已形成 50-field SchemaIR v2 Draft candidate；两方向 XML encoding 均保存 Human 与银行线下确认的 `UTF-8` evidence，但 21 个 blocking review issue 尚未关闭，因此不存在 Final SchemaIR v2。Standard/Template、Workbook 和完整 trusted chain 尚未实现。详细状态和门禁见 [Phase0-PoC 执行计划](docs/planning/00-phase0-poc-plan.md)。
+P0-T3 为 `In Progress`：规则包运行时和 SchemaIR v2 runtime 已完成，`configuration-rules/v1` 经 maintainer 与 business reviewer 对候选 `60c3ca18665cc0e3c85bb7f1c6f2212bba1d4c4d` 双签，于 2026-08-06 发布为 `RELEASED`。b2e0061 已冻结 49-field Final SchemaIR v2、匹配 validation result 和 Human Review 记录，hash 为 `sha256:4729131ad59fd29899895b1149a476c1f95b71f304cb43bd17749985f19e7162`；该样例不定义接口专用 runtime 规则。Standard/Template、Workbook 和完整 trusted chain 尚未实现。详细状态和门禁见 [Phase0-PoC 执行计划](docs/planning/00-phase0-poc-plan.md)。
 
 ## 快速开始
 
@@ -61,7 +61,7 @@ uv run python -m bank_config_compiler ingest --input docs/reference/samples/b2eb
 |---|---|---|
 | `raw-doc.md` | Markdown / text | 由 `ingest` 从外部输入导入，作为后续生成命令的输入。 |
 
-库级 JSON artifact I/O 可以安全读写 workspace 内的相对嵌套路径。P0-T3 SchemaIR Draft、机器结果和待评审记录位于 `samples/trusted-chain/b2eboc-b2e0061/`；它们是开发 fixture，不是 CLI 自动生成的 Final artifact。所有 artifact 必须使用 UTF-8 with no BOM。
+库级 JSON artifact I/O 可以安全读写 workspace 内的相对嵌套路径。P0-T3 Final SchemaIR、机器结果和 Review 记录位于 `samples/trusted-chain/b2eboc-b2e0061/`；它们是通用链路的开发 fixture，不是 CLI 自动生成的 artifact。所有 artifact 必须使用 UTF-8 with no BOM。
 
 ## 详细文档
 

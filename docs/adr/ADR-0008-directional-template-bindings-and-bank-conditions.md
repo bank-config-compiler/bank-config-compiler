@@ -36,7 +36,7 @@ Parse Field 具有独立 name、path 和 datatype，由高代码固定维护，�
 - 正式 Standard/Template 导出只能作为目标系统表示方式和已观察配置的证据；冲突时使用差异记录，不能覆盖银行事实。
 - 在当前已确认的 raw-doc 范围内，没有写出的 Length、Illegal Characters、Regex 等约束为 `NO_CONSTRAINT`；只有证据冲突或仍无法判定时才为 `UNKNOWN`。
 - b2e0061 Final Standard 保留 raw-doc 定义的 `@security` XML Key，排除只存在于正式导出的 `vamflag`。
-- raw-doc 样例中的 `@lang` 继续保留在 SchemaIR 作为 observed evidence，并形成 `SCHEMA_STANDARD_DIFFERENCE` Warning；协议说明未定义它，因此不进入 Final Standard。
+- raw-doc 样例中的 observed `@lang` 只保留在来源和 Review 证据中；协议说明未定义它，因此不作为 Final SchemaIR 或 Final Standard 字段。
 
 SchemaIR 每个 direction message 使用 `xmlEncoding` 保存 XML declaration encoding，并使用 `xmlEncodingEvidence` 保存 Human/银行确认、文档/XML declaration 观察值和 conflict disposition。b2e0061 的 ASSEMBLY、PARSE 两个方向已确认 canonical `UTF-8`。`UNRESOLVED_CONFLICT` 产生 blocking Warning；Human 必须明确处置为 `RESOLVED_CONFLICT` 并记录理由，或更新确认值后重新 Review。Final 值显示在 Workbook `Overview`，不形成 Standard Field 或 XML Key。
 
@@ -63,7 +63,7 @@ Template field config 的 `bindingKind` 为：
 
 ASSEMBLY omission coverage 只适用于应配置值的标量 Standard Field。Node/Object 不产生 omission；无 XML Key、无结构绑定需求的容器可以没有 Template 行。Standard 容器存在 XML Key 时必须具有适用结构行和完整 key expressions：普通容器使用 `STRUCTURE_ONLY`，Parse collection source 使用 `COLLECTION_ITEM`。缺失时报告 XML Key 错误而不是 omission。
 
-b2e0061 raw-doc 将 `b2e0061-rq` 与 `b2e0061-rs` 定义为 `0..1000`，Final Standard 均使用 `Node`。PARSE 以 `COLLECTION_ITEM` 将每个 `b2e0061-rs` 映射为 `paymentLineList(List)` 的一个元素，子节点写入当前元素；正式导出的 `Object` 只保留为差异证据。
+b2e0061 经 Human Review 确认请求 `b2e0061-rq` 为 `1..1000`、响应 `b2e0061-rs` 为 `0..1000`，Final Standard 均使用 `Node`。PARSE 以 `COLLECTION_ITEM` 将每个 `b2e0061-rs` 映射为 `paymentLineList(List)` 的一个元素，子节点写入当前元素；正式导出的 `Object` 只保留为差异证据。
 
 ### Secure Fixed Values
 

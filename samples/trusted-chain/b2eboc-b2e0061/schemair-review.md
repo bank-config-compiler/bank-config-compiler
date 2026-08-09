@@ -1,42 +1,45 @@
 # b2e0061 SchemaIR v2 Candidate Review
 
-Status: `PENDING`
+Status: `APPROVED`
 
-Candidate content hash: `sha256:9fda4beb7ff03f51fe2511cb2257845957d62ed41becc47b55ac133867b72d21`
+Candidate content hash: `sha256:4729131ad59fd29899895b1149a476c1f95b71f304cb43bd17749985f19e7162`
 
-该记录只汇总 Commit 3A 的 Human Review 门禁。事实结论必须写回完整 Final candidate，设置 `status=FINAL` 与 `review=APPROVED` 后重新运行 Validator；本文件不能单独把 Draft 提升为 Final。
+该记录只评审作为 P0 trusted-chain fixture 的 b2e0061 SchemaIR，不把样例字段或约束固化为通用产品规则。SchemaIR runtime、Validator 与后续 Standard/Template contract 必须保持银行接口无关。
 
-## 机器结果
+## Final candidate 机器预检
 
-- Contract：`schemair/v2` / `schemair-validation-result/v2`
+- Contract：`schemair/v2`
 - Identity：`b2eboc-b2e0061-schema@v1`
-- Coverage：13 个 envelope field、27 个 ASSEMBLY field、10 个 PARSE field，共 50 个 field
-- Result：0 ERROR、38 WARNING、35 INFO、21 个 blocking issue，`finalEligible=false`
+- Reviewer：`deng`
+- Reviewed at：`2026-08-09T12:48:17+08:00`
+- Coverage：12 个 envelope field、27 个 ASSEMBLY field、10 个 PARSE field，共 49 个 field
+- Preflight：0 ERROR、0 WARNING、34 INFO、0 blocking issue，`finalEligible=true`
 - 两个方向均保存已确认的 `xmlEncoding=UTF-8` 和 `HUMAN_BANK_CONFIRMATION` evidence；当前没有 encoding conflict
 
-## Human 必须确认并关闭
+`deng` 于 `2026-08-09T12:59:49+08:00` 明确确认上述准确 candidate hash 可以冻结为 b2e0061 Final SchemaIR v2。正式 `schemair-validation-result.json` 已由 v2 Validator 重新生成并与该 hash 匹配。
 
-1. `Root.bocb2e.@version`：协议候选 `120` 与示例 `100` 冲突，最终 `protocolVersion`、attribute 值及 evidence 如何确定。
-2. `Root.bocb2e.@locale` / `Root.bocb2e.@lang`：是否保留 observed `@lang`，以及它与协议 `@locale` 的关系。
-3. `Root.bocb2e.head.token`：请求与响应下的基础必填性。
-4. 请求 `b2e0061-rq` 重复节点：`0..1000` 与 `required=true` 冲突，最小出现次数是否为 0 或 1。
-5. 请求容器 `fractn`、`toactn`：基础必填性是否可由子字段推导。
-6. `fractn.fribkn`：5 位与 12 位联行号约束如何作为银行事实保存。
-7. `fractn.actacn`：前置机 1–35 与平台 1–20 的冲突。
-8. `trnamt`：前置机 `(22,2)` 与平台 `(15,2)` 的冲突。
-9. `trftime`：`HH0000（000000-230000）` 是否只允许整点。
-10. `comacn`：前置机 0–35 与平台非空 1–20 的冲突。
-11. 响应顶层 `status.rspcod` / `status.rspmsg`：缺失约束以及 `rspmsg` / `errmsg` 正式 tag。
-12. 响应明细 `status.rspcod` / `status.rspmsg`：缺失长度与格式。
-13. 响应 `insid`：缺失约束以及与请求 `insid` 的关联。
-14. 响应 `obssid`：基础必填、长度和格式。
-15. 结构化条件：是否确认 `transtype EQUALS "2" => obssid REQUIRED`；确认后必须把 condition review 改为 `APPROVED`。
+## Human Review 结论
 
-`ceitinfo` 是否可由配置人员编辑，以及目标系统面对多组银行/平台约束时的采用方式，属于后续 Standard/Template Review，不写入 SchemaIR 事实层。
+1. `protocolVersion` 与 `Root.bocb2e.@version` 使用 `100`。
+2. 只保留 `@locale` 字段；删除 observed `@lang` 字段。
+3. 共享 envelope 中的 `token` 对请求和响应均必填。
+4. 请求 `b2e0061-rq` 为 `1..1000`。
+5. `fractn`、`toactn` 是非必填 Object 容器，本身不取值。
+6. `fractn.fribkn` 可空，非空时为 5 位数字。
+7. `fractn.actacn` 长度为 1–35。
+8. `trnamt` 使用 `(22,2)`。
+9. `trftime` 只允许 `HH0000`，范围 `000000–230000`。
+10. `comacn` 可空，最大 35 位。
+11. 响应顶层 `rspcod` / `rspmsg` 为非必填 String，正式 tag 为 `rspmsg`；银行 SchemaIR 不保存目标系统默认长度。
+12. 响应明细 `rspcod` / `rspmsg` 同上。
+13. 响应 `insid` 为必填 String、长度 1–32。请求值由本系统生成，银行在响应中原样返回，供系统关联原支付请求；该保证不形成配置校验。
+14. 响应 `obssid` 非必填，非空时为 1–30 位纯数字 String。
+15. 确认 `transtype EQUALS "2" => obssid REQUIRED`，结构化 Condition review 为 `APPROVED`。
 
-## Final 候选要求
+`rspcod=50`、`rspmsg=500` 是后续 Standard 默认值，不回写为银行 SchemaIR 事实。`ceitinfo` 是否可由配置人员编辑以及目标系统采用哪些约束，也属于后续 Standard/Template Review。
 
-- 所有 `uncertain=true`、`UNKNOWN` 或 blocking Warning 均已关闭。
-- `review.reviewer` 与 `review.reviewedAt` 使用实际具名 reviewer 和带时区 RFC 3339 时间。
-- 向 reviewer 展示修改后的完整 canonical content hash；任何 JSON 语义值变化都使确认失效。
-- 通过 v2 Validator 后提交匹配的 validation result，不能复用本 Draft 的结果。
+## 冻结结果
+
+- Final SchemaIR、validation result 与本 Review 记录必须在同一 commit 中提交。
+- 任何 SchemaIR JSON 语义值变化都会改变 hash，并使本次确认和 validation result 同时失效。
+- b2e0061 只是通用银行接口解析配置链路的 P0 fixture，不得将其字段或约束硬编码到 runtime。

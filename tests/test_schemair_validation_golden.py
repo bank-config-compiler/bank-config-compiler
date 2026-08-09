@@ -37,8 +37,8 @@ def test_legacy_schemair_is_not_accepted_by_v2_validator() -> None:
     assert "UNKNOWN_TOP_LEVEL_PROPERTY" in {item["code"] for item in result["issues"]}
 
 
-def test_schemair_v2_draft_matches_committed_validation_result() -> None:
-    schemair = json.loads((TRUSTED_CHAIN_DIR / "schemair-draft.json").read_text(encoding="utf-8"))
+def test_schemair_v2_final_matches_committed_validation_result() -> None:
+    schemair = json.loads((TRUSTED_CHAIN_DIR / "schemair-final.json").read_text(encoding="utf-8"))
     expected = json.loads(
         (TRUSTED_CHAIN_DIR / "schemair-validation-result.json").read_text(encoding="utf-8")
     )
@@ -47,14 +47,15 @@ def test_schemair_v2_draft_matches_committed_validation_result() -> None:
 
     assert actual == expected
     assert actual["validatedArtifact"]["contentHash"] == (
-        "sha256:9fda4beb7ff03f51fe2511cb2257845957d62ed41becc47b55ac133867b72d21"
+        "sha256:4729131ad59fd29899895b1149a476c1f95b71f304cb43bd17749985f19e7162"
     )
-    assert actual["status"] == "passed_with_warnings"
-    assert actual["finalEligible"] is False
+    assert actual["status"] == "passed"
+    assert actual["finalEligible"] is True
     assert actual["summary"]["errorCount"] == 0
-    assert actual["summary"]["blockingCount"] == 21
+    assert actual["summary"]["warningCount"] == 0
+    assert actual["summary"]["blockingCount"] == 0
     assert actual["coverage"] == {
-        "envelopeFieldCount": 13,
+        "envelopeFieldCount": 12,
         "messageFieldCount": 37,
         "fieldsByFunctionType": {"ASSEMBLY": 27, "PARSE": 10},
     }

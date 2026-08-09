@@ -2,7 +2,7 @@
 
 ## Status
 
-Draft. DocIR / SchemaIR 的 P0-T2 baseline 继续作为不可变 Review Golden；SchemaIR v2 wire、Validator 和 Draft candidate 已实现，Final candidate 仍等待 Human Review。`configuration-rules/v1` 已发布并冻结，InterfaceStandardIR / InterfaceTemplateIR wire schema 尚未冻结。
+Draft. DocIR / SchemaIR 的 P0-T2 baseline 继续作为不可变 Review Golden；SchemaIR v2 wire、Validator 和已评审 Final fixture 已实现。`configuration-rules/v1` 已发布并冻结，InterfaceStandardIR / InterfaceTemplateIR wire schema 尚未冻结。
 
 ## 1. 设计原则
 
@@ -88,7 +88,7 @@ Raw doc 仍表示受控输入源。本次 `b2e0061` 样例以人工修正后的 
 | 2 |  | `trn-b2e0061-rq` | [1..1] | Object | Y | 转账交易请求 |  |  | 交易包装节点。 |
 | 2.1 |  | 　`ceitinfo` | [0..1] | String | N | 数字签名 |  | 该标签由前置机自动添加，企业无需上送 | 是否进入可配置字段需确认。 |
 | 2.2 |  | 　`transtype` | [0..1] | String | N | 交易类型 | 不超过1位数字；可空 | 1 委托待授权；2 授权退回修改；非空只能为1或2 |  |
-| 2.3 |  | 　`b2e0061-rq` | [0..1000] | Node | Y | 转账请求内容 | 不超过1000笔 |  | 每次出现表示一个重复交易元素。 |
+| 2.3 |  | 　`b2e0061-rq` | [1..1000] | Node | Y | 转账请求内容 | 1–1000笔 |  | 每次出现表示一个重复交易元素。 |
 | 2.3.1 |  | 　　`insid` | [1..1] | String | Y | 指令ID；客户端唯一标识 | 非空字符串；长度1-32 | 客户号下不能重复；不支持中文 |  |
 ```
 
@@ -236,7 +236,7 @@ SchemaIR 使用 JSON。`Final SchemaIR` 是银行 XML 报文结构与银行原�
 
 字段 `path` 的最后一段必须与 `fieldName` 完全一致；XML attribute 两处都保留 `@`，例如 `path=Root.bocb2e.@version`、`fieldName=@version`。这样可以避免 element 与 attribute 在同一父路径下发生身份歧义。
 
-目标系统配置指导不属于 SchemaIR 字段；它由 InterfaceStandardIR 与 InterfaceTemplateIR 分层表达。正式导出中 observed `@lang` 只作为 SchemaIR evidence/difference Warning 保留，不进入 b2e0061 Final Standard。该 Standard 以银行文档为准保留 `@security`，排除正式导出中的 `vamflag`。
+目标系统配置指导不属于 SchemaIR 字段；它由 InterfaceStandardIR 与 InterfaceTemplateIR 分层表达。正式导出中 observed `@lang` 只保留在来源和 Review 证据中，不作为 b2e0061 Final SchemaIR 或 Final Standard 字段。该 Standard 以银行文档为准保留 `@security`，排除正式导出中的 `vamflag`。
 
 ### 3.5 nodeKind 枚举
 
@@ -444,7 +444,7 @@ Node/Object 不参加 ASSEMBLY omission coverage。容器没有 XML Key 且不�
 
 PARSE 每条 `fieldConfig` 以 Parse Field 为 target；Value Expression 中的 FIELD_REF 引用绑定 Standard 的银行 source field，也可使用 literal、function 或 CONCATENATE。Parse Field Catalog 是固定 JSON/Java 输出对象定义，不属于银行 Standard。Validator 只校验实际配置的 `parseFieldRef`、path 和 datatype；未配置 Parse Field 默认不产生 omission 或 warning，也不被推断为代码赋值字段。
 
-`b2e0061-rq` 与 `b2e0061-rs` 都因 raw-doc `0..1000` 建模为 Standard `Node`。PARSE 中 `b2e0061-rs -> paymentLineList` 使用 `COLLECTION_ITEM`：每出现一个银行 `b2e0061-rs` Node，就创建一个 `paymentLineList(List)` 元素，子字段写入当前元素。Standard `Node` 与 Parse target `List` 是两端不同类型，不得压成同一 Data Type。
+请求 `b2e0061-rq` 按 `1..1000`、响应 `b2e0061-rs` 按 `0..1000` 建模为 Standard `Node`。PARSE 中 `b2e0061-rs -> paymentLineList` 使用 `COLLECTION_ITEM`：每出现一个银行 `b2e0061-rs` Node，就创建一个 `paymentLineList(List)` 元素，子字段写入当前元素。Standard `Node` 与 Parse target `List` 是两端不同类型，不得压成同一 Data Type。
 
 同一目标字段多行并按目的系统业务 Condition 选择是 future candidate；当前 Validator 拒绝 contract 之外的重复 target，不预留半实现 Template Condition 字段。银行文档明确条件属于 SchemaIR/InterfaceStandardIR，不属于此处。
 

@@ -1,13 +1,13 @@
 # b2e0061 P0-T3 Trusted-chain Fixture
 
-该目录与 `samples/golden/b2eboc-b2e0061/` 的 P0-T2 Review Golden 分离。P0-T2 文件保持 byte-identical，用于证明历史审查边界；这里承载当前 machine contract 的候选与后续 Final 链路。
+该目录与 `samples/golden/b2eboc-b2e0061/` 的 P0-T2 Review Golden 分离。P0-T2 文件保持 byte-identical，用于证明历史审查边界；这里承载当前 machine contract 的已冻结 Final 链路。b2e0061 只是通用银行接口解析配置辅助产品的 P0 fixture，不定义 runtime 专用规则。
 
 当前包含：
 
-- `schemair-draft.json`：`schemair/v2`、`b2eboc-b2e0061-schema@v1`，50 个 fields；
-- `schemair-validation-result.json`：与 Draft canonical content hash 匹配的 v2 结果；
-- `schemair-review.md`：21 个 blocking issue 的 Human Review 入口。
+- `schemair-final.json`：`schemair/v2`、`b2eboc-b2e0061-schema@v1`，49 个 fields；
+- `schemair-validation-result.json`：与 Final canonical content hash 精确匹配的 v2 结果；
+- `schemair-review.md`：Human 事实结论与准确 hash 确认记录。
 
-当前结果为 0 ERROR、38 WARNING、35 INFO、`finalEligible=false`。两方向 XML encoding 已保存 Human 与银行线下确认的 `UTF-8` evidence，但其余不确定事实和结构化 Condition 未全部确认，因此本目录不存在 `schemair-final.json`。
+Final hash 为 `sha256:4729131ad59fd29899895b1149a476c1f95b71f304cb43bd17749985f19e7162`。当前结果为 0 ERROR、0 WARNING、34 INFO、0 blocking issue、`finalEligible=true`；两方向 XML encoding 均保存 Human 与银行线下确认的 `UTF-8` evidence。
 
-Human 完成 Review 后必须先形成包含最终 lifecycle/review metadata 的完整 Final candidate，再重新运行 Validator。不得复制或改名 Draft result 冒充 Final evidence。
+`deng` 已确认该准确 hash。任何 SchemaIR JSON 语义值变化都会使 Review 和 validation result 同时失效，必须重新复验和确认。

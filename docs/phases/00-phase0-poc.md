@@ -2,7 +2,7 @@
 
 ## Status
 
-Draft. Trusted-chain work is partially implemented; the rule runtime and SchemaIR v2 runtime/Draft candidate are complete. Final SchemaIR is blocked on Human Review; InterfaceStandardIR, InterfaceTemplateIR and Configuration Workbook remain P0-T3 work.
+Draft. Trusted-chain work is partially implemented; the rule runtime and reviewed Final SchemaIR v2 fixture are complete. InterfaceStandardIR, InterfaceTemplateIR and Configuration Workbook remain P0-T3 work.
 
 ## 1. 阶段目标
 
@@ -29,13 +29,12 @@ LLM、Agent 或 workflow 可以生成 Draft，但不能替代 Validator、人工
 - Python CLI、`ingest`、严格 workspace JSON artifact I/O 和 `check --profile raw`；legacy `phase0a` 已移除。
 - `b2e0061` reference raw doc。
 - 经人工 Review 的 expected DocIR、expected SchemaIR 和 expected review notes。
-- SchemaIR v2 XML-only Validator、canonical hash/result contract、encoding evidence、结构化条件和 50-field b2e0061 Draft candidate；当前结果为 0 ERROR、21 个 blocking issue，等待 Human Review。
+- SchemaIR v2 XML-only Validator、canonical hash/result contract、encoding evidence、结构化条件和已冻结的 49-field b2e0061 Final fixture；准确 hash 已由 `deng` 确认，当前结果为 0 ERROR、0 WARNING、0 blocking issue，`finalEligible=true`。
 - `configuration-rules/v1` 已收束为接口无关、非全量的 BKL configuration rules 子集，并具有仓库内 safe loader、严格 schema/semantic validator 和引用闭合测试；双 reviewer 已确认候选并于 2026-08-06 发布，默认 loader 可直接加载该 `RELEASED` 版本。
 
 尚未完成：
 
 - 四类 IR Draft generator。
-- b2e0061 Final SchemaIR v2、匹配 validation result 和 Human Review 记录。
 - InterfaceStandardIR / InterfaceTemplateIR machine wire contract、人工确认 fixture 和 Validator。
 - Configuration Workbook Generator、expected workbook 和结构化 assertions。
 - 覆盖完整可信链路的 golden regression。
@@ -108,7 +107,7 @@ LLM 结合 Final SchemaIR 和规则版本生成 Standard Draft，至少覆盖：
 - SchemaIR/Standard 差异、规则依据和人工结论。
 - 银行文档明确条件与基础 Required 分离，例如 `transtype=2 => obssid required`。
 
-银行字段、路径、出现次数和约束以 raw-doc/Final SchemaIR 为准；正式导出只证明目标系统形态。raw-doc 在已审查范围内未写约束时使用 `NO_CONSTRAINT`，证据冲突或无法判定时使用 `UNKNOWN`。b2e0061 Standard 保留 `@security`、排除 `vamflag`，`@lang` 只保留为 observed evidence 和差异 Warning；`b2e0061-rq`、`b2e0061-rs` 按 `0..1000` 建模为 `Node`。
+银行字段、路径、出现次数和约束以 raw-doc/Final SchemaIR 为准；正式导出只证明目标系统形态。raw-doc 在已审查范围内未写约束时使用 `NO_CONSTRAINT`，证据冲突或无法判定时使用 `UNKNOWN`。b2e0061 Standard 保留 `@security`、排除 `vamflag`；observed `@lang` 只保留在来源和 Review 证据中，不作为 Final SchemaIR 或 Standard 字段。请求 `b2e0061-rq` 按 `1..1000`、响应 `b2e0061-rs` 按 `0..1000` 建模，二者均为 `Node`。
 
 Standard Validator 只校验结构、来源引用和确定性 invariant。人工确认后形成 Final Standard。
 

@@ -144,7 +144,7 @@ SchemaIR 与 Standard 值不一致时必须记录：
 - confidence / uncertain reason；
 - 人工 Review 结论。
 
-银行字段、路径、出现次数和约束由 raw-doc/Final SchemaIR 决定；正式导出只证明目标系统配置形态。当前已确认范围内，raw-doc 没写的约束投影为 `NO_CONSTRAINT`，证据冲突或无法判断时为 `UNKNOWN`。b2e0061 Final Standard 保留 `@security`、排除 `vamflag`；正式导出 observed `@lang` 只形成 evidence 和差异 Warning。
+银行字段、路径、出现次数和约束由 raw-doc/Final SchemaIR 决定；正式导出只证明目标系统配置形态。当前已确认范围内，raw-doc 没写的约束投影为 `NO_CONSTRAINT`，证据冲突或无法判断时为 `UNKNOWN`。b2e0061 Final Standard 保留 `@security`、排除 `vamflag`；正式导出 observed `@lang` 只保留在来源和 Review 证据中，不作为 Final SchemaIR 或 Standard 字段。
 
 银行文档明确的条件 required 与基础 `required` 分开保存。P0 条件结构包含 controlling field reference、`EQUALS | IS_EMPTY`、可选 literal、target field reference、`REQUIRED` effect、银行原文 evidence 和 Review。Validator 校验结构与引用，但不执行条件。
 
@@ -206,7 +206,7 @@ PARSE 的 target 是固定 Parse Field；Value Expression 的 FIELD_REF 引用�
 - `STRUCTURE_ONLY`：Node/Object 结构或 XML Key 配置，不包含字段值表达式；
 - `COLLECTION_ITEM`：PARSE 每个重复 Standard Node 创建一个 Parse List 元素。
 
-b2e0061 的 `b2e0061-rq` 与 `b2e0061-rs` 按 raw-doc `0..1000` 建模为 `Node`。`b2e0061-rs -> paymentLineList` 使用 `COLLECTION_ITEM`，其子字段写入当前列表元素；Standard source 的 `Node` 与 Parse target 的 `List` 必须分别保存和展示。
+b2e0061 的请求 `b2e0061-rq` 按 `1..1000`、响应 `b2e0061-rs` 按 `0..1000` 建模为 `Node`。`b2e0061-rs -> paymentLineList` 使用 `COLLECTION_ITEM`，其子字段写入当前列表元素；Standard source 的 `Node` 与 Parse target 的 `List` 必须分别保存和展示。
 
 每个 field config 都显式保存 `standardProjection.required/length/dataType`。这三个值完整镜像所绑定 Final Standard 的状态和值，不是 Template 覆盖项；任一不一致必须由 Validator 拒绝。
 
