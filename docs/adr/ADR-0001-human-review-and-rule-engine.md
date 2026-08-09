@@ -14,10 +14,11 @@ Accepted. Partially superseded by `ADR-0004-schemair-and-workbook-artifacts.md`;
 
 系统采用 Human Review 与确定性生成器作为可信边界：
 
-- LLM 只生成 DocIR Draft 和 SchemaIR Draft。
-- Draft 必须经过人工 Review 才能成为 Final DocIR 或 Final SchemaIR。
-- 最终交付物只能由确定性生成器基于 Final SchemaIR 生成。
-- Validator 必须在 SchemaIR 进入最终交付物生成器前拦截明显结构错误。
+- LLM 只生成 DocIR、SchemaIR、InterfaceStandardIR 和 InterfaceTemplateIR Draft。
+- Draft 先经过 Validator 形成可审查的机器结果；Human 修改并完成完整 Final candidate 后，必须再次运行 Validator，不能把 Draft 结果复用为 Final 结果。
+- Human Review metadata 属于 Final artifact 内容。三类 JSON IR 的 validation result 使用 canonical JSON SHA-256 绑定包括 Review 在内的完整语义内容；任一语义修改都会使旧结果失效。
+- 最终交付物只能由确定性生成器基于三份顺序关联的 Final IR、三份 identity/version/contract/hash 匹配且 `finalEligible=true` 的结果、精确规则版本和显式 Standard Action 生成。
+- Validator 拦截结构、引用和确定性 invariant，但不能伪造 Human Review 或自动提升 lifecycle 状态。
 
 注：本 ADR 原先将 Import JSON Draft 作为确定性最终产物。该部分已由 ADR-0004 supersede；ADR-0006、ADR-0007 又依次调整目标配置模型和 Workbook 边界。Human Review 与确定性生成器作为可信边界的决定仍然有效。
 
@@ -63,3 +64,4 @@ Why not chosen:
 - SchemaIR 字段必须尽量保留 `sourceText` 和不确定信息。
 - 最终交付物生成器需要保持简单、确定、可测试。
 - UI 或无 UI 流程都必须表达人工确认边界。
+- Draft validation 与 Final revalidation 是两个不同证据点；只有后者可以进入 Workbook trusted chain。

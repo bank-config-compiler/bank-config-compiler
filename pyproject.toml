@@ -1,7 +1,7 @@
 [project]
 name = "bank-config-compiler"
 version = "0.1.0"
-description = "Phase0a PoC CLI for bank configuration compiler workspace artifacts."
+description = "Phase0 PoC runtime for validated bank configuration compiler artifacts."
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [

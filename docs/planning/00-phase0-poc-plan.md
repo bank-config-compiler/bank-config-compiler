@@ -2,7 +2,7 @@
 
 ## Status
 
-Active. P0-T3 is In Progress. The rule-package loader/validator is implemented and `configuration-rules/v1` was released from double-signed candidate `60c3ca18665cc0e3c85bb7f1c6f2212bba1d4c4d` on 2026-08-06; SchemaIR v2 is the next executable batch.
+Active. P0-T3 is In Progress. The rule-package runtime and SchemaIR v2 runtime are implemented; `configuration-rules/v1` was released from double-signed candidate `60c3ca18665cc0e3c85bb7f1c6f2212bba1d4c4d` on 2026-08-06. The b2e0061 SchemaIR v2 Draft candidate is machine-valid but blocked on Human Review; freezing its Final candidate is the next executable batch.
 
 ## 1. 目标与边界
 
@@ -28,10 +28,10 @@ Phase0 不实现 UI、JSON 银行报文、目标系统 Import JSON/API、Excel �
 
 | TASK | 状态 | 依赖 | 当前阻塞点 | 完成标志 |
 |---|---|---|---|---|
-| P0-T0：Bootstrap | Done | 无 | 无 | `ingest`、扁平 workspace artifact 协议和 `check --profile raw\|phase0a` 已实现；该 legacy profile 将在 P0-T3 SchemaIR v2 批次中迁移。 |
+| P0-T0：Bootstrap | Done | 无 | 无 | `ingest` 与 `check --profile raw` 保留；legacy `phase0a` 已在 SchemaIR v2 批次移除。 |
 | P0-T1：`b2e0061` IR candidate / Review | Done | P0-T0 | 无 | Candidate DocIR / SchemaIR 经 Human Review 更新，正式 IR 设计和 reference 边界清晰。 |
 | P0-T2：Review Golden sample boundary | Done | P0-T1 | 无 | Expected DocIR、修订前 expected SchemaIR、expected review notes 和 v1 validation result 已冻结为审查前 Golden。 |
-| P0-T3：Trusted chain | In Progress | P0-T2、`configuration-rules/v1` RELEASED | 规则运行时和 v1 发布已完成；存量 SchemaIR/workspace 尚未迁移，Standard/Template/Workbook 尚未实现 | 完成 SchemaIR v2、两个配置 IR/Validator、Workbook 和完整 trusted-chain regression。 |
+| P0-T3：Trusted chain | In Progress | P0-T2、`configuration-rules/v1` RELEASED | SchemaIR v2 runtime 与 Draft 已完成；21 个 blocking review issue 未关闭，Standard/Template/Workbook 尚未实现 | 完成 Final SchemaIR v2、两个配置 IR/Validator、Workbook 和完整 trusted-chain regression。 |
 | P0-T4：Draft generators | Blocked | P0-T3 | 三个 Final contract、Validator 和 trusted-chain 尚未冻结 | Provider-neutral generator interface 与四类确定性 stub 可运行，且无法绕过 Validator/Human Review 写入 Final。 |
 
 状态定义：
@@ -47,27 +47,28 @@ Phase0 不实现 UI、JSON 银行报文、目标系统 Import JSON/API、Excel �
 - `samples/golden/b2eboc-b2e0061/schemair.expected.json`
 - `samples/golden/b2eboc-b2e0061/review-notes.expected.md`
 - `samples/golden/b2eboc-b2e0061/schemair-validation.expected.json`
-- SchemaIR Validator v1 及自动化测试
+- SchemaIR v2 Validator、canonical hash/result helper、严格 workspace JSON I/O 及自动化测试
+- `samples/trusted-chain/b2eboc-b2e0061/` 下 50-field Draft、匹配 validation result 和 PENDING review 记录
 - `configuration-rules/v1` RELEASED、规则解释、双 reviewer 确认和 Review 记录
 - 规则包 safe loader、严格 schema/semantic validator、聚合错误与 RELEASED/DRAFT 正反向测试
 - PR #12 / merge commit `2de9f69`：最新 requirements、design、ADR amendment、reference 边界和规则事实收束
 
-这些证据证明 DocIR/SchemaIR 的修订前 Review boundary、legacy SchemaIR Validator、P0-T3 资料契约、规则运行时和 v1 发布；不证明最新 SchemaIR wire、InterfaceStandardIR、InterfaceTemplateIR、Configuration Workbook 或完整可信链路已经实现。
+这些证据证明 DocIR/SchemaIR 的修订前 Review boundary、SchemaIR v2 machine contract/Draft、P0-T3 资料契约、规则运行时和 v1 发布；不证明 Final SchemaIR、InterfaceStandardIR、InterfaceTemplateIR、Configuration Workbook 或完整可信链路已经实现。
 
 ### 2.3 存量代码差距
 
 | 组件 | 当前实现 | 与最新契约的差距 | 迁移批次 |
 |---|---|---|---|
-| `schemair_validator.py` | `schemair-validation-result/v1`；接受 `XML | JSON` 和 JSON node kinds | 产品应为 XML-only；缺少 `messages[].xmlEncoding`、结构化银行 Condition、完整层级/type/occurs invariant 和输入内容 hash | P0-T3 SchemaIR v2 |
-| SchemaIR validation result | 保存 summary、coverage 和 issues | 无法证明结果与当前 Final SchemaIR 内容一致；Review 修改后旧结果仍可能被误用 | P0-T3 SchemaIR v2 |
-| `workspace.py` | 六个扁平 artifact；固定 `raw | phase0a` profile | 不支持分方向、版本化 Standard/Template、三个 validation result 或 Workbook | P0-T3 SchemaIR v2 起逐步迁移 |
-| `cli.py` | `ingest` 和只检查文件/JSON 可解析性的 `check` | `phase0a` 命名已过期，无法验证完整 Phase0 trusted-chain | P0-T3 SchemaIR v2 / Workbook |
+| `schemair_validator.py` | `schemair/v2` 与 result v2；XML-only、encoding evidence、Condition、层级/type/occurs、lifecycle 和 hash 已实现 | b2e0061 Final facts 与 Review metadata 尚未确认 | P0-T3 SchemaIR Final |
+| SchemaIR validation result | 保存 identity/version/contract/hash、`finalEligible`、summary、coverage 和 blocking issues | 当前只存在 Draft 匹配结果，不能供下游使用 | P0-T3 SchemaIR Final |
+| `workspace.py` | `raw` profile；支持受边界保护的嵌套严格 JSON I/O | Standard/Template 固定路径和完整 `phase0` 链路选择尚未实现 | P0-T3 Standard 起逐步迁移 |
+| `cli.py` | `ingest` 和 `check --profile raw`；`phase0a` 已移除 | 完整 `phase0` selector/check 与 Workbook 入口尚未实现 | P0-T3 Workbook |
 | 规则资产 | BKL 子集 YAML v1 已于 2026-08-06 发布；safe loader、严格 schema/semantic validator、聚合错误和正反向测试已实现 | 无；v1 已冻结，后续语义或影响内容哈希的修订必须创建新版本 | 已完成 |
 | Standard / Template | 只有逻辑设计和正式导出证据 | 无 machine wire contract、Validator、Final fixture 或 validation result | P0-T3 Standard / Template |
 | Workbook | 只有七个 sheet 和来源矩阵设计 | 无 openpyxl Generator、回读 assertions 或确定性 regression | P0-T3 Workbook |
 | Draft generators | 未实现 | 四类核心 IR 仍依赖人工 fixture，Phase0 通过条件未满足 | P0-T4 |
 
-当前测试和双签发布记录说明 legacy baseline、规则运行时与 `configuration-rules/v1` 发布状态稳定，不能作为其余 P0-T3 需求已经实现的证据。
+当前 59-test baseline、Draft validation result 和双签发布记录说明 legacy baseline、SchemaIR/规则运行时与 `configuration-rules/v1` 发布状态稳定，不能作为 Final SchemaIR 或其余 P0-T3 需求已经实现的证据。
 
 ## 3. 已确认迁移原则
 
@@ -89,7 +90,8 @@ Phase0 不实现 UI、JSON 银行报文、目标系统 Import JSON/API、Excel �
 
 ### 3.3 Workspace 与 CLI
 
-- 后续代码批次直接以 `phase0` profile 替换 `phase0a`，不提供兼容别名；`raw` profile 继续保留。
+- SchemaIR v2 批次移除 `phase0a`，不提供兼容别名；过渡期 CLI 只保留 `raw` profile。
+- 完整 `phase0` profile 延后到 Workbook 批次启用，并要求显式 `direction + standardVersion + templateId + templateVersion + rule package path`；不扫描全部目录、不自动选择最新版本、不新增 manifest。
 - `phase0` workspace 支持 SchemaIR、按 direction/version 保存的 Standard、按 direction/template/version 保存的 Template、三个 validation result 和 Workbook。
 - artifact 协议随对应运行时批次增量实现，不能等到 Workbook 阶段再一次性补齐所有路径。
 - 发生 CLI 命令、artifact、配置或验证方式变化时，同一实现 commit 必须同步根 `README.md` 和相关设计说明。
@@ -100,7 +102,7 @@ Phase0 不实现 UI、JSON 银行报文、目标系统 Import JSON/API、Excel �
 - SchemaIR：落实两方向已确认的 `UTF-8`，并 Review 银行字段/约束、observed evidence 和结构化 Condition；未来 encoding 证据冲突时 Warning 并阻塞 Final，直到重新确认。
 - Standard：Review 路径、类型、XML Keys、三态约束、银行 Condition 以及 SchemaIR/Standard 差异。
 - Template：Review function、Mapping/Replacement、processing policy、方向性绑定和 ASSEMBLY omissions。
-- 任一 Draft 在人工修改后必须重新运行对应 Validator；内容 hash 不匹配的旧结果失效。
+- Human 先完成包括 `status=FINAL` 和 `review=APPROVED` 在内的完整 candidate，再运行对应 Validator；canonical 内容 hash 不匹配的旧结果失效。
 - encoding 或其他证据冲突不阻止 loader、contract 和 Validator 开发；Validator 必须报告 Warning，并阻止相关 candidate 被确认为 Final，直到 Human Review。
 
 ### 3.5 敏感信息边界
@@ -148,39 +150,43 @@ Phase0 不实现 UI、JSON 银行报文、目标系统 Import JSON/API、Excel �
 
 规则包 v1 已 RELEASED，且样例所需规则不存在实现者猜测值。
 
-### 4.2 SchemaIR v2 与 workspace/CLI 迁移
+### 4.2A SchemaIR v2 runtime 与 Draft candidate
 
-**依赖：P0-T3 规则包发布可并行准备；Final Standard 前必须完成。**
+**状态：Done。Final 事实不在本批次范围。**
+
+**已完成边界**
+
+- SchemaIR runtime 升级到 `schemair/v2`，明确拒绝 legacy contract、JSON message format 和 JSON node kind。
+- 实现 stable identity/version、`DRAFT | FINAL`、`PENDING | APPROVED`、canonical SHA-256、validation-result v2 和 blocking Final eligibility。
+- 实现 `xmlEncodingEvidence`、最小结构化银行 Condition、字段层级/type/occurs 相容性以及严格 JSON/workspace trust boundary。
+- 保留 P0-T2 四份 artifacts 的 byte hash；新增独立 50-field SchemaIR v2 Draft、匹配 result 和 PENDING review 记录。
+- 移除 `phase0a`；过渡期只公开 `raw` profile，完整 `phase0` 延后到 Workbook 批次。
+
+**机器完成标志**
+
+- Draft coverage 为 13 envelope、27 ASSEMBLY、10 PARSE，共 50 fields。
+- 结果为 0 ERROR、38 WARNING、35 INFO、21 blocking issues，`finalEligible=false`。
+- ASSEMBLY/PARSE 均保存已确认的 `UTF-8` Human/银行 evidence；当前无 encoding conflict。
+- 完整 pytest、legacy rejection、hash、strict JSON、CLI、P0-T2 byte-identical 回归通过。
+
+### 4.2B Final SchemaIR v2 Review 与冻结
+
+**状态：Blocked on Human Review。**
 
 **边界**
 
-- 将现有 SchemaIR Validator 升级到 v2，删除 legacy JSON 产品枚举。
-- 增加 `messages[].xmlEncoding`、结构化银行 Condition、字段层级和相容性校验。
-- 增加共享 canonical JSON SHA-256 和 validation-result 内容绑定。
-- 保留 P0-T2 artifacts，新增独立 P0-T3 SchemaIR v2 candidate、validation result 和 Human Review 记录。
-- 将 CLI/workspace 的 `phase0a` profile 迁移为 `phase0`，首先支持 SchemaIR v2 artifact 和 validation result；保留 `raw`。
-
-**涉及模块**
-
-- SchemaIR contract/validator 与共享 identity/hash helper
-- workspace/CLI、P0-T3 fixtures 和 tests
-- README 与相关设计文档同步
+- Human 按 `schemair-review.md` 确认 17 个 uncertain fields、请求 repeated node 的 required/occurs 冲突和 `transtype == "2" => obssid REQUIRED` 条件。
+- 实施者根据明确结论形成完整 Final candidate，填入实际 reviewer/timestamp；不得从正式导出或相近概念补猜答案。
+- 展示完整 Final candidate 的 canonical hash；Human 确认后运行 v2 Validator 并提交匹配结果。
 
 **完成标志**
 
-- JSON message format/node kind 和 legacy result 被明确拒绝。
-- Validation result 能检测输入内容被修改、旧结果失效。
-- b2e0061 两方向 SchemaIR v2 candidate 通过 Validator，落实已由 Human 与银行线下确认的 Final `xmlEncoding=UTF-8`，并由 Human Review 确认银行 Condition 和 observed evidence。
-- `check --profile phase0a` 被移除，`check --profile phase0` 按新 artifact 协议工作。
-
-**验证**
-
-- 缺失/非法 encoding、JSON enum、非法父子路径、type/children/multiple 冲突、Condition 引用失败和 hash mismatch 测试。
-- P0-T2 fixture 内容不变检查、新 P0-T3 golden equality、CLI 回归和完整 pytest。
+- Final SchemaIR 无 `uncertain=true` 或 blocking issue，`finalEligible=true`。
+- review 记录引用准确 Final hash；修改任一语义值都要求重新 Review 和复验。
 
 **下一批次开始条件**
 
-Final SchemaIR v2、匹配 validation result 和 Human Review 记录已冻结；修改内容必须产生新 hash 并重新 Review。
+Final SchemaIR v2、匹配 validation result 和 Human Review 记录已冻结，方可开始 Standard runtime。
 
 ### 4.3 InterfaceStandardIR contract、Validator 与双向 fixture
 
@@ -337,34 +343,42 @@ Final SchemaIR v2、匹配 validation result 和 Human Review 记录已冻结；
 - Verification：RELEASED 正反向测试、完整 pytest、build、docs-sync、BOM、diff 和敏感信息检查。
 - Next starts when：RELEASED v1 可以被 Final IR 精确引用。
 
-### Next Commit 3：SchemaIR v2 与 Phase0 workspace
+### 已完成 Commit 3A：SchemaIR v2 runtime 与 Draft candidate
 
-- Suggested message：`refactor: align SchemaIR with the XML-only contract`
-- Scope/Files：SchemaIR v2、validation result/hash、workspace/CLI、P0-T3 Schema fixtures、tests 和 docs-sync。
-- Completion signal：legacy runtime/profile 被替换，Final SchemaIR v2 经 Human Review 冻结。
-- Verification：SchemaIR/CLI/golden/compatibility rejection tests 和完整 pytest。
-- Next starts when：Final SchemaIR identity/hash/encoding 和匹配结果稳定。
+- Suggested message：`refactor: define SchemaIR v2 validation contract`
+- Scope/Files：canonical integrity helper、SchemaIR v2 Validator、严格 workspace JSON I/O、移除 `phase0a`、50-field Draft/result/review、tests 和 docs-sync。
+- Completion signal：legacy runtime/profile 被替换；Draft 为 0 ERROR 且明确 `finalEligible=false`，没有被伪装为 Final。
+- Verification：SchemaIR/hash/encoding/Condition/CLI/golden/strict JSON tests、完整 pytest、build、BOM、diff 和敏感信息检查。
+- Next starts when：Human 对准确 Draft 和全部 blocking review item 给出结论。
 
-### Future Commit 4：InterfaceStandardIR trusted chain
+### Next Commit 3B：冻结 Final SchemaIR v2
 
-- Suggested message：`feat: add InterfaceStandardIR validation chain`
-- Scope/Files：Standard contract/validator、双向 fixtures/results、workspace support、tests 和 docs-sync。
-- Completion signal：双向 Final Standard 经 Human Review 冻结。
-- Verification：Standard UT、golden equality、字段级 issues 和完整 pytest。
+- Suggested message：`chore: freeze reviewed SchemaIR v2 fixture`
+- Scope/Files：只提交获批的 Final SchemaIR、匹配 validation result、review 记录、tests 和状态同步；不改变 Validator 语义。
+- Completion signal：Final SchemaIR 无 uncertain/blocking issue，准确 content hash 经 Human 确认，`finalEligible=true`。
+- Verification：Final golden equality、hash mismatch、完整 pytest、docs-sync、BOM、diff 和敏感信息检查。
+- Next starts when：Final SchemaIR identity/version/hash 稳定；任何语义变更重新评审。
+
+### Future Commit 4A / 4B：InterfaceStandardIR Draft runtime / Final freeze
+
+- Suggested messages：`feat: add InterfaceStandardIR validation` / `chore: freeze reviewed interface standards`
+- Scope/Files：4A 冻结 Standard contract/validator 与双向 Draft/results；4B 只提交获批双向 Final/results/review 和状态同步。
+- Completion signal：两份独立 Standard 无 `UNKNOWN`、uncertain 或未决差异，identity/version/hash 稳定。
+- Verification：Standard UT、golden equality、字段级 issues、完整 pytest 和 docs-sync。
 - Next starts when：Template 可以精确绑定两份 Final Standard。
 
-### Future Commit 5：InterfaceTemplateIR trusted chain
+### Future Commit 5A / 5B：InterfaceTemplateIR Draft runtime / Final freeze
 
-- Suggested message：`feat: add InterfaceTemplateIR validation chain`
-- Scope/Files：Template/expression/processing contract、validator、双向 fixtures/results、tests 和 docs-sync。
+- Suggested messages：`feat: add InterfaceTemplateIR validation` / `chore: freeze reviewed interface templates`
+- Scope/Files：5A 冻结 Template/expression/processing contract、validator 与双向 Draft/results；5B 只提交获批 Final/results/review。
 - Completion signal：双向 Final Template、omissions 和专项 Mapping/Replacement evidence 经 Human Review 冻结。
-- Verification：Template UT、专项 fixtures、双向 golden 和完整 pytest。
-- Next starts when：Workbook 所需三份 Final 与三份结果完整。
+- Verification：Template UT、专项 fixtures、双向 golden、完整 pytest 和 docs-sync。
+- Next starts when：Workbook 所需三份 Final 与三份匹配结果完整。
 
-### Future Commit 6：Configuration Workbook 与完整 regression
+### Future Commit 6：Configuration Workbook、`phase0` 与完整 regression
 
 - Suggested message：`feat: generate configuration workbooks`
-- Scope/Files：openpyxl Generator、workspace/CLI、双方向 Workbook assertions、tests、dependencies 和 docs-sync。
+- Scope/Files：openpyxl Generator、显式链路 selector、workspace/CLI `phase0`、双方向 Workbook assertions、tests、dependencies 和 docs-sync。
 - Completion signal：P0-T3 trusted-chain regression 完成并改为 Done。
 - Verification：Workbook 回读、完整 regression、CLI smoke、pytest、BOM、diff 和敏感信息检查。
 - Next starts when：P0-T4 解锁。

@@ -2,7 +2,7 @@
 
 ## Status
 
-Draft. Trusted-chain work is partially implemented; the source-material blocker is resolved and P0-T3 InterfaceStandardIR, InterfaceTemplateIR and Configuration Workbook work is In Progress.
+Draft. Trusted-chain work is partially implemented; the rule runtime and SchemaIR v2 runtime/Draft candidate are complete. Final SchemaIR is blocked on Human Review; InterfaceStandardIR, InterfaceTemplateIR and Configuration Workbook remain P0-T3 work.
 
 ## 1. 阶段目标
 
@@ -26,16 +26,16 @@ LLM、Agent 或 workflow 可以生成 Draft，但不能替代 Validator、人工
 
 已完成：
 
-- Python CLI、`ingest`、workspace artifact bootstrap 和 `check`。
+- Python CLI、`ingest`、严格 workspace JSON artifact I/O 和 `check --profile raw`；legacy `phase0a` 已移除。
 - `b2e0061` reference raw doc。
 - 经人工 Review 的 expected DocIR、expected SchemaIR 和 expected review notes。
-- SchemaIR Validator v1、字段级校验结果契约和 expected validation result。当前 Validator 仍接受早期 JSON 枚举，尚需按 XML-only 产品契约收紧。
+- SchemaIR v2 XML-only Validator、canonical hash/result contract、encoding evidence、结构化条件和 50-field b2e0061 Draft candidate；当前结果为 0 ERROR、21 个 blocking issue，等待 Human Review。
+- `configuration-rules/v1` 已收束为接口无关、非全量的 BKL configuration rules 子集，并具有仓库内 safe loader、严格 schema/semantic validator 和引用闭合测试；双 reviewer 已确认候选并于 2026-08-06 发布，默认 loader 可直接加载该 `RELEASED` 版本。
 
 尚未完成：
 
 - 四类 IR Draft generator。
-- SchemaIR Validator 的 XML-only 枚举对齐。
-- `configuration-rules/v1` 已收束为接口无关、非全量的 BKL configuration rules 子集，并具有仓库内 safe loader、严格 schema/semantic validator 和引用闭合测试；双 reviewer 已确认候选并于 2026-08-06 发布，默认 loader 可直接加载该 `RELEASED` 版本。
+- b2e0061 Final SchemaIR v2、匹配 validation result 和 Human Review 记录。
 - InterfaceStandardIR / InterfaceTemplateIR machine wire contract、人工确认 fixture 和 Validator。
 - Configuration Workbook Generator、expected workbook 和结构化 assertions。
 - 覆盖完整可信链路的 golden regression。
@@ -53,7 +53,7 @@ LLM、Agent 或 workflow 可以生成 Draft，但不能替代 Validator、人工
 - Final Standard 到 InterfaceTemplateIR Draft、Template Validator 和人工确认 Final Template。
 - 一个标准关联多份同方向模板，模板精确绑定不可变标准版本。
 - ASSEMBLY 模板字段子集/omission 与 PARSE Standard source 到 Parse Field target。
-- 方向级 `messages[].xmlEncoding` Review，并在 Workbook Overview 展示。
+- 方向级 `messages[].xmlEncoding`、显式 evidence/conflict disposition Review，并在 Workbook Overview 展示。
 - Template 每个配置行显式镜像 Standard required/length/dataType。
 - `VALUE | STRUCTURE_ONLY | COLLECTION_ITEM` 结构绑定；b2e0061 重复响应 Node 创建 `paymentLineList` 元素。
 - 银行文档明确条件与基础 Required 分离，并在 Standard/Workbook 中可追溯。
@@ -81,7 +81,7 @@ LLM、Agent 或 workflow 可以生成 Draft，但不能替代 Validator、人工
 
 DocIR Draft 至少保留接口编码、XML 格式、ASSEMBLY/PARSE、字段表、章节、XML 示例、条件、来源证据、冲突和不确定项。人工确认后形成 Final DocIR。
 
-SchemaIR Draft 保存银行 XML element、attribute、完整 path、父子层级、类型、required、length、occurs、condition、方向级 `xmlEncoding` 和 evidence。SchemaIR Validator 必须提供字段级错误；人工修改后必须重新校验，确认后形成 Final SchemaIR。b2e0061 两个方向已由 Human 与银行线下确认为 `UTF-8`；以后银行文档证据冲突必须产生 Warning 并阻止 Final，直到 Human Review。Final encoding 不生成 Standard 字段。
+SchemaIR Draft 保存银行 XML element、attribute、完整 path、父子层级、类型、required、length、occurs、condition、方向级 `xmlEncoding` 和 evidence。SchemaIR Validator 必须提供字段级错误。Human 先完成包括 Final lifecycle/Review metadata 在内的完整 candidate，再重新运行 Validator；只有 identity/version/contract/canonical hash 匹配且 `finalEligible=true` 的结果可以进入下游。b2e0061 两个方向已由 Human 与银行线下确认为 `UTF-8`；显式文档 evidence 冲突产生 blocking Warning，直到 Human Review 处置。Final encoding 不生成 Standard 字段。
 
 ### 5.2 规则包
 

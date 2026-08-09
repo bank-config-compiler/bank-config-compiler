@@ -1,4 +1,4 @@
-"""Bank Config Compiler Phase0a PoC package."""
+"""Bank Config Compiler Phase0 PoC package."""
 
 __all__ = ["__version__"]
 

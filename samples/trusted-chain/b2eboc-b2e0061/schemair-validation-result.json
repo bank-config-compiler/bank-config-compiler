@@ -1,0 +1,544 @@
+{
+  "contractVersion": "schemair-validation-result/v2",
+  "validatedArtifact": {
+    "kind": "SchemaIR",
+    "artifactId": "b2eboc-b2e0061-schema",
+    "artifactVersion": "v1",
+    "artifactContractVersion": "schemair/v2",
+    "contentHash": "sha256:9fda4beb7ff03f51fe2511cb2257845957d62ed41becc47b55ac133867b72d21"
+  },
+  "status": "passed_with_warnings",
+  "finalEligible": false,
+  "summary": {
+    "schemaId": "b2eboc-b2e0061-schema",
+    "interfaceCode": "b2e0061",
+    "messageFormat": "XML",
+    "messageCount": 2,
+    "fieldCount": 50,
+    "errorCount": 0,
+    "warningCount": 38,
+    "infoCount": 35,
+    "blockingCount": 21
+  },
+  "coverage": {
+    "envelopeFieldCount": 13,
+    "messageFieldCount": 37,
+    "fieldsByFunctionType": {
+      "ASSEMBLY": 27,
+      "PARSE": 10
+    }
+  },
+  "issues": [
+    {
+      "severity": "WARNING",
+      "blocking": false,
+      "code": "LOW_CONFIDENCE",
+      "path": "Root.bocb2e.@lang",
+      "message": "Field confidence is below 0.9."
+    },
+    {
+      "severity": "WARNING",
+      "blocking": true,
+      "code": "UNCERTAIN_FIELD",
+      "path": "Root.bocb2e.@lang",
+      "message": "Field is marked uncertain and cannot enter a Final artifact."
+    },
+    {
+      "severity": "WARNING",
+      "blocking": false,
+      "code": "LOW_CONFIDENCE",
+      "path": "Root.bocb2e.@version",
+      "message": "Field confidence is below 0.9."
+    },
+    {
+      "severity": "WARNING",
+      "blocking": false,
+      "code": "NON_DIRECT_EVIDENCE",
+      "path": "Root.bocb2e.@version",
+      "message": "Field evidence is not DIRECT."
+    },
+    {
+      "severity": "WARNING",
+      "blocking": true,
+      "code": "UNCERTAIN_FIELD",
+      "path": "Root.bocb2e.@version",
+      "message": "Field is marked uncertain and cannot enter a Final artifact."
+    },
+    {
+      "severity": "WARNING",
+      "blocking": false,
+      "code": "LOW_CONFIDENCE",
+      "path": "Root.bocb2e.head.token",
+      "message": "Field confidence is below 0.9."
+    },
+    {
+      "severity": "WARNING",
+      "blocking": true,
+      "code": "UNCERTAIN_FIELD",
+      "path": "Root.bocb2e.head.token",
+      "message": "Field is marked uncertain and cannot enter a Final artifact."
+    },
+    {
+      "severity": "WARNING",
+      "blocking": false,
+      "code": "LOW_CONFIDENCE",
+      "path": "Root.bocb2e.trans.trn-b2e0061-rq.b2e0061-rq",
+      "message": "Field confidence is below 0.9."
+    },
+    {
+      "severity": "WARNING",
+      "blocking": true,
+      "code": "REQUIRED_OCCURS_CONFLICT",
+      "path": "Root.bocb2e.trans.trn-b2e0061-rq.b2e0061-rq",
+      "message": "required conflicts with occurs and must be resolved by Human Review."
+    },
+    {
+      "severity": "WARNING",
+      "blocking": true,
+      "code": "UNCERTAIN_FIELD",
+      "path": "Root.bocb2e.trans.trn-b2e0061-rq.b2e0061-rq",
+      "message": "Field is marked uncertain and cannot enter a Final artifact."
+    },
+    {
+      "severity": "WARNING",
+      "blocking": false,
+      "code": "LOW_CONFIDENCE",
+      "path": "Root.bocb2e.trans.trn-b2e0061-rq.b2e0061-rq.comacn",
+      "message": "Field confidence is below 0.9."
+    },
+    {
+      "severity": "WARNING",
+      "blocking": true,
+      "code": "UNCERTAIN_FIELD",
+      "path": "Root.bocb2e.trans.trn-b2e0061-rq.b2e0061-rq.comacn",
+      "message": "Field is marked uncertain and cannot enter a Final artifact."
+    },
+    {
+      "severity": "WARNING",
+      "blocking": false,
+      "code": "LOW_CONFIDENCE",
+      "path": "Root.bocb2e.trans.trn-b2e0061-rq.b2e0061-rq.fractn",
+      "message": "Field confidence is below 0.9."
+    },
+    {
+      "severity": "WARNING",
+      "blocking": true,
+      "code": "UNCERTAIN_FIELD",
+      "path": "Root.bocb2e.trans.trn-b2e0061-rq.b2e0061-rq.fractn",
+      "message": "Field is marked uncertain and cannot enter a Final artifact."
+    },
+    {
+      "severity": "WARNING",
+      "blocking": false,
+      "code": "LOW_CONFIDENCE",
+      "path": "Root.bocb2e.trans.trn-b2e0061-rq.b2e0061-rq.fractn.actacn",
+      "message": "Field confidence is below 0.9."
+    },
+    {
+      "severity": "WARNING",
+      "blocking": true,
+      "code": "UNCERTAIN_FIELD",
+      "path": "Root.bocb2e.trans.trn-b2e0061-rq.b2e0061-rq.fractn.actacn",
+      "message": "Field is marked uncertain and cannot enter a Final artifact."
+    },
+    {
+      "severity": "WARNING",
+      "blocking": false,
+      "code": "LOW_CONFIDENCE",
+      "path": "Root.bocb2e.trans.trn-b2e0061-rq.b2e0061-rq.fractn.fribkn",
+      "message": "Field confidence is below 0.9."
+    },
+    {
+      "severity": "WARNING",
+      "blocking": true,
+      "code": "UNCERTAIN_FIELD",
+      "path": "Root.bocb2e.trans.trn-b2e0061-rq.b2e0061-rq.fractn.fribkn",
+      "message": "Field is marked uncertain and cannot enter a Final artifact."
+    },
+    {
+      "severity": "WARNING",
+      "blocking": false,
+      "code": "LOW_CONFIDENCE",
+      "path": "Root.bocb2e.trans.trn-b2e0061-rq.b2e0061-rq.toactn",
+      "message": "Field confidence is below 0.9."
+    },
+    {
+      "severity": "WARNING",
+      "blocking": true,
+      "code": "UNCERTAIN_FIELD",
+      "path": "Root.bocb2e.trans.trn-b2e0061-rq.b2e0061-rq.toactn",
+      "message": "Field is marked uncertain and cannot enter a Final artifact."
+    },
+    {
+      "severity": "WARNING",
+      "blocking": false,
+      "code": "LOW_CONFIDENCE",
+      "path": "Root.bocb2e.trans.trn-b2e0061-rq.b2e0061-rq.trftime",
+      "message": "Field confidence is below 0.9."
+    },
+    {
+      "severity": "WARNING",
+      "blocking": true,
+      "code": "UNCERTAIN_FIELD",
+      "path": "Root.bocb2e.trans.trn-b2e0061-rq.b2e0061-rq.trftime",
+      "message": "Field is marked uncertain and cannot enter a Final artifact."
+    },
+    {
+      "severity": "WARNING",
+      "blocking": false,
+      "code": "LOW_CONFIDENCE",
+      "path": "Root.bocb2e.trans.trn-b2e0061-rq.b2e0061-rq.trnamt",
+      "message": "Field confidence is below 0.9."
+    },
+    {
+      "severity": "WARNING",
+      "blocking": true,
+      "code": "UNCERTAIN_FIELD",
+      "path": "Root.bocb2e.trans.trn-b2e0061-rq.b2e0061-rq.trnamt",
+      "message": "Field is marked uncertain and cannot enter a Final artifact."
+    },
+    {
+      "severity": "WARNING",
+      "blocking": true,
+      "code": "UNCERTAIN_FIELD",
+      "path": "Root.bocb2e.trans.trn-b2e0061-rs.b2e0061-rs.insid",
+      "message": "Field is marked uncertain and cannot enter a Final artifact."
+    },
+    {
+      "severity": "WARNING",
+      "blocking": false,
+      "code": "LOW_CONFIDENCE",
+      "path": "Root.bocb2e.trans.trn-b2e0061-rs.b2e0061-rs.obssid",
+      "message": "Field confidence is below 0.9."
+    },
+    {
+      "severity": "WARNING",
+      "blocking": true,
+      "code": "UNCERTAIN_FIELD",
+      "path": "Root.bocb2e.trans.trn-b2e0061-rs.b2e0061-rs.obssid",
+      "message": "Field is marked uncertain and cannot enter a Final artifact."
+    },
+    {
+      "severity": "WARNING",
+      "blocking": false,
+      "code": "LOW_CONFIDENCE",
+      "path": "Root.bocb2e.trans.trn-b2e0061-rs.b2e0061-rs.status.rspcod",
+      "message": "Field confidence is below 0.9."
+    },
+    {
+      "severity": "WARNING",
+      "blocking": true,
+      "code": "UNCERTAIN_FIELD",
+      "path": "Root.bocb2e.trans.trn-b2e0061-rs.b2e0061-rs.status.rspcod",
+      "message": "Field is marked uncertain and cannot enter a Final artifact."
+    },
+    {
+      "severity": "WARNING",
+      "blocking": false,
+      "code": "LOW_CONFIDENCE",
+      "path": "Root.bocb2e.trans.trn-b2e0061-rs.b2e0061-rs.status.rspmsg",
+      "message": "Field confidence is below 0.9."
+    },
+    {
+      "severity": "WARNING",
+      "blocking": true,
+      "code": "UNCERTAIN_FIELD",
+      "path": "Root.bocb2e.trans.trn-b2e0061-rs.b2e0061-rs.status.rspmsg",
+      "message": "Field is marked uncertain and cannot enter a Final artifact."
+    },
+    {
+      "severity": "WARNING",
+      "blocking": false,
+      "code": "LOW_CONFIDENCE",
+      "path": "Root.bocb2e.trans.trn-b2e0061-rs.status.rspcod",
+      "message": "Field confidence is below 0.9."
+    },
+    {
+      "severity": "WARNING",
+      "blocking": true,
+      "code": "UNCERTAIN_FIELD",
+      "path": "Root.bocb2e.trans.trn-b2e0061-rs.status.rspcod",
+      "message": "Field is marked uncertain and cannot enter a Final artifact."
+    },
+    {
+      "severity": "WARNING",
+      "blocking": false,
+      "code": "LOW_CONFIDENCE",
+      "path": "Root.bocb2e.trans.trn-b2e0061-rs.status.rspmsg",
+      "message": "Field confidence is below 0.9."
+    },
+    {
+      "severity": "WARNING",
+      "blocking": true,
+      "code": "UNCERTAIN_FIELD",
+      "path": "Root.bocb2e.trans.trn-b2e0061-rs.status.rspmsg",
+      "message": "Field is marked uncertain and cannot enter a Final artifact."
+    },
+    {
+      "severity": "WARNING",
+      "blocking": true,
+      "code": "CONDITION_REVIEW_NOT_APPROVED",
+      "path": "messages[0].conditionalConstraints[0].review.status",
+      "message": "Structured bank conditions require Human Review."
+    },
+    {
+      "severity": "WARNING",
+      "blocking": true,
+      "code": "REVIEW_NOT_APPROVED",
+      "path": "review.status",
+      "message": "Human Review must be approved before Final use."
+    },
+    {
+      "severity": "WARNING",
+      "blocking": true,
+      "code": "ARTIFACT_NOT_FINAL",
+      "path": "status",
+      "message": "Draft artifacts are not eligible for the trusted chain."
+    },
+    {
+      "severity": "INFO",
+      "blocking": false,
+      "code": "CONDITIONAL_FIELD",
+      "path": "Root.bocb2e",
+      "message": "Field has conditionText."
+    },
+    {
+      "severity": "INFO",
+      "blocking": false,
+      "code": "CONDITIONAL_FIELD",
+      "path": "Root.bocb2e.@lang",
+      "message": "Field has conditionText."
+    },
+    {
+      "severity": "INFO",
+      "blocking": false,
+      "code": "CONDITIONAL_FIELD",
+      "path": "Root.bocb2e.@locale",
+      "message": "Field has conditionText."
+    },
+    {
+      "severity": "INFO",
+      "blocking": false,
+      "code": "CONDITIONAL_FIELD",
+      "path": "Root.bocb2e.@security",
+      "message": "Field has conditionText."
+    },
+    {
+      "severity": "INFO",
+      "blocking": false,
+      "code": "CONDITIONAL_FIELD",
+      "path": "Root.bocb2e.@version",
+      "message": "Field has conditionText."
+    },
+    {
+      "severity": "INFO",
+      "blocking": false,
+      "code": "CONDITIONAL_FIELD",
+      "path": "Root.bocb2e.head.cusopr",
+      "message": "Field has conditionText."
+    },
+    {
+      "severity": "INFO",
+      "blocking": false,
+      "code": "CONDITIONAL_FIELD",
+      "path": "Root.bocb2e.head.custid",
+      "message": "Field has conditionText."
+    },
+    {
+      "severity": "INFO",
+      "blocking": false,
+      "code": "CONDITIONAL_FIELD",
+      "path": "Root.bocb2e.head.termid",
+      "message": "Field has conditionText."
+    },
+    {
+      "severity": "INFO",
+      "blocking": false,
+      "code": "CONDITIONAL_FIELD",
+      "path": "Root.bocb2e.head.token",
+      "message": "Field has conditionText."
+    },
+    {
+      "severity": "INFO",
+      "blocking": false,
+      "code": "CONDITIONAL_FIELD",
+      "path": "Root.bocb2e.head.trncod",
+      "message": "Field has conditionText."
+    },
+    {
+      "severity": "INFO",
+      "blocking": false,
+      "code": "CONDITIONAL_FIELD",
+      "path": "Root.bocb2e.head.trnid",
+      "message": "Field has conditionText."
+    },
+    {
+      "severity": "INFO",
+      "blocking": false,
+      "code": "CONDITIONAL_FIELD",
+      "path": "Root.bocb2e.trans",
+      "message": "Field has conditionText."
+    },
+    {
+      "severity": "INFO",
+      "blocking": false,
+      "code": "CONDITIONAL_FIELD",
+      "path": "Root.bocb2e.trans.trn-b2e0061-rq.b2e0061-rq.bocflag",
+      "message": "Field has conditionText."
+    },
+    {
+      "severity": "INFO",
+      "blocking": false,
+      "code": "CONDITIONAL_FIELD",
+      "path": "Root.bocb2e.trans.trn-b2e0061-rq.b2e0061-rq.comacn",
+      "message": "Field has conditionText."
+    },
+    {
+      "severity": "INFO",
+      "blocking": false,
+      "code": "CONDITIONAL_FIELD",
+      "path": "Root.bocb2e.trans.trn-b2e0061-rq.b2e0061-rq.cuspriolv",
+      "message": "Field has conditionText."
+    },
+    {
+      "severity": "INFO",
+      "blocking": false,
+      "code": "CONDITIONAL_FIELD",
+      "path": "Root.bocb2e.trans.trn-b2e0061-rq.b2e0061-rq.fractn.actacn",
+      "message": "Field has conditionText."
+    },
+    {
+      "severity": "INFO",
+      "blocking": false,
+      "code": "CONDITIONAL_FIELD",
+      "path": "Root.bocb2e.trans.trn-b2e0061-rq.b2e0061-rq.fractn.actnam",
+      "message": "Field has conditionText."
+    },
+    {
+      "severity": "INFO",
+      "blocking": false,
+      "code": "CONDITIONAL_FIELD",
+      "path": "Root.bocb2e.trans.trn-b2e0061-rq.b2e0061-rq.fractn.fribkn",
+      "message": "Field has conditionText."
+    },
+    {
+      "severity": "INFO",
+      "blocking": false,
+      "code": "CONDITIONAL_FIELD",
+      "path": "Root.bocb2e.trans.trn-b2e0061-rq.b2e0061-rq.furinfo",
+      "message": "Field has conditionText."
+    },
+    {
+      "severity": "INFO",
+      "blocking": false,
+      "code": "CONDITIONAL_FIELD",
+      "path": "Root.bocb2e.trans.trn-b2e0061-rq.b2e0061-rq.insid",
+      "message": "Field has conditionText."
+    },
+    {
+      "severity": "INFO",
+      "blocking": false,
+      "code": "CONDITIONAL_FIELD",
+      "path": "Root.bocb2e.trans.trn-b2e0061-rq.b2e0061-rq.obssid",
+      "message": "Field has conditionText."
+    },
+    {
+      "severity": "INFO",
+      "blocking": false,
+      "code": "CONDITIONAL_FIELD",
+      "path": "Root.bocb2e.trans.trn-b2e0061-rq.b2e0061-rq.priolv",
+      "message": "Field has conditionText."
+    },
+    {
+      "severity": "INFO",
+      "blocking": false,
+      "code": "CONDITIONAL_FIELD",
+      "path": "Root.bocb2e.trans.trn-b2e0061-rq.b2e0061-rq.toactn.actacn",
+      "message": "Field has conditionText."
+    },
+    {
+      "severity": "INFO",
+      "blocking": false,
+      "code": "CONDITIONAL_FIELD",
+      "path": "Root.bocb2e.trans.trn-b2e0061-rq.b2e0061-rq.toactn.acttyp",
+      "message": "Field has conditionText."
+    },
+    {
+      "severity": "INFO",
+      "blocking": false,
+      "code": "CONDITIONAL_FIELD",
+      "path": "Root.bocb2e.trans.trn-b2e0061-rq.b2e0061-rq.toactn.email",
+      "message": "Field has conditionText."
+    },
+    {
+      "severity": "INFO",
+      "blocking": false,
+      "code": "CONDITIONAL_FIELD",
+      "path": "Root.bocb2e.trans.trn-b2e0061-rq.b2e0061-rq.toactn.toaddr",
+      "message": "Field has conditionText."
+    },
+    {
+      "severity": "INFO",
+      "blocking": false,
+      "code": "CONDITIONAL_FIELD",
+      "path": "Root.bocb2e.trans.trn-b2e0061-rq.b2e0061-rq.toactn.tobknm",
+      "message": "Field has conditionText."
+    },
+    {
+      "severity": "INFO",
+      "blocking": false,
+      "code": "CONDITIONAL_FIELD",
+      "path": "Root.bocb2e.trans.trn-b2e0061-rq.b2e0061-rq.toactn.toibkn",
+      "message": "Field has conditionText."
+    },
+    {
+      "severity": "INFO",
+      "blocking": false,
+      "code": "CONDITIONAL_FIELD",
+      "path": "Root.bocb2e.trans.trn-b2e0061-rq.b2e0061-rq.toactn.toname",
+      "message": "Field has conditionText."
+    },
+    {
+      "severity": "INFO",
+      "blocking": false,
+      "code": "CONDITIONAL_FIELD",
+      "path": "Root.bocb2e.trans.trn-b2e0061-rq.b2e0061-rq.trfdate",
+      "message": "Field has conditionText."
+    },
+    {
+      "severity": "INFO",
+      "blocking": false,
+      "code": "CONDITIONAL_FIELD",
+      "path": "Root.bocb2e.trans.trn-b2e0061-rq.b2e0061-rq.trftime",
+      "message": "Field has conditionText."
+    },
+    {
+      "severity": "INFO",
+      "blocking": false,
+      "code": "CONDITIONAL_FIELD",
+      "path": "Root.bocb2e.trans.trn-b2e0061-rq.b2e0061-rq.trnamt",
+      "message": "Field has conditionText."
+    },
+    {
+      "severity": "INFO",
+      "blocking": false,
+      "code": "CONDITIONAL_FIELD",
+      "path": "Root.bocb2e.trans.trn-b2e0061-rq.b2e0061-rq.trncur",
+      "message": "Field has conditionText."
+    },
+    {
+      "severity": "INFO",
+      "blocking": false,
+      "code": "CONDITIONAL_FIELD",
+      "path": "Root.bocb2e.trans.trn-b2e0061-rq.ceitinfo",
+      "message": "Field has conditionText."
+    },
+    {
+      "severity": "INFO",
+      "blocking": false,
+      "code": "CONDITIONAL_FIELD",
+      "path": "Root.bocb2e.trans.trn-b2e0061-rq.transtype",
+      "message": "Field has conditionText."
+    }
+  ]
+}

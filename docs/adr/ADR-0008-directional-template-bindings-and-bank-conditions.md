@@ -38,7 +38,7 @@ Parse Field 具有独立 name、path 和 datatype，由高代码固定维护，�
 - b2e0061 Final Standard 保留 raw-doc 定义的 `@security` XML Key，排除只存在于正式导出的 `vamflag`。
 - raw-doc 样例中的 `@lang` 继续保留在 SchemaIR 作为 observed evidence，并形成 `SCHEMA_STANDARD_DIFFERENCE` Warning；协议说明未定义它，因此不进入 Final Standard。
 
-SchemaIR 每个 direction message 使用 `xmlEncoding` 保存 XML declaration encoding。b2e0061 的 ASSEMBLY、PARSE 两个方向已由 Human 与银行线下确认均为 `UTF-8`。后续银行文档证据与已确认值冲突时，Validator 必须产生 Warning 并阻止 Final，直到 Human Review 给出新结论。Final 值显示在 Workbook `Overview`，不形成 Standard Field 或 XML Key。
+SchemaIR 每个 direction message 使用 `xmlEncoding` 保存 XML declaration encoding，并使用 `xmlEncodingEvidence` 保存 Human/银行确认、文档/XML declaration 观察值和 conflict disposition。b2e0061 的 ASSEMBLY、PARSE 两个方向已确认 canonical `UTF-8`。`UNRESOLVED_CONFLICT` 产生 blocking Warning；Human 必须明确处置为 `RESOLVED_CONFLICT` 并记录理由，或更新确认值后重新 Review。Final 值显示在 Workbook `Overview`，不形成 Standard Field 或 XML Key。
 
 ### Directional Template Binding
 
@@ -47,7 +47,7 @@ InterfaceTemplateIR 使用方向性端点：
 - ASSEMBLY：target 是绑定 Standard 的 `standardFieldRef`；source 是 ASSEMBLY FIELD、literal、function 或其他受支持 Value Expression。
 - PARSE：target 是 `parseFieldRef`；Value Expression 的 FIELD_REF 引用绑定 Standard 的 `standardFieldRef`，也可按受支持模式使用 literal、function 或 CONCATENATE。
 
-两方向继续绑定同一个精确 `standardId + standardVersion + contentHash` 版本，但 Template field config 不再被统一定义为 Standard Field 子集。
+每个方向的 Template 分别绑定该方向独立 Standard 的精确 `standardId + standardVersion + contentHash`；不存在 ASSEMBLY/PARSE 共享同一 Standard 的隐式绑定。Template field config 不再被统一定义为 Standard Field 子集。
 
 每个 field config 必须显式保存 `standardProjection.required`、`standardProjection.length` 和 `standardProjection.dataType`。三项的约束状态和值必须与绑定 Standard 完全相同，Validator 不允许模板使用内部业务缩短后的 Length、不同 Required 或不同 Standard Data Type。
 

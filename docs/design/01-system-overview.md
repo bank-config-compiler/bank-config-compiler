@@ -18,30 +18,39 @@ flowchart TD
     C -->|"确认"| D["Final DocIR"]
 
     D --> E["LLM 生成 SchemaIR Draft"]
-    E --> F["SchemaIR Validator"]
-    F -->|"校验失败：修正后重新校验"| E
-    F -->|"校验通过"| SV["SchemaIR Validation Result"]
-    SV --> G["人工 Review SchemaIR"]
-    G -->|"修正后重新校验"| E
-    G -->|"确认"| H["Final SchemaIR"]
+    E --> F["SchemaIR Validator / Draft Result"]
+    F -->|"结构错误：修正后重新校验"| E
+    F --> G["人工 Review SchemaIR"]
+    G -->|"修改事实"| E
+    G -->|"完成 Final metadata"| HC["完整 Final SchemaIR Candidate"]
+    HC --> FV["SchemaIR Validator 复验"]
+    FV -->|"失败：返回 Review"| G
+    FV -->|"通过且 hash 匹配"| SV["Final SchemaIR Validation Result"]
+    SV --> H["Eligible Final SchemaIR"]
 
     H --> I["LLM 生成 InterfaceStandardIR Draft"]
     RS["Standard 使用的 configuration-rules 版本"] --> I
-    I --> J["Standard Validator"]
-    J -->|"校验失败：修正后重新校验"| I
-    J -->|"校验通过"| STV["Standard Validation Result"]
-    STV --> K["人工 Review Interface Standard"]
-    K -->|"修正后重新校验"| I
-    K -->|"确认"| L["Final InterfaceStandardIR"]
+    I --> J["Standard Validator / Draft Result"]
+    J -->|"结构错误：修正后重新校验"| I
+    J --> K["人工 Review Interface Standard"]
+    K -->|"修改事实"| I
+    K -->|"完成 Final metadata"| LC["完整 Final Standard Candidate"]
+    LC --> JV["Standard Validator 复验"]
+    JV -->|"失败：返回 Review"| K
+    JV -->|"通过且 hash 匹配"| STV["Final Standard Validation Result"]
+    STV --> L["Eligible Final InterfaceStandardIR"]
 
     L --> M["LLM 生成 InterfaceTemplateIR Draft"]
     RT["Template 使用的 configuration-rules 版本"] --> M
-    M --> N["Template Validator"]
-    N -->|"校验失败：修正后重新校验"| M
-    N -->|"校验通过"| TV["Template Validation Result"]
-    TV --> O["人工 Review Interface Template / Omissions"]
-    O -->|"修正后重新校验"| M
-    O -->|"确认"| P["Final InterfaceTemplateIR"]
+    M --> N["Template Validator / Draft Result"]
+    N -->|"结构错误：修正后重新校验"| M
+    N --> O["人工 Review Interface Template / Omissions"]
+    O -->|"修改事实"| M
+    O -->|"完成 Final metadata"| PC["完整 Final Template Candidate"]
+    PC --> NV["Template Validator 复验"]
+    NV -->|"失败：返回 Review"| O
+    NV -->|"通过且 hash 匹配"| TV["Final Template Validation Result"]
+    TV --> P["Eligible Final InterfaceTemplateIR"]
 
     H --> Q["确定性 Workbook Generator"]
     L --> Q
@@ -185,7 +194,7 @@ Phase0 可以用受控 fixture 或命令流程表达人工确认；Phase1 才提
 
 规则版本一旦发布不可原地覆盖。InterfaceStandardIR、InterfaceTemplateIR、Validator result 和 Configuration Workbook 必须记录实际使用的精确规则版本及 Rule ID。标准和后续模板可以使用不同规则版本，但模板对标准 artifact 的绑定不因此改变。
 
-`configuration-rules/v1` 已发布并冻结，两个目标配置 IR 的 wire contract、Validator、golden fixture 和 Workbook Generator 已进入 P0-T3 实现。Final IR 必须精确引用该 `RELEASED` 版本；正式导出只能作为经治理的目标配置证据，不能直接代替 IR 或 Generator 输入。
+`configuration-rules/v1` 已发布并冻结；SchemaIR v2 runtime 与 Draft candidate 已实现，两个目标配置 IR 的 wire contract、Validator、golden fixture 和 Workbook Generator 仍处于 P0-T3 后续批次。Final IR 必须精确引用适用的 `RELEASED` 规则版本；正式导出只能作为经治理的目标配置证据，不能直接代替 IR 或 Generator 输入。
 
 ## 4. 候选任务状态
 
@@ -196,18 +205,21 @@ RAW_DOC_CREATED
 DOCIR_DRAFT_GENERATED
 DOCIR_CONFIRMED
 SCHEMAIR_DRAFT_GENERATED
-SCHEMAIR_VALIDATED
+SCHEMAIR_DRAFT_VALIDATED
 SCHEMAIR_CONFIRMED
+SCHEMAIR_FINAL_VALIDATED
 STANDARD_DRAFT_GENERATED
-STANDARD_VALIDATED
+STANDARD_DRAFT_VALIDATED
 STANDARD_CONFIRMED
+STANDARD_FINAL_VALIDATED
 TEMPLATE_DRAFT_GENERATED
-TEMPLATE_VALIDATED
+TEMPLATE_DRAFT_VALIDATED
 TEMPLATE_CONFIRMED
+TEMPLATE_FINAL_VALIDATED
 CONFIGURATION_WORKBOOK_GENERATED
 ```
 
-任何 Draft 被修改后，对应 validation 状态必须失效并重新计算。标准版本变化不会自动迁移或重新解释已有模板。
+任何 Draft 或完整 Final candidate 被修改后，对应 validation 状态必须失效并重新计算。只有 Final 内容的 identity/version/contract/hash 与复验结果全部匹配且 `finalEligible=true`，才能进入下游；标准版本变化不会自动迁移或重新解释已有模板。
 
 ## 5. 候选 Workspace 结构
 
@@ -230,7 +242,7 @@ workspace/{taskId}/
     └── configuration-workbook.xlsx
 ```
 
-这是候选 artifact 结构，不是已经实现的完整协议。当前 bootstrap 只实现根 README 中列出的 artifact；规则包 v1 已发布，但具体 IR wire 和命名仍需在 P0-T3 后续代码 commit 中冻结。
+根级 SchemaIR artifact 名称和 library JSON I/O 已实现；Standard/Template 子目录仍是待后续批次冻结的结构。完整 `phase0` CLI profile 不扫描目录或自动选择最新版，将在 Workbook 批次通过显式 direction/version/template selector 启用。
 
 ## 6. 分阶段交付
 

@@ -20,28 +20,32 @@ Draft. Logical contract confirmed; `configuration-rules/v1` is released and immu
 ```mermaid
 stateDiagram-v2
     [*] --> Draft: LLM 基于 Final SchemaIR 与规则版本生成
-    Draft --> Draft: 修改或补充 Review 结论
-    Draft --> Validated: Standard Validator 通过
-    Validated --> Draft: Review 修改导致校验失效
-    Validated --> Final: 人工确认
+    Draft --> DraftValidated: Standard Validator 生成 Draft Result
+    DraftValidated --> Draft: 修正结构或事实
+    DraftValidated --> FinalCandidate: Human 完成 Review 与 Final metadata
+    FinalCandidate --> Draft: Review 修改导致候选失效
+    FinalCandidate --> FinalValidated: Standard Validator 复验完整内容
+    FinalValidated --> Final: hash 匹配且 finalEligible
     Final --> [*]
 ```
 
-每个标准由 `standardId + version` 唯一标识，并属于一个 `interfaceCode + direction`。Final 版本不可原地覆盖；内容摘要用于防止模板错误绑定同名但不同内容的标准。
+每个标准由 `standardId + standardVersion` 唯一标识，并属于一个 `interfaceCode + direction`。Final 版本不可原地覆盖；canonical 内容摘要用于防止模板错误绑定同名但不同内容的标准。
 
 ### 2.2 Interface Template
 
 ```mermaid
 stateDiagram-v2
     [*] --> Draft: LLM 基于 Final Standard 与规则版本生成
-    Draft --> Draft: 修改字段配置或 omission 结论
-    Draft --> Validated: Template Validator 通过
-    Validated --> Draft: Review 修改导致校验失效
-    Validated --> Final: 人工确认
+    Draft --> DraftValidated: Template Validator 生成 Draft Result
+    DraftValidated --> Draft: 修正结构或事实
+    DraftValidated --> FinalCandidate: Human 完成 Review 与 Final metadata
+    FinalCandidate --> Draft: Review 修改导致候选失效
+    FinalCandidate --> FinalValidated: Template Validator 复验完整内容
+    FinalValidated --> Final: hash 匹配且 finalEligible
     Final --> [*]
 ```
 
-每份模板由 `templateId + version` 唯一标识，属于一个 `interfaceCode + direction`，并精确引用 `standardId + standardVersion + contentHash`。
+每份模板由 `templateId + templateVersion` 唯一标识，属于一个 `interfaceCode + direction`，并精确引用 `standardId + standardVersion + contentHash`。
 
 一个标准可以被多份同方向模板复用。新增模板直接消费已有 Final Standard；标准发布新版本不会自动迁移或重新解释旧模板。
 
@@ -54,7 +58,7 @@ InterfaceStandardIR
 ├── standardId
 ├── interfaceCode
 ├── direction
-├── version
+├── standardVersion
 ├── schemaIrReference + schemaIrContentHash
 ├── rulePackageVersion
 ├── xmlEncodingReference         # 指向 SchemaIR message；不是 Standard Field
@@ -76,7 +80,7 @@ InterfaceStandardIR
 
 这些字段描述逻辑契约，不是已经冻结的 JSON wire schema。
 
-方向级 XML encoding 保存在 Final SchemaIR `messages[].xmlEncoding`。InterfaceStandardIR 只保存可追溯引用，Workbook `Overview` 展示确认值；encoding 不生成 Standard Field。银行文档证据与已确认值冲突时，Validator 必须产生 Warning 并阻止 Final，不能由 Generator 选择；Human Review 给出新结论后才能继续。
+方向级 XML encoding 和显式 evidence 保存在 Final SchemaIR message。InterfaceStandardIR 只保存可追溯引用，Workbook `Overview` 展示确认值；encoding 不生成 Standard Field。`UNRESOLVED_CONFLICT` 必须产生 blocking Warning，不能由 Generator 选择；Human Review 处置 evidence 或给出新确认值并重新复验后才能继续。
 
 ### 3.2 Path 与层级
 
@@ -153,10 +157,10 @@ InterfaceTemplateIR
 ├── templateId
 ├── interfaceCode
 ├── direction
-├── version
+├── templateVersion
 ├── standardRef
 │   ├── standardId
-│   ├── version
+│   ├── standardVersion
 │   └── contentHash
 ├── rulePackageVersion
 ├── fieldConfigs[]

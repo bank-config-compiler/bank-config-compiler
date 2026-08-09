@@ -11,21 +11,7 @@ TEXT_ARTIFACTS = {
     "docir-draft.md",
     "docir-final.md",
 }
-JSON_ARTIFACTS = {
-    "schemair-draft.json",
-    "schemair-validation-result.json",
-    "schemair-final.json",
-}
-PHASE0A_ARTIFACTS = (
-    "raw-doc.md",
-    "docir-draft.md",
-    "docir-final.md",
-    "schemair-draft.json",
-    "schemair-validation-result.json",
-    "schemair-final.json",
-)
 RAW_PROFILE_ARTIFACTS = (RAW_DOC_ARTIFACT,)
-KNOWN_ARTIFACTS = TEXT_ARTIFACTS | JSON_ARTIFACTS
 SUPPORTED_RAW_DOC_SUFFIXES = {".md", ".txt"}
 UTF8_BOM = b"\xef\xbb\xbf"
 
@@ -81,18 +67,13 @@ def check_workspace(workspace_path: Path, *, profile: str) -> int:
 
     artifacts = artifacts_for_profile(profile)
     for artifact_name in artifacts:
-        if artifact_name in JSON_ARTIFACTS:
-            read_json_artifact(workspace_path, artifact_name)
-        else:
-            read_text_artifact(workspace_path, artifact_name)
+        read_text_artifact(workspace_path, artifact_name)
     return len(artifacts)
 
 
 def artifacts_for_profile(profile: str) -> tuple[str, ...]:
     if profile == "raw":
         return RAW_PROFILE_ARTIFACTS
-    if profile == "phase0a":
-        return PHASE0A_ARTIFACTS
     raise WorkspaceError(f"unknown workspace profile: {profile}")
 
 
@@ -116,16 +97,47 @@ def read_text_artifact(workspace_path: Path, artifact_name: str) -> str:
         raise WorkspaceError(f"{artifact_name} must be valid UTF-8") from exc
 
 
-def read_json_artifact(workspace_path: Path, artifact_name: str) -> Any:
-    if artifact_name not in JSON_ARTIFACTS:
-        raise WorkspaceError(f"unknown artifact: {artifact_name}")
+def read_json_artifact(workspace_path: Path, artifact_name: str) -> dict[str, Any]:
+    if Path(artifact_name).suffix.lower() != ".json":
+        raise WorkspaceError("JSON artifact path must use the .json extension")
     data = read_artifact_bytes(workspace_path, artifact_name)
     try:
-        return json.loads(data.decode("utf-8"))
+        value = json.loads(
+            data.decode("utf-8"),
+            object_pairs_hook=_reject_duplicate_json_keys,
+            parse_constant=_reject_non_finite_json_number,
+        )
     except UnicodeDecodeError as exc:
         raise WorkspaceError(f"{artifact_name} must be valid UTF-8") from exc
     except json.JSONDecodeError as exc:
         raise WorkspaceError(f"{artifact_name} must contain valid JSON") from exc
+    except ValueError as exc:
+        raise WorkspaceError(f"{artifact_name} must contain strict JSON: {exc}") from exc
+    if not isinstance(value, dict):
+        raise WorkspaceError(f"{artifact_name} JSON root must be an object")
+    return value
+
+
+def write_json_artifact(
+    workspace_path: Path,
+    artifact_name: str,
+    content: dict[str, Any],
+    *,
+    overwrite: bool = False,
+) -> Path:
+    if Path(artifact_name).suffix.lower() != ".json":
+        raise WorkspaceError("JSON artifact path must use the .json extension")
+    ensure_workspace_dir(workspace_path)
+    output_path = artifact_path(workspace_path, artifact_name)
+    if output_path.exists() and not overwrite:
+        raise WorkspaceError(f"{artifact_name} already exists; pass overwrite=True to replace it")
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    try:
+        serialized = json.dumps(content, ensure_ascii=False, indent=2, allow_nan=False)
+    except (TypeError, ValueError) as exc:
+        raise WorkspaceError("JSON artifact must contain only finite JSON values") from exc
+    output_path.write_text(f"{serialized}\n", encoding="utf-8", newline="")
+    return output_path
 
 
 def read_artifact_bytes(workspace_path: Path, artifact_name: str) -> bytes:
@@ -141,6 +153,26 @@ def read_artifact_bytes(workspace_path: Path, artifact_name: str) -> bytes:
 
 
 def artifact_path(workspace_path: Path, artifact_name: str) -> Path:
-    if artifact_name not in KNOWN_ARTIFACTS:
-        raise WorkspaceError(f"unknown artifact: {artifact_name}")
-    return workspace_path.resolve() / artifact_name
+    relative_path = Path(artifact_name)
+    if relative_path.is_absolute() or not relative_path.parts or ".." in relative_path.parts:
+        raise WorkspaceError(f"artifact path must stay within the workspace: {artifact_name}")
+    workspace_root = workspace_path.resolve()
+    output_path = (workspace_root / relative_path).resolve()
+    try:
+        output_path.relative_to(workspace_root)
+    except ValueError as exc:
+        raise WorkspaceError(f"artifact path must stay within the workspace: {artifact_name}") from exc
+    return output_path
+
+
+def _reject_duplicate_json_keys(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
+    result: dict[str, Any] = {}
+    for key, value in pairs:
+        if key in result:
+            raise ValueError(f"duplicate object property: {key}")
+        result[key] = value
+    return result
+
+
+def _reject_non_finite_json_number(value: str) -> None:
+    raise ValueError(f"non-finite number is not allowed: {value}")

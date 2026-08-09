@@ -47,7 +47,7 @@ IR 是 Intermediate Representation（中间表示）。它把来源不同、结�
 
 银行字段、path、出现次数和约束以 raw-doc 经人工确认形成的 Final SchemaIR 为准；正式 Standard/Template 导出只证明目标系统表示方式和已观察配置，不能覆盖银行事实。b2e0061 Final Standard 因此保留 raw-doc 定义的 `@security` XML Key、排除只存在于正式导出的 `vamflag`，并将样例中观察到但协议说明未定义的 `@lang` 保留在 SchemaIR 和差异 Warning 中而不进入 Final Standard。
 
-每个 SchemaIR message 使用 `xmlEncoding` 保存当前方向 XML declaration 的 encoding。b2e0061 的 ASSEMBLY、PARSE 两个方向已由 Human 与银行线下确认均为 `UTF-8`。后续协议建议值、报文示例值或其他银行文档证据与已确认值冲突时，Validator 必须产生 Warning 并阻止 Final，直到 Human Review 给出新结论。Final 值只作为报文级元数据展示在 Workbook `Overview`，不生成 Interface Standard 字段或 XML Key。
+每个 SchemaIR message 使用 `xmlEncoding` 保存当前方向 XML declaration 的 encoding，并以 `xmlEncodingEvidence[]` 保存 `sourceKind`、`sourceRef`、`observedValue`、`disposition` 和 Review 说明。b2e0061 的 ASSEMBLY、PARSE 两个方向已由 Human 与银行线下确认均为 canonical `UTF-8`。显式 evidence 与确认值冲突时，Validator 产生 blocking Warning；Human 必须将其处置为 `RESOLVED_CONFLICT` 并说明原因，或更新确认值后重新 Review。Final 值只作为报文级元数据展示在 Workbook `Overview`，不生成 Interface Standard 字段或 XML Key。
 
 一个方向标准可以被多份同方向模板复用。模板必须绑定不可变的 `standardId + standardVersion + contentHash`，不能仅凭 `interfaceCode` 自动跟随最新标准。标准升级后，已有模板仍指向原版本；迁移必须重新校验和 Review。
 
@@ -57,6 +57,8 @@ Configuration Workbook 不是事实源，不反向更新任何 IR。人工填写
 
 - Human-in-the-loop 是必需能力。LLM 只能产生四类 IR Draft。
 - Draft 未经对应 Validator（适用时）和人工 Review，不得成为 Final 产物。
+- 三类 IR 使用显式 stable ID、不可变 artifact version、`DRAFT | FINAL` 状态和 `PENDING | APPROVED` Review。任何 `uncertain=true`、`UNKNOWN`、未决差异、未决 omission 或 blocking Warning 都阻止 Final eligibility。
+- Human 先完成完整 Final candidate 和 Review metadata，再运行 Validator。Validation result 使用 canonical UTF-8 JSON SHA-256 绑定包括 Review 在内的全部语义内容；空白和属性顺序不影响 hash，任何语义值变化都使旧结果失效。
 - 接口标准必须在接口模板之前形成 Final；新增模板直接复用已确认的标准，不重新生成标准。
 - Validator 只校验结构、引用和确定性 invariant，不能代替人工判断 function、mapping 或场景性字段省略是否符合业务语义。
 - Workbook Generator 只做确定性格式化和配置指导，不补业务字段、不临时推断配置逻辑、不对接目标系统、不承诺导入兼容性。
@@ -208,30 +210,39 @@ flowchart TD
     C -->|"确认"| D["Final DocIR"]
 
     D --> E["LLM 生成 SchemaIR Draft"]
-    E --> F["SchemaIR Validator"]
-    F -->|"校验失败：修正后重新校验"| E
-    F -->|"校验通过"| SV["SchemaIR Validation Result"]
-    SV --> G["人工 Review SchemaIR"]
-    G -->|"修正后重新校验"| E
-    G -->|"确认"| H["Final SchemaIR"]
+    E --> F["SchemaIR Validator / Draft Result"]
+    F -->|"结构错误：修正后重新校验"| E
+    F --> G["人工 Review SchemaIR"]
+    G -->|"修改事实"| E
+    G -->|"完成 Final metadata"| HC["完整 Final SchemaIR Candidate"]
+    HC --> FV["SchemaIR Validator 复验"]
+    FV -->|"失败：返回 Review"| G
+    FV -->|"通过且 hash 匹配"| SV["Final SchemaIR Validation Result"]
+    SV --> H["Eligible Final SchemaIR"]
 
     H --> I["LLM 生成 InterfaceStandardIR Draft"]
     RS["Standard 使用的 configuration-rules 版本"] --> I
-    I --> J["Standard Validator"]
-    J -->|"校验失败：修正后重新校验"| I
-    J -->|"校验通过"| STV["Standard Validation Result"]
-    STV --> K["人工 Review Interface Standard"]
-    K -->|"修正后重新校验"| I
-    K -->|"确认"| L["Final InterfaceStandardIR"]
+    I --> J["Standard Validator / Draft Result"]
+    J -->|"结构错误：修正后重新校验"| I
+    J --> K["人工 Review Interface Standard"]
+    K -->|"修改事实"| I
+    K -->|"完成 Final metadata"| LC["完整 Final Standard Candidate"]
+    LC --> JV["Standard Validator 复验"]
+    JV -->|"失败：返回 Review"| K
+    JV -->|"通过且 hash 匹配"| STV["Final Standard Validation Result"]
+    STV --> L["Eligible Final InterfaceStandardIR"]
 
     L --> M["LLM 生成 InterfaceTemplateIR Draft"]
     RT["Template 使用的 configuration-rules 版本"] --> M
-    M --> N["Template Validator"]
-    N -->|"校验失败：修正后重新校验"| M
-    N -->|"校验通过"| TV["Template Validation Result"]
-    TV --> O["人工 Review Interface Template / Omissions"]
-    O -->|"修正后重新校验"| M
-    O -->|"确认"| P["Final InterfaceTemplateIR"]
+    M --> N["Template Validator / Draft Result"]
+    N -->|"结构错误：修正后重新校验"| M
+    N --> O["人工 Review Interface Template / Omissions"]
+    O -->|"修改事实"| M
+    O -->|"完成 Final metadata"| PC["完整 Final Template Candidate"]
+    PC --> NV["Template Validator 复验"]
+    NV -->|"失败：返回 Review"| O
+    NV -->|"通过且 hash 匹配"| TV["Final Template Validation Result"]
+    TV --> P["Eligible Final InterfaceTemplateIR"]
 
     H --> Q["确定性 Workbook Generator"]
     L --> Q
@@ -245,7 +256,7 @@ flowchart TD
     Q --> W["Configuration Workbook"]
 ```
 
-人工 Review 修改 Draft 后必须重新运行对应 Validator，旧校验结果不得复用。Generator 只能接收三份 Final 模型、三份与 Final 内容匹配的通过校验结果、各自产物记录的精确规则版本和显式 Standard Action。
+人工 Review 修改 Draft 后，必须先形成完整 Final candidate，再重新运行对应 Validator，旧校验结果不得复用。每份 validation result 保存 artifact kind、stable ID、artifact version、contract version、canonical content hash、`finalEligible` 和带 `blocking` 标记的 issues。Generator 只能接收三份 Final 模型、三份 identity/version/contract/hash 全部匹配且 `finalEligible=true` 的结果、各自产物记录的精确规则版本和显式 Standard Action。
 
 ## 9. Configuration Workbook 成功标准
 
@@ -304,7 +315,9 @@ flowchart TD
 - String/Boolean/Date/Number 标量模板行必须有字段值表达式，Node/Object 模板行不得有字段值表达式。
 - 存在模板行时，每个 XML Key 都具有独立表达式；未知或缺失 Key 是错误。
 - 银行文档明确条件在 SchemaIR/InterfaceStandardIR/Workbook 可追溯，基础 Required 不覆盖条件 Required。
-- `messages[].xmlEncoding` 经人工 Review 后进入 Workbook Overview，不生成 Standard 字段；银行文档证据冲突时 Warning 并阻止 Final，直到 Human Review。
+- `messages[].xmlEncoding` 与显式 evidence 经人工 Review 后进入 Workbook Overview，不生成 Standard 字段；未处置的银行文档 evidence 冲突产生 blocking Warning。
+- SchemaIR v2 明确拒绝 legacy contract、JSON message format、JSON node kind、未知属性、bool 冒充整数以及非 object/重复 key/NaN JSON 输入。
+- Validation result 的 canonical hash 对格式和属性顺序稳定，对任一语义值变化敏感；旧结果不能与修改后的 Final artifact 配对。
 - ASSEMBLY 与 PARSE 使用同一表达结构但具有相反 source/target 端点。
 - `Value Expressions` 能还原标量字段值和 XML Key 的递归表达式树。
 - 当前 XML Standard 拒绝 `List`；Parse Field Catalog 可以使用 `List`。

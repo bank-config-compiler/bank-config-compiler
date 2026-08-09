@@ -2,7 +2,7 @@
 
 ## Status
 
-Draft. DocIR / SchemaIR 的 P0-T2 baseline 已反映在 b2e0061 Review Golden sample；`configuration-rules/v1` 已发布并冻结，InterfaceStandardIR / InterfaceTemplateIR wire schema 进入 P0-T3 实现但尚未冻结。
+Draft. DocIR / SchemaIR 的 P0-T2 baseline 继续作为不可变 Review Golden；SchemaIR v2 wire、Validator 和 Draft candidate 已实现，Final candidate 仍等待 Human Review。`configuration-rules/v1` 已发布并冻结，InterfaceStandardIR / InterfaceTemplateIR wire schema 尚未冻结。
 
 ## 1. 设计原则
 
@@ -110,17 +110,27 @@ SchemaIR 使用 JSON。`Final SchemaIR` 是银行 XML 报文结构与银行原�
 
 ```json
 {
+  "contractVersion": "schemair/v2",
+  "schemaId": "b2eboc-b2e0061-schema",
+  "schemaVersion": "v1",
+  "status": "DRAFT",
+  "review": {
+    "status": "PENDING",
+    "reviewer": null,
+    "reviewedAt": null,
+    "note": null
+  },
   "interfaceCode": "b2e0061",
   "interfaceName": "公对私转账汇款",
   "messageFormat": "XML",
-  "version": "120",
+  "protocolVersion": "120",
   "sourceDocument": "samples/golden/b2eboc-b2e0061/raw-doc.md",
   "envelope": {},
   "messages": []
 }
 ```
 
-顶层 `version` 可保留当前候选值，便于 Overview 展示；如果 version 存在不确定性，必须在 `envelope.fields` 中的属性字段表达，例如 `Root.bocb2e.@version`。
+这是已冻结的 SchemaIR v2 顶层 wire。`schemaId + schemaVersion` 是不可变 artifact identity；`protocolVersion` 是银行协议候选值，两者不能混用。如果协议 version 存在不确定性，必须同时在 `envelope.fields` 的 `Root.bocb2e.@version` evidence 中表达。stable ID 使用仓库内唯一的 kebab-case，artifact version 使用 `v<正整数>`。
 
 ### 3.2 Envelope 结构
 
@@ -159,8 +169,18 @@ SchemaIR 使用 JSON。`Final SchemaIR` 是银行 XML 报文结构与银行原�
   "messageName": "b2e0061-rq",
   "rootPath": "Root.bocb2e.trans.trn-b2e0061-rq",
   "xmlEncoding": "UTF-8",
+  "xmlEncodingEvidence": [
+    {
+      "sourceKind": "HUMAN_BANK_CONFIRMATION",
+      "sourceRef": "human-bank-offline-confirmation:2026-08-06",
+      "observedValue": "UTF-8",
+      "disposition": "SUPPORTS",
+      "reviewNote": null
+    }
+  ],
   "description": "组装请求报文",
-  "fields": []
+  "fields": [],
+  "conditionalConstraints": []
 }
 ```
 
@@ -171,9 +191,9 @@ SchemaIR 使用 JSON。`Final SchemaIR` 是银行 XML 报文结构与银行原�
 
 当前 `messageFormat` 只允许 `XML`。JSON 银行报文属于未验证的 future candidate。
 
-`messages[].xmlEncoding` 保存该方向 XML 报文的 Final encoding。b2e0061 的 ASSEMBLY、PARSE 两个方向已由 Human 与银行线下确认均为 `UTF-8`。后续 raw-doc、XML 声明或其他银行文档证据与已确认值冲突时，Validator 必须产生 Warning 并阻止 Final，直到 Human Review 给出新结论。确认值只展示在 Workbook `Overview`，不得伪造一个 Interface Standard 字段。
+`messages[].xmlEncoding` 保存该方向 XML 报文的 Final encoding，P0 使用 canonical `UTF-8`。`xmlEncodingEvidence` 的 `sourceKind` 为 `HUMAN_BANK_CONFIRMATION | SOURCE_DOCUMENT | XML_DECLARATION`，`disposition` 为 `SUPPORTS | UNRESOLVED_CONFLICT | RESOLVED_CONFLICT`。未处置冲突产生 blocking Warning；`RESOLVED_CONFLICT` 必须保留 Human Review 说明。Final message 至少有一条与当前值一致的 Human/银行确认 evidence。确认值只展示在 Workbook `Overview`，不得伪造 Interface Standard 字段。
 
-实现同步说明：当前已实现的 SchemaIR Validator v1 仍接受早期 `JSON` 和 JSON node kind 枚举。该行为不构成产品能力，后续代码批次必须按本契约收紧；本次文档调整不修改代码或测试。
+当前 SchemaIR v2 runtime 已明确拒绝 legacy contract、`JSON` message format 和 JSON node kind。P0-T2 expected SchemaIR/result 保留为历史 Review baseline，不再作为 v2 Validator 的成功输入。
 
 ### 3.4 字段结构
 
@@ -214,6 +234,8 @@ SchemaIR 使用 JSON。`Final SchemaIR` 是银行 XML 报文结构与银行原�
 
 `conditionText` 保留银行原始条件说明。银行文档明确、无歧义且落在规则包支持范围内的跨字段条件还需要形成结构化 `conditionalConstraints[]`，至少包含 controlling field path、operator、literal（适用时）、target field path、effect、sourceText/evidence 和人工 Review。P0 只支持 `EQUALS`、`IS_EMPTY` 与 `REQUIRED`；复杂条件继续保留文本，不强行转换。
 
+字段 `path` 的最后一段必须与 `fieldName` 完全一致；XML attribute 两处都保留 `@`，例如 `path=Root.bocb2e.@version`、`fieldName=@version`。这样可以避免 element 与 attribute 在同一父路径下发生身份歧义。
+
 目标系统配置指导不属于 SchemaIR 字段；它由 InterfaceStandardIR 与 InterfaceTemplateIR 分层表达。正式导出中 observed `@lang` 只作为 SchemaIR evidence/difference Warning 保留，不进入 b2e0061 Final Standard。该 Standard 以银行文档为准保留 `@security`，排除正式导出中的 `vamflag`。
 
 ### 3.5 nodeKind 枚举
@@ -227,7 +249,7 @@ XML attribute 必须作为字段建模，例如：
 ```json
 {
   "path": "Root.bocb2e.@version",
-  "fieldName": "version",
+  "fieldName": "@version",
   "nodeKind": "XML_ATTRIBUTE"
 }
 ```
@@ -263,7 +285,7 @@ XML attribute 必须作为字段建模，例如：
 | `0.7 - 0.89` | 注意 | 存在推导、冲突或局部缺失，需要 review。 |
 | `< 0.7` | 重点 | 缺证据或影响配置正确性，必须优先 review。 |
 
-无论 confidence 分值多少，只要 `uncertain=true`，都必须进入 `review-notes.md` 和 Workbook `Warnings`。
+无论 confidence 分值多少，只要 `uncertain=true`，都必须进入 `review-notes.md` 和 Workbook `Warnings`，并作为 blocking Warning 阻止 Final eligibility。
 
 ### 3.9 required / multiple 规则
 
@@ -276,6 +298,15 @@ XML attribute 必须作为字段建模，例如：
 | `1..1` / `0..1` / 空 | `multiple=false` |
 
 容器节点如果必填性来自子字段而非原文，应使用 `evidence.kind="DERIVED"` 并降低 confidence。
+
+### 3.10 生命周期、Validation Result 与内容绑定
+
+- `status` 为 `DRAFT | FINAL`；`review.status` 为 `PENDING | APPROVED`。Pending review 不携带 reviewer/timestamp；Approved review 必须包含具名 reviewer 和带时区 RFC 3339 `reviewedAt`。
+- Human 先完成完整 Final candidate 和 Review metadata，再运行 Validator。Validator 不写回 IR，也不自动提升状态。
+- `schemair-validation-result/v2` 保存 SchemaIR kind、ID、version、contract version、canonical content hash、`status`、`finalEligible`、summary、coverage 和稳定排序的 issues。
+- issue 固定包含 `severity`、`blocking`、`code`、`path`、`message`。非阻塞 Warning 可以进入 Final；任何 blocking issue 都令 `finalEligible=false`。
+- canonical hash 使用 UTF-8 JSON、递归 key 排序、无额外空白、保留 Unicode并拒绝 NaN/Infinity，覆盖包括 Review 在内的全部语义内容。格式或属性顺序变化不影响 hash，任一语义值变化使旧结果失效。
+- 外部 JSON trust boundary 还必须拒绝 BOM、非 UTF-8、重复 object property、非 object 根节点和 workspace path escape。
 
 ## 4. InterfaceStandardIR
 
@@ -293,21 +324,26 @@ InterfaceStandardIR 回答“目标系统如何定义这个方向的报文字段
 
 ```json
 {
+  "contractVersion": "interface-standard/v1",
   "standardId": "internal-stable-id",
+  "standardVersion": "v1",
+  "status": "DRAFT",
   "interfaceCode": "b2e0061",
   "direction": "ASSEMBLY",
-  "version": "artifact-version",
   "schemaIrRef": "schemair-final.json",
   "schemaIrContentHash": "content-hash",
   "rulePackageVersion": "published-version",
   "fields": [],
   "review": {
-    "status": "PENDING"
+    "status": "PENDING",
+    "reviewer": null,
+    "reviewedAt": null,
+    "note": null
   }
 }
 ```
 
-每个方向拥有独立标准。Final Standard 版本不可原地覆盖；`interfaceCode` 只用于关联，不能替代 stable ID、version 和 content hash。
+每个方向拥有独立标准。Final Standard 版本不可原地覆盖；`interfaceCode` 只用于关联，不能替代 `standardId`、`standardVersion` 和 content hash。
 
 ### 4.3 标准字段
 
@@ -360,20 +396,25 @@ InterfaceTemplateIR 回答“一份模板如何连接系统字段与已确认 St
 
 ```json
 {
+  "contractVersion": "interface-template/v1",
   "templateId": "internal-stable-id",
+  "templateVersion": "v1",
+  "status": "DRAFT",
   "interfaceCode": "b2e0061",
   "direction": "ASSEMBLY",
-  "version": "artifact-version",
   "standardRef": {
     "standardId": "internal-stable-id",
-    "version": "artifact-version",
+    "standardVersion": "v1",
     "contentHash": "content-hash"
   },
   "rulePackageVersion": "published-version",
   "fieldConfigs": [],
   "omissions": [],
   "review": {
-    "status": "PENDING"
+    "status": "PENDING",
+    "reviewer": null,
+    "reviewedAt": null,
+    "note": null
   }
 }
 ```
@@ -434,8 +475,9 @@ MAPPING expression 保存一个 String FIELD_REF 和一个全局唯一 `mappingR
 
 SchemaIR Validator 必须校验：
 
+- contract、stable identity/version、artifact/review lifecycle 和完整内容 hash 输出；
 - `interfaceCode` 非空。
-- `messageFormat` 属于允许枚举。
+- `messageFormat` 只允许 `XML`，node kind 只允许 `XML_ELEMENT | XML_ATTRIBUTE | SCALAR`。
 - `envelope.fields` 至少包含可复用 BOCB2E root/head/trans 字段。
 - `messages` 至少包含一个 message。
 - `functionType` 属于允许枚举。
@@ -445,6 +487,9 @@ SchemaIR Validator 必须校验：
 - 同一字段集合内 `path` 不重复。
 - 父子路径关系可解释。
 - `hasChildren`、`multiple`、`dataType`、`nodeKind` 不存在明显冲突。
+- `required` 与 `occurs` 相容；不确定冲突作为 blocking Warning，而不是被实现者猜测修正。
+- `xmlEncodingEvidence` 的来源、值、disposition、唯一性和 Human/银行 Final 确认闭合。
+- 结构化条件只允许 `EQUALS | IS_EMPTY` 与 `REQUIRED`，引用同方向存在字段，并具有 evidence 和 Human Review。
 
 Validator 失败时必须返回字段级错误列表，不能只返回通用失败信息。
 

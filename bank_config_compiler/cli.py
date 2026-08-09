@@ -10,7 +10,7 @@ from .workspace import WorkspaceError, check_workspace, ingest_raw_doc
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="bank-config-compiler",
-        description="Phase0a PoC workspace CLI.",
+        description="Phase0 PoC workspace CLI.",
     )
     subparsers = parser.add_subparsers(dest="command", required=True)
 
@@ -20,12 +20,12 @@ def build_parser() -> argparse.ArgumentParser:
     ingest.add_argument("--workspace", required=True, type=Path, help="Workspace output directory.")
     ingest.add_argument("--overwrite", action="store_true", help="Overwrite an existing raw-doc.md.")
 
-    check = subparsers.add_parser("check", help="Validate workspace artifacts for a Phase0a profile.")
+    check = subparsers.add_parser("check", help="Validate workspace artifacts for a supported profile.")
     check.add_argument("--workspace", required=True, type=Path, help="Workspace directory to validate.")
     check.add_argument(
         "--profile",
-        choices=["raw", "phase0a"],
-        default="phase0a",
+        choices=["raw"],
+        default="raw",
         help="Artifact set to validate.",
     )
 
