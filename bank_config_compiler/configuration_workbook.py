@@ -379,7 +379,7 @@ def _validate_generation_context(
     overwrite: object,
 ) -> None:
     issues: list[WorkbookIssue] = []
-    if not isinstance(standard_action, str) or isinstance(standard_action, bool) or standard_action not in STANDARD_ACTIONS:
+    if not isinstance(standard_action, str) or standard_action not in STANDARD_ACTIONS:
         _issue(
             issues,
             "INVALID_STANDARD_ACTION",
@@ -446,7 +446,14 @@ def _build_workbook(
         standard_action,
         generated_at,
     )
-    _add_standard_sheet(workbook, schemair, schemair_validation_result, standard, standard_validation_result, standard_action)
+    _add_standard_sheet(
+        workbook,
+        schemair,
+        schemair_validation_result,
+        standard,
+        standard_validation_result,
+        standard_action,
+    )
     _add_template_sheet(workbook, standard, template, template_validation_result)
     _add_expression_sheet(workbook, template)
     _add_warnings_sheet(
@@ -457,7 +464,13 @@ def _build_workbook(
         template,
         template_validation_result,
     )
-    _add_rule_references_sheet(workbook, standard, template, standard_rule_package, template_rule_package)
+    _add_rule_references_sheet(
+        workbook,
+        standard,
+        template,
+        standard_rule_package,
+        template_rule_package,
+    )
     _add_legend_sheet(workbook)
     if tuple(workbook.sheetnames) != SHEET_NAMES:
         raise WorkbookGenerationError(
@@ -529,17 +542,17 @@ def _add_standard_sheet(
     schema_fields = _schema_fields_by_path(schemair, standard["direction"])
     standard_issues = standard_result.get("issues", [])
     schema_issues = schema_result.get("issues", [])
+    if standard_action == "REUSE":
+        execution_status = verification_status = "NOT_APPLICABLE"
+    else:
+        execution_status = "NOT_STARTED"
+        verification_status = "NOT_VERIFIED"
     rows: list[tuple[Any, ...]] = []
     for field in _ordered_standard_fields(standard["fields"]):
         schema_field = schema_fields.get(field["schemaIrFieldPath"], {})
         validator_issues = [
             item for item in schema_issues if item.get("path") == field["schemaIrFieldPath"]
         ] + _issues_for_standard_field(standard_issues, field)
-        if standard_action == "REUSE":
-            execution_status = verification_status = "NOT_APPLICABLE"
-        else:
-            execution_status = "NOT_STARTED"
-            verification_status = "NOT_VERIFIED"
         rows.append(
             (
                 field["fieldId"],
@@ -584,14 +597,15 @@ def _add_template_sheet(
     template: dict[str, Any],
     template_result: dict[str, Any],
 ) -> None:
+    direction = template["direction"]
     standard_fields = {field["fieldId"]: field for field in standard["fields"]}
     rows: list[tuple[Any, ...]] = []
     for config in template["fieldConfigs"]:
-        refs = _standard_refs_for_config(config, template["direction"])
+        refs = _standard_refs_for_config(config, direction)
         referenced_fields = [standard_fields[ref] for ref in refs]
         parse_target = config.get("parseTarget") or {}
         projection = (config.get("standardTarget") or {}).get("standardProjection") or {}
-        if template["direction"] == "PARSE":
+        if direction == "PARSE":
             required_values = [field["required"] for field in referenced_fields]
             length_values = [_constraint_summary(field["lengthLimit"]) for field in referenced_fields]
             data_types = [field["dataType"] for field in referenced_fields]
@@ -603,7 +617,7 @@ def _add_template_sheet(
         rows.append(
             (
                 "\n".join(refs),
-                "TARGET" if template["direction"] == "ASSEMBLY" else "SOURCE",
+                "TARGET" if direction == "ASSEMBLY" else "SOURCE",
                 _join_field_values(referenced_fields, "fieldName"),
                 _join_field_values(referenced_fields, "parentPath"),
                 _join_field_values(referenced_fields, "fullPath"),
@@ -775,10 +789,12 @@ def _warning_rows(
         for key in field.get("xmlKeys", []):
             path_to_field[key["schemaIrFieldPath"]] = field
 
-    condition_by_schema_path: dict[str, tuple[dict[str, Any], dict[str, Any]]] = {}
+    conditions_by_schema_path: dict[str, tuple[dict[str, Any], list[dict[str, Any]]]] = {}
     for field in standard["fields"]:
-        for condition in field.get("conditionalConstraints", []):
-            condition_by_schema_path[field["schemaIrFieldPath"]] = (field, condition)
+        conditions = field.get("conditionalConstraints", [])
+        if conditions:
+            # SchemaIR 对同一字段只产生一条字段级提示，因此必须一次投影该字段的全部结构化条件。
+            conditions_by_schema_path[field["schemaIrFieldPath"]] = (field, conditions)
 
     rows: list[tuple[Any, ...]] = []
     consumed_schema_issue_paths: set[tuple[str, str]] = set()
@@ -787,10 +803,13 @@ def _warning_rows(
         field = path_to_field.get(path)
         if field is None:
             continue
-        condition_pair = condition_by_schema_path.get(path)
-        if item.get("code") == "CONDITIONAL_FIELD" and condition_pair:
-            _, condition = condition_pair
-            rows.append(_condition_warning(direction, field, condition, source="SchemaIR Validator + Review"))
+        condition_group = conditions_by_schema_path.get(path)
+        if item.get("code") == "CONDITIONAL_FIELD" and condition_group:
+            _, conditions = condition_group
+            rows.extend(
+                _condition_warning(direction, field, condition, source="SchemaIR Validator + Review")
+                for condition in conditions
+            )
         else:
             rows.append(
                 (
@@ -975,8 +994,6 @@ def _save_workbook_atomically(workbook: Workbook, output_path: Path, *, overwrit
                     [_workbook_issue("OUTPUT_ALREADY_EXISTS", "workbook", "output_path", "Output already exists.")]
                 ) from exc
             temporary.unlink()
-    except WorkbookGenerationError:
-        raise
     except OSError as exc:
         raise WorkbookGenerationError(
             [_workbook_issue("WORKBOOK_WRITE_FAILED", "workbook", "output_path", "Workbook could not be saved atomically.")]

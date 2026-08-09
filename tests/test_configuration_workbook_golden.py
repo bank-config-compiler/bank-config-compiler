@@ -44,13 +44,10 @@ def _workbook_snapshot(path: Path) -> dict:
         cells = []
         for row in sheet.iter_rows():
             for cell in row:
-                value = cell.value
-                if sheet.title == "Overview" and cell.column == 2 and sheet.cell(cell.row, 1).value == "Generated At":
-                    value = "<generated-at>"
                 cells.append(
                     (
                         cell.coordinate,
-                        value,
+                        cell.value,
                         cell.data_type,
                         cell.number_format,
                         cell.fill.fill_type,

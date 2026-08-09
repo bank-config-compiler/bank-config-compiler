@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import logging
 from copy import deepcopy
 from datetime import datetime, timezone
 from pathlib import Path
@@ -8,6 +9,7 @@ from pathlib import Path
 import pytest
 from openpyxl import Workbook, load_workbook
 
+import bank_config_compiler.configuration_workbook as workbook_module
 from bank_config_compiler.configuration_rules import load_rule_package
 from bank_config_compiler.configuration_workbook import (
     WORKBOOK_FORMAT_VERSION,
@@ -15,6 +17,7 @@ from bank_config_compiler.configuration_workbook import (
     _add_template_sheet,
     _expression_rows,
     _set_cell,
+    _warning_rows,
     generate_configuration_workbook,
     validate_configuration_workbook_inputs,
 )
@@ -102,6 +105,37 @@ def test_parse_chain_projects_expected_rows_and_warnings(tmp_path: Path) -> None
     ]
     assert categories.count("SCHEMA_STANDARD_DIFFERENCE") == 4
     assert categories.count("VALIDATOR") == 11
+
+
+def test_warnings_project_every_condition_for_same_standard_field() -> None:
+    inputs = _assembly_inputs()
+    standard = deepcopy(inputs["standard"])
+    target = next(field for field in standard["fields"] if field.get("conditionalConstraints"))
+    second_condition = deepcopy(target["conditionalConstraints"][0])
+    second_condition["conditionId"] = "b2e0061-assembly-condition-2"
+    second_condition["schemaIrConditionIndex"] = 1
+    second_condition["literal"] = "3"
+    second_condition["sourceText"] = "第二条已确认银行条件。"
+    target["conditionalConstraints"].append(second_condition)
+
+    rows = _warning_rows(
+        inputs["schemair_validation_result"],
+        standard,
+        inputs["standard_validation_result"],
+        inputs["template"],
+        inputs["template_validation_result"],
+    )
+
+    condition_rows = [
+        row
+        for row in rows
+        if row[2] == target["fieldId"] and row[3] == "BANK_CONDITIONAL_CONSTRAINT"
+    ]
+    assert len(condition_rows) == 2
+    assert {
+        row[4].split(" EQUALS ", 1)[1].split(" =>", 1)[0]
+        for row in condition_rows
+    } == {"2", "3"}
 
 
 def test_generator_rejects_forged_validation_result(tmp_path: Path) -> None:
@@ -332,3 +366,63 @@ def test_formula_scan_and_status_validations_are_present(tmp_path: Path) -> None
     assert all(cell.data_type != "f" for sheet in workbook.worksheets for row in sheet.iter_rows() for cell in row)
     assert len(workbook["Interface Standard"].data_validations.dataValidation) == 2
     assert len(workbook["Interface Template"].data_validations.dataValidation) == 2
+
+
+def test_generation_logs_only_safe_metadata(tmp_path: Path, caplog: pytest.LogCaptureFixture) -> None:
+    output = tmp_path / "logged.xlsx"
+    inputs = _assembly_inputs()
+    logger_name = "bank_config_compiler.configuration_workbook"
+
+    with caplog.at_level(logging.DEBUG, logger=logger_name):
+        generate_configuration_workbook(
+            **inputs,
+            standard_action="CREATE",
+            output_path=output,
+            generated_at=datetime(2026, 8, 9, 12, 0, tzinfo=timezone.utc),
+        )
+
+    records = [record for record in caplog.records if record.name == logger_name]
+    assert [record.outcome for record in records] == ["started", "succeeded"]
+    assert records[-1].interface_code == "b2e0061"
+    assert records[-1].direction == "ASSEMBLY"
+    assert records[-1].template_id == "b2e0061-assembly-common"
+    standard_keys = set(logging.makeLogRecord({}).__dict__)
+    allowed_metadata = {
+        "component",
+        "interface_code",
+        "direction",
+        "template_id",
+        "outcome",
+        "sheet_count",
+        "row_counts",
+    }
+    for record in records:
+        custom_keys = set(record.__dict__) - standard_keys - {"message", "asctime"}
+        assert custom_keys <= allowed_metadata
+    rendered = repr([record.__dict__ for record in records])
+    assert "bocb2e.assembly.termid" not in rendered
+    assert "最大9223372036854775807" not in rendered
+
+
+def test_atomic_publish_failure_removes_temporary_workbook(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    output = tmp_path / "atomic-failure.xlsx"
+
+    def fail_publish(_source: Path, _target: Path) -> None:
+        raise OSError("simulated publish failure")
+
+    monkeypatch.setattr(workbook_module.os, "link", fail_publish)
+
+    with pytest.raises(WorkbookGenerationError) as captured:
+        generate_configuration_workbook(
+            **_assembly_inputs(),
+            standard_action="CREATE",
+            output_path=output,
+            generated_at=datetime(2026, 8, 9, 12, 0, tzinfo=timezone.utc),
+        )
+
+    assert _issue_codes(captured.value) == {"WORKBOOK_WRITE_FAILED"}
+    assert not output.exists()
+    assert list(tmp_path.iterdir()) == []
