@@ -2,7 +2,7 @@
 
 ## Status
 
-Draft. Logical contract confirmed; `configuration-rules/v1` is released and immutable. InterfaceStandardIR machine wire/Validator and two reviewed Final Standards are implemented and frozen; InterfaceTemplateIR machine wire remains P0-T3 work.
+Draft. Logical contract confirmed; `configuration-rules/v1` is released and immutable, while v2 direction-specific projection semantics await double-review release. InterfaceStandardIR machine wire/Validator and two reviewed Final Standards are implemented and frozen; InterfaceTemplateIR machine wire remains P0-T3 work.
 
 ## 1. 目的与边界
 
@@ -174,11 +174,12 @@ InterfaceTemplateIR
 ├── rulePackageVersion
 ├── fieldConfigs[]
 │   ├── bindingKind               # VALUE | STRUCTURE_ONLY | COLLECTION_ITEM
-│   ├── standardFieldRef          # ASSEMBLY target；PARSE source
-│   ├── standardProjection        # required / length / dataType 的显式镜像
+│   ├── standardTarget?           # ASSEMBLY standardFieldRef + 显式 standardProjection
+│   ├── standardSource?           # PARSE COLLECTION_ITEM 的 Standard collection ref
 │   ├── parseTarget?              # PARSE ref/name/path/dataType
 │   ├── valueExpression?          # 仅 VALUE 标量绑定
-│   ├── xmlKeyExpressions{}
+│   │   └── standardFieldRef?     # PARSE FIELD_REF source；可为零个或多个
+│   ├── xmlKeyExpressions{}?      # 仅 ASSEMBLY
 │   ├── processingPolicies
 │   └── evidence / review
 ├── omissions[]
@@ -187,7 +188,7 @@ InterfaceTemplateIR
 
 ### 4.2 方向性绑定与 omission
 
-ASSEMBLY 的标量 `fieldConfigs` 以 Standard Field 为 target，是标准标量字段集合的子集。同一 target `standardFieldRef` 最多出现一次；缺失字段不是自动错误，也不生成空模板行。
+ASSEMBLY 的标量 `fieldConfigs` 以 Standard Field 为 target，是标准标量字段集合的子集。同一 `standardTarget.standardFieldRef` 最多出现一次；缺失字段不是自动错误，也不生成空模板行。
 
 Template Validator 为每个未覆盖的 ASSEMBLY 标量 Standard Field 产生 `MISSING_TEMPLATE_FIELD` Warning 和 omission candidate。omission 至少包含：
 
@@ -207,7 +208,7 @@ Node/Object 不参加 ASSEMBLY omission coverage。容器只有在需要配置 X
 - `EMPTY`：存在模板行，字段明确取空值；
 - Empty Handling：存在源值为空时的处理策略。
 
-PARSE 的 target 是固定 Parse Field；Value Expression 的 FIELD_REF 引用绑定 Standard 的银行 source field，也可以使用 literal、function 或 CONCATENATE。Parse Field Catalog 定义最终 JSON/Java 对象的 name、path 和 datatype，不属于银行 Standard。Validator 只检查实际配置的 target；未配置 Parse Field 默认不产生 omission 或 warning，也不推断为代码赋值字段。
+PARSE 的 target 是固定 Parse Field；Value Expression 的每个 FIELD_REF 直接引用绑定 Standard 的银行 source field，也可以使用 literal、function 或 CONCATENATE。一个表达式可以具有零个、一个或多个 Standard source，不声明顶层主 source。Parse Field Catalog 定义最终 JSON/Java 对象的 name、path 和 datatype，不属于银行 Standard。Validator 只检查实际配置的 target；未配置 Parse Field 默认不产生 omission 或 warning，也不推断为代码赋值字段。
 
 三种结构绑定含义：
 
@@ -217,7 +218,7 @@ PARSE 的 target 是固定 Parse Field；Value Expression 的 FIELD_REF 引用�
 
 b2e0061 的请求 `b2e0061-rq` 按 `1..1000`、响应 `b2e0061-rs` 按 `0..1000` 建模为 `Node`。`b2e0061-rs -> paymentLineList` 使用 `COLLECTION_ITEM`，其子字段写入当前列表元素；Standard source 的 `Node` 与 Parse target 的 `List` 必须分别保存和展示。
 
-每个 field config 都显式保存 `standardProjection.required/length/dataType`。这三个值完整镜像所绑定 Final Standard 的状态和值，不是 Template 覆盖项；任一不一致必须由 Validator 拒绝。
+ASSEMBLY 在 `standardTarget.standardProjection` 显式保存 required/length/dataType，并要求与 Final Standard 完全一致。PARSE 由 Template 精确绑定的 Final Standard 和表达式/collection 中的 `standardFieldRef` 确定性解析 projection，不重复保存；`COLLECTION_ITEM` 使用 `standardSource.standardFieldRef` 作为集合结构锚点。
 
 ### 4.3 Value Expression
 
@@ -258,7 +259,7 @@ xmlKeyExpressions:
 - Chinese Character Length；
 - 一个 Replacement `mappingRuleName`。
 
-Template 不覆盖 Standard 约束；但每个配置行必须以 `standardProjection` 显式镜像绑定 Standard 的 Required、Length Limit 和 Data Type，用于确定性校验与 Workbook 展示。Illegal Characters 与 Regex 仍只保存在 InterfaceStandardIR。
+Template 不覆盖 Standard 约束。ASSEMBLY 在 `standardTarget.standardProjection` 显式镜像 Required、Length Limit 和 Data Type；PARSE 通过 source `standardFieldRef` 从精确绑定的 Final Standard 派生同一信息，用于确定性校验与 Workbook 展示。Illegal Characters 与 Regex 仍只保存在 InterfaceStandardIR。
 
 Empty Handling 支持 `BLANK`（空值报送）与 `DELETE`（删除栏位）。Overlength 支持 `INTERCEPT`（校验失败）、`TRUNCATE_FRONT`（保留前部）、`OVERLONG_LINE_BREAK`（超长换行）和 `TRUNCATE_BACK`（保留后部）。Row Limit 是该栏位允许出现的行数，必须为正整数。Chinese Character Length 使用 `STANDARD_1..6`，默认值为 `STANDARD_1`，具体字符权重来自规则包。
 

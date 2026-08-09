@@ -2,7 +2,7 @@
 
 ## Status
 
-Active. `v1` is an interface-independent, immutable, released BKL rules subset.
+Active. `v1` remains immutable and released; `v2` is a DRAFT candidate awaiting double review.
 
 ## Purpose
 
@@ -36,7 +36,7 @@ Active. `v1` is an interface-independent, immutable, released BKL rules subset.
 
 目标系统具有预设 Mapping catalog。Template 的 MAPPING 与 Replacement 只保存 `mappingRuleName`，entries 由对应版本的 `mappings.yaml` 提供；不创建独立 `mappings.md`，使用语义统一记录在 `rules.yaml` 与 `rules.md`。
 
-规则包同时定义 Template 对绑定 Standard 的 Required/Length/Data Type 镜像、Node/Object coverage、PARSE collection item binding，以及 `FIXED_VALUE` 的安全引用 payload。银行事实仍以 Final SchemaIR 为准；正式导出与 raw-doc 冲突时必须记录差异，不能反向覆盖银行事实。
+规则包同时定义 Template 的方向相关 Standard projection、Node/Object coverage、PARSE collection item binding，以及 `FIXED_VALUE` 的安全引用 payload。v1 对每个 field config 使用显式镜像；v2 改为 ASSEMBLY 显式 target projection、PARSE 从精确绑定的 Final Standard 解析 source projection。银行事实仍以 Final SchemaIR 为准；正式导出与 raw-doc 冲突时必须记录差异，不能反向覆盖银行事实。
 
 ## Governance
 
@@ -72,3 +72,4 @@ Active. `v1` is an interface-independent, immutable, released BKL rules subset.
 ## Available Versions
 
 - [`v1/`](v1/README.md)：接口无关、非全量的 BKL configuration rules 子集，已于 2026-08-06 发布并冻结。
+- [`v2/`](v2/README.md)：继承 v1 catalog、只修订方向相关 Standard projection 的 DRAFT 候选；双 reviewer 发布前不得支撑 Final IR。

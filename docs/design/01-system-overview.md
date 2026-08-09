@@ -129,10 +129,10 @@ Standard Validator 负责：
 Template Validator 负责：
 
 - Template 精确引用 Final Standard 的 ID、version 和 content hash；
-- 每个配置行显式保存的 `standardProjection.required/length/dataType` 与绑定 Standard 完全一致；
+- ASSEMBLY `standardTarget.standardProjection` 与绑定 Standard 完全一致；PARSE 从精确绑定的 Final Standard 解析表达式/collection 中全部 `standardFieldRef` 的 projection；
 - `VALUE | STRUCTURE_ONLY | COLLECTION_ITEM` 的结构绑定与方向、Standard 类型和 Parse target 相容；
-- ASSEMBLY target Standard Field 引用存在且不重复；
-- PARSE target Parse Field 引用存在、path/datatype 与 catalog 相容，表达式内 Standard FIELD_REF 存在；
+- ASSEMBLY `standardTarget` 引用存在且不重复；
+- PARSE target Parse Field 引用存在、path/datatype 与 catalog 相容，表达式/collection 内 Standard FIELD_REF 存在且方向正确；
 - Value Expression 树、递归关系和顺序合法；
 - String/Boolean/Date/Number 标量模板行必须有字段值表达式，Node/Object 模板行不得有字段值表达式；
 - FIELD、FUNCTION、`mappingRuleName` 与 Rule ID 引用属于指定 catalog/规则版本；Function/MAPPING/Replacement 输入输出满足 String 和单规则约束；
@@ -194,7 +194,7 @@ Phase0 可以用受控 fixture 或命令流程表达人工确认；Phase1 才提
 
 规则版本一旦发布不可原地覆盖。InterfaceStandardIR、InterfaceTemplateIR、Validator result 和 Configuration Workbook 必须记录实际使用的精确规则版本及 Rule ID。标准和后续模板可以使用不同规则版本，但模板对标准 artifact 的绑定不因此改变。
 
-`configuration-rules/v1` 已发布并冻结；SchemaIR v2 runtime 与已评审 Final fixture、InterfaceStandardIR wire/Validator 和双方向 Final fixture 已实现并冻结。InterfaceTemplateIR wire/Validator、Final fixture 和 Workbook Generator 仍处于 P0-T3 后续批次。Final IR 必须精确引用适用的 `RELEASED` 规则版本；正式导出只能作为经治理的目标配置证据，不能直接代替 IR 或 Generator 输入。
+`configuration-rules/v1` 已发布并冻结；v2 DRAFT 只修订方向相关 Standard projection，仍等待双 reviewer 发布。SchemaIR v2 runtime 与已评审 Final fixture、InterfaceStandardIR wire/Validator 和双方向 Final fixture 已实现并冻结。InterfaceTemplateIR wire/Validator 必须等待 v2 RELEASED，之后才进入 Final fixture 和 Workbook Generator。Final IR 必须精确引用适用的 `RELEASED` 规则版本。
 
 ## 4. 候选任务状态
 

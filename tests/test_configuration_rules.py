@@ -13,6 +13,7 @@ from bank_config_compiler.configuration_rules import RulePackageValidationError,
 
 
 RULE_PACKAGE_DIR = Path(__file__).parents[1] / "configuration-rules" / "v1"
+RULE_PACKAGE_V2_DIR = Path(__file__).parents[1] / "configuration-rules" / "v2"
 
 
 def copy_rule_package(tmp_path: Path, *, version: str = "v1") -> Path:
@@ -82,6 +83,54 @@ def test_loads_current_released_rule_package_and_builds_indexes() -> None:
         "source": "z",
         "target": "Z",
     }
+
+
+def test_loads_v2_draft_with_only_directional_projection_semantics_changed() -> None:
+    v1 = load_rule_package(RULE_PACKAGE_DIR)
+    v2 = load_rule_package(RULE_PACKAGE_V2_DIR, require_released=False)
+
+    assert v2.version == "v2"
+    assert v2.status == "DRAFT"
+    assert set(v2.rules_by_id) == set(v1.rules_by_id)
+    assert v2.fields_by_direction == v1.fields_by_direction
+    assert v2.functions_by_code == v1.functions_by_code
+    assert v2.mappings_by_name == v1.mappings_by_name
+
+    projection_v1 = v1.rules_by_id["TPL.BIND.STANDARD_PROJECTION"]
+    projection_v2 = v2.rules_by_id["TPL.BIND.STANDARD_PROJECTION"]
+    assert projection_v2["domain"] == projection_v1["domain"] == "TEMPLATE"
+    assert projection_v2["summary"] != projection_v1["summary"]
+    assert "ASSEMBLY" in projection_v2["summary"]
+    assert "PARSE" in projection_v2["summary"]
+    assert "不重复保存 projection" in projection_v2["summary"]
+
+    v1_rules = deepcopy(v1.documents["rules.yaml"])
+    v2_rules = deepcopy(v2.documents["rules.yaml"])
+    for document in (v1_rules, v2_rules):
+        document["package"]["version"] = "VERSION"
+        document["package"]["status"] = "STATUS"
+        document["package"]["confirmationDate"] = "CONFIRMATION_DATE"
+        document["ruleReference"]["versionValue"] = "VERSION"
+        next(
+            rule
+            for rule in document["rules"]
+            if rule["id"] == "TPL.BIND.STANDARD_PROJECTION"
+        )["summary"] = "DIRECTIONAL_PROJECTION_SUMMARY"
+    assert v2_rules == v1_rules
+
+    for name in ("fields.yaml", "functions.yaml", "mappings.yaml"):
+        v1_document = deepcopy(v1.documents[name])
+        v2_document = deepcopy(v2.documents[name])
+        v1_document["packageVersion"] = v2_document["packageVersion"] = "VERSION"
+        v1_document["status"] = v2_document["status"] = "STATUS"
+        assert v2_document == v1_document
+
+
+def test_rejects_v2_draft_by_default() -> None:
+    with pytest.raises(RulePackageValidationError) as captured:
+        load_rule_package(RULE_PACKAGE_V2_DIR)
+
+    assert validation_codes(captured.value) == {"RULE_PACKAGE_NOT_RELEASED"}
 
 
 def test_rejects_legacy_interface_specific_rule_contract(tmp_path: Path) -> None:

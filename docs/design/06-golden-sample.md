@@ -2,7 +2,7 @@
 
 ## Status
 
-Draft. The immutable P0-T2 DocIR/SchemaIR Review Golden and the separate reviewed P0-T3 Final SchemaIR v2 fixture both exist. `configuration-rules/v1` is released; two reviewed Final InterfaceStandardIR fixtures and matching results now exist, while InterfaceTemplateIR and Configuration Workbook golden work remain in progress.
+Draft. The immutable P0-T2 DocIR/SchemaIR Review Golden and the separate reviewed P0-T3 Final SchemaIR v2 fixture both exist. `configuration-rules/v1` is released and v2 projection semantics await double review; two reviewed Final InterfaceStandardIR fixtures and matching results exist, while InterfaceTemplateIR and Configuration Workbook golden work remain in progress.
 
 ## 1. 目的
 
@@ -129,9 +129,9 @@ Legend
 
 ## 8. 当前执行边界
 
-`configuration-rules/v1`、Standard runtime 和双方向 Final Standard 已冻结，P0-T3 可以继续以下工作：
+`configuration-rules/v1`、Standard runtime 和双方向 Final Standard 已冻结；方向相关 Template projection 由 `configuration-rules/v2` DRAFT 修订。P0-T3 当前先完成 v2 双签发布，再继续：
 
 - InterfaceTemplateIR fixture 与 Template Validator expected result；
 - expected Configuration Workbook 和相关 assertions。
 
-这些资产必须按 Final SchemaIR → Standard → Template → Workbook 顺序补齐。P0-T2 expected artifacts 不改写；SchemaIR v2 Final fixture 已落实两个方向的 `UTF-8` Human/银行 evidence，并按已确认 canonical content hash 冻结。ASSEMBLY Final Standard 为 36 fields、3 XML Keys、1 condition，hash 为 `sha256:9c77e0e92447907fa89d6ef705501dc0947d695998b80bb154476f696e9b982e`；PARSE Final Standard 为 19 fields、3 XML Keys、4 approved differences，hash 为 `sha256:33efa544460ac19f216734712c1e6ae2610321ea17eb750eff35493ecca9d57e`。规则包 v1 已冻结；正式导出观察到的 5 个 Function、String 类型、字符长度默认 `STANDARD_1`、MAPPING 和 Replacement 契约必须进入专项 golden，但不得把 Function 或 Mapping 子集扩张成全量 catalog。后续继续冻结 Template 和 Workbook fixture。
+这些资产必须按 Final SchemaIR → Standard → RELEASED Template rules → Template → Workbook 顺序补齐。P0-T2 expected artifacts 不改写；SchemaIR v2 Final fixture 已落实两个方向的 `UTF-8` Human/银行 evidence，并按已确认 canonical content hash 冻结。ASSEMBLY Final Standard 为 36 fields、3 XML Keys、1 condition，hash 为 `sha256:9c77e0e92447907fa89d6ef705501dc0947d695998b80bb154476f696e9b982e`；PARSE Final Standard 为 19 fields、3 XML Keys、4 approved differences，hash 为 `sha256:33efa544460ac19f216734712c1e6ae2610321ea17eb750eff35493ecca9d57e`。规则包 v1 保持冻结；v2 仍使用正式导出观察到的 5 个 Function、String 类型、字符长度默认 `STANDARD_1`、MAPPING 和 Replacement 契约，不得把 Function 或 Mapping 子集扩张成全量 catalog。

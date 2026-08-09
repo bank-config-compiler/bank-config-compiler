@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted. Amends ADR-0005 and ADR-0007. Its MAPPING and Replacement scope is amended by ADR-0009.
+Accepted. Amends ADR-0005 and ADR-0007. Its MAPPING and Replacement scope is amended by ADR-0009; its PARSE Standard projection storage rule is amended by ADR-0010.
 
 ## Date
 

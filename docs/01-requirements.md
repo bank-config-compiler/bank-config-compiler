@@ -125,7 +125,7 @@ P0 只支持 `EQUALS`、`IS_EMPTY` 谓词和 `REQUIRED` 效果。条件必须引
 
 ### 6.2 方向性字段绑定与 omission
 
-每个 Template field config 必须显式保存 `standardProjection`，其中的 Required、Length 和 Data Type 完整镜像所绑定 Final Standard 的约束状态和值。Template Validator 必须逐项校验完全相等；当前项目不接受出于内部业务需要缩短 Length、改变 Required 或改变 Standard Data Type。
+ASSEMBLY Template field config 必须在 `standardTarget` 中显式保存 `standardFieldRef + standardProjection`，其中 Required、Length 和 Data Type 完整镜像所绑定 Final Standard。PARSE VALUE config 只声明 `parseTarget`，其表达式 FIELD_REF 各自保存 `standardFieldRef`；`COLLECTION_ITEM` 通过 `standardSource.standardFieldRef` 标识集合来源。PARSE projection 由精确绑定的 Final Standard 确定性解析，不重复保存，也不选择顶层“主” Standard source。
 
 模板字段使用以下结构绑定类型：
 
@@ -200,6 +200,8 @@ InterfaceStandardIR 与 InterfaceTemplateIR 的权威目标系统规则来源位
 
 `configuration-rules/v1` 是根据正式导出、`bkl.md`、ASSEMBLY/PARSE 字段清单、Mapping 样例和业务确认建立的 BKL configuration rules 子集，不绑定具体银行接口，也不声称覆盖全量 catalog。Function catalog 只包含正式导出中实际观察到的条目，不使用 `bkl.md` 的 function 内容；Function 类型统一为 String。v1 已于 2026-08-06 发布为不可变的 `RELEASED` 版本，可以被 Final IR 精确引用。字符长度默认值已确认为 `STANDARD_1`；其他仍未知的系统默认值必须保持 `UNKNOWN`，不得从相近概念推断。
 
+`configuration-rules/v2` 继承 v1 的 Rule ID、FIELD、Function、Mapping 和 processing-policy catalog，只修订 `TPL.BIND.STANDARD_PROJECTION` 的方向相关语义。v2 在双 reviewer 确认前保持 `DRAFT`，只能用于候选验证；现有 Final SchemaIR/Standard 继续引用 v1，后续 Template 可在 v2 RELEASED 后独立引用 v2。
+
 ## 8. 可信流程
 
 ```mermaid
@@ -272,7 +274,7 @@ flowchart TD
 
 `Interface Standard` 保存模板所绑定标准的完整快照；`Interface Template` 只列出当前模板实际配置的字段。`Overview` 记录标准与模板身份、版本、内容摘要、规则版本、当前方向 Final `xmlEncoding`、校验结果和调用者指定的 `Standard Action = CREATE | REUSE | UPDATE`。
 
-`Interface Template` 必须将 Standard snapshot、Template `standardProjection` 和 Parse target 分列展示。ASSEMBLY 的 Standard 是 target；PARSE 的 Standard 是 source，并额外展示 Parse target 的 name/path/datatype。例如 `b2e0061-rs(Node)` 与 `paymentLineList(List)` 必须同时可见，不能合并为一个含糊的 Data Type 列。
+`Interface Template` 必须将 Standard snapshot、Template projection 和 Parse target 分列展示。ASSEMBLY projection 来自显式 `standardTarget.standardProjection`；PARSE projection 由表达式/collection 的每个 `standardFieldRef` 从 Final Standard 派生，并额外展示 Parse target 的 name/path/datatype。例如 `b2e0061-rs(Node)` 与 `paymentLineList(List)` 必须同时可见，不能合并为一个含糊的 Data Type 列。
 
 `Value Expressions` 是模板表达式的结构化明细视图，不是额外事实源。主 sheet 对标量字段展示 Value Mode 和可读摘要；`Node`、`Object` 行的 Value Mode 和 Value Summary 留空，并由 `Legend` 说明该字段没有值表达式。该 sheet 按树展开递归 `CONCATENATE`、function 参数和 mapping 引用，并通过 Expression Scope 区分标量字段值表达式与 XML Key 表达式。
 
@@ -306,7 +308,7 @@ flowchart TD
 - ASSEMBLY 目标是 Standard Field；PARSE 目标是 Parse Field，表达式内 FIELD_REF 引用绑定 Standard。
 - ASSEMBLY 缺失的适用标量字段产生 Warning；Node/Object 不产生 omission；未确认 omission 阻止 Final，确认后允许 Final 且继续显示在 Workbook。
 - PARSE 只校验实际配置的 Parse Field；未配置 catalog 字段默认不产生 omission 或 Warning。
-- Template `standardProjection.required/length/dataType` 与绑定 Standard 完全相等，Workbook 分别展示 Standard、Template 镜像和 Parse target。
+- ASSEMBLY `standardTarget.standardProjection` 与绑定 Standard 完全相等；PARSE 从表达式/collection 的全部 `standardFieldRef` 展开 Standard source projection，Workbook 将这些 source 与 Parse target 分列展示。
 - `b2e0061-rs(Node) → paymentLineList(List)` 使用 `COLLECTION_ITEM`，每个响应节点生成一个列表元素。
 - omission 与 `EMPTY` 明确区分。
 - 六种 Value Mode 均进入 P0；MAPPING 使用单一预设规则引用并对未匹配完整值报错。

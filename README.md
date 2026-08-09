@@ -19,10 +19,10 @@ LLM / Agent 只能生成 DocIR、SchemaIR、InterfaceStandardIR 和 InterfaceTem
 - SchemaIR v2 Validator 已作为库实现：只接受 `schemair/v2` 与 XML 节点，严格校验 artifact identity/lifecycle、字段层级、方向级 encoding evidence、最小结构化银行条件和 Final eligibility，并以 canonical JSON SHA-256 将结果绑定到完整输入内容。
 - InterfaceStandardIR Validator 已作为库实现：严格绑定 Final SchemaIR identity/hash、方向与 `RELEASED` 规则包，校验字段覆盖、路径/顺序、XML Keys、三态约束、银行条件、差异 Review、Rule References 和 Final eligibility，并生成 `interface-standard-validation-result/v1`。
 - workspace 库支持受 workspace 边界保护的嵌套 JSON artifact，拒绝 BOM、非 UTF-8、重复属性、非 object 根节点、NaN/Infinity 和路径逃逸。
-- DocIR / SchemaIR Review Golden sample 已落地；`configuration-rules/v1` 已发布为接口无关、非全量且不可变的 BKL configuration rules 子集，包含方向字段、正式导出观察到的 5 个 String Function、预设 Mapping catalog 样例、MAPPING/Replacement、processing policy、Standard 镜像、结构绑定和安全固定值契约；字符长度默认值为 `STANDARD_1`。
-- 规则包 loader/validator 已作为库实现：只使用 `yaml.safe_load`，校验 UTF-8 no BOM、严格结构、生命周期、唯一性、值域、redaction 和跨文件引用。默认加载已接受 `RELEASED` v1；未来 Draft 候选检查必须显式使用 `require_released=False`。
+- DocIR / SchemaIR Review Golden sample 已落地；`configuration-rules/v1` 已发布为接口无关、非全量且不可变的 BKL configuration rules 子集。`configuration-rules/v2` DRAFT 保持 v1 的 27/207/14/5/6 catalog，只修订方向相关 Standard projection：ASSEMBLY 显式镜像 target，PARSE 从精确绑定的 Final Standard 解析表达式/collection source。
+- 规则包 loader/validator 已作为库实现：只使用 `yaml.safe_load`，校验 UTF-8 no BOM、严格结构、生命周期、唯一性、值域、redaction 和跨文件引用。默认加载接受 `RELEASED` v1；v2 DRAFT 候选检查必须显式使用 `require_released=False`，双签发布前不能支撑 Final IR。
 
-P0-T3 为 `In Progress`：规则包、SchemaIR v2 和 InterfaceStandardIR runtime 已完成。b2e0061 已冻结 49-field Final SchemaIR v2，hash 为 `sha256:4729131ad59fd29899895b1149a476c1f95b71f304cb43bd17749985f19e7162`；两份 Final Standard 也已通过 Human Review 和机器复验，ASSEMBLY hash 为 `sha256:9c77e0e92447907fa89d6ef705501dc0947d695998b80bb154476f696e9b982e`，PARSE hash 为 `sha256:33efa544460ac19f216734712c1e6ae2610321ea17eb750eff35493ecca9d57e`。InterfaceTemplateIR、Workbook 和完整 trusted chain 尚未实现；该样例不定义接口专用 runtime 规则。详细状态和门禁见 [Phase0-PoC 执行计划](docs/planning/00-phase0-poc-plan.md)。
+P0-T3 为 `In Progress`：SchemaIR v2 和 InterfaceStandardIR runtime 已完成。b2e0061 已冻结 49-field Final SchemaIR v2，hash 为 `sha256:4729131ad59fd29899895b71f304cb43bd17749985f19e7162`；两份 Final Standard 也已通过 Human Review和机器复验，ASSEMBLY hash 为 `sha256:9c77e0e92447907fa89d6ef705501dc0947d695998b80bb154476f696e9b982e`，PARSE hash 为 `sha256:33efa544460ac19f216734712c1e6ae2610321ea17eb750eff35493ecca9d57e`。InterfaceTemplateIR 实施现在受 `configuration-rules/v2` 双签发布门禁约束；Workbook 和完整 trusted chain 尚未实现。详细状态见 [Phase0-PoC 执行计划](docs/planning/00-phase0-poc-plan.md)。
 
 ## 快速开始
 

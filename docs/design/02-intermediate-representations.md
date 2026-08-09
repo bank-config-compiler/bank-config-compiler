@@ -2,7 +2,7 @@
 
 ## Status
 
-Draft. DocIR / SchemaIR 的 P0-T2 baseline 继续作为不可变 Review Golden；SchemaIR v2 wire、Validator 和已评审 Final fixture 已实现。`configuration-rules/v1` 已发布并冻结；InterfaceStandardIR wire/Validator 和双方向 Final fixture 已实现并冻结。InterfaceTemplateIR wire schema 尚未冻结。
+Draft. DocIR / SchemaIR 的 P0-T2 baseline 继续作为不可变 Review Golden；SchemaIR v2 wire、Validator 和已评审 Final fixture 已实现。`configuration-rules/v1` 已发布并冻结，v2 方向性 projection 修订仍等待双签发布；InterfaceStandardIR wire/Validator 和双方向 Final fixture 已实现并冻结。InterfaceTemplateIR wire schema 尚未冻结。
 
 ## 1. 设计原则
 
@@ -410,8 +410,8 @@ XML 目标类型为 `String`、`Boolean`、`Date`、`Number`、`Node`、`Object`
 
 InterfaceTemplateIR 回答“一份模板如何连接系统字段与已确认 Standard Field，并进行取值和处理”。它必须绑定一个 `standardId + standardVersion + contentHash`，不能自动解析到最新标准。
 
-- ASSEMBLY：source 是 Value Expression，target 是 `standardFieldRef`。
-- PARSE：target 是 `parseFieldRef`；Value Expression 中的 FIELD_REF 引用 `standardFieldRef`。
+- ASSEMBLY：source 是 Value Expression，target 是 `standardTarget.standardFieldRef`。
+- PARSE：target 是 `parseTarget.parseFieldRef`；Value Expression 中的 FIELD_REF 各自引用 `standardFieldRef`。
 
 一个标准可以关联多份同方向模板。新增模板复用已有 Final Standard；标准版本变化不会静默改变已有模板。
 
@@ -442,19 +442,20 @@ InterfaceTemplateIR 回答“一份模板如何连接系统字段与已确认 St
 }
 ```
 
-每个 `fieldConfig` 至少还包含：
+每个 `fieldConfig` 保留共同的 `bindingKind`、processing、evidence 与 Review 信号，并按方向使用不同端点：
 
 - `bindingKind`: `VALUE | STRUCTURE_ONLY | COLLECTION_ITEM`；
-- `standardFieldRef`：ASSEMBLY target 或 PARSE source；
-- `standardProjection.required/length/dataType`：绑定 Standard 的显式镜像；
-- PARSE 时的 `parseTarget`：Parse Field ref/name/path/datatype；
-- 标量绑定的 `valueExpression`，或容器绑定的 XML Key/collection 信息。
+- ASSEMBLY `standardTarget.standardFieldRef + standardProjection`：唯一 Standard target 及显式镜像；
+- PARSE `parseTarget`：Parse Field ref/name/path/datatype；
+- PARSE VALUE Expression 的 FIELD_REF：每个节点保存自己的 `standardFieldRef`；
+- PARSE `COLLECTION_ITEM.standardSource.standardFieldRef`：集合结构 source；
+- 标量绑定的 `valueExpression`，或 ASSEMBLY 容器的 XML Key/collection 信息。
 
-Template Validator 必须逐值比较 `standardProjection` 与所绑定 Final Standard；任一状态或值不一致均为 error。镜像用于 Workbook 展示和防止 Standard/Template 漂移，不允许 Template 覆盖 Standard。
+Template Validator 必须逐值比较 ASSEMBLY `standardTarget.standardProjection` 与所绑定 Final Standard；任一不一致均为 error。PARSE 不重复保存 projection，而是从精确绑定的 Final Standard 解析表达式/collection 中全部 `standardFieldRef` 的 required、length 和 dataType。复合表达式不得选择一个顶层主 source，纯 literal/EMPTY 表达式可以没有 Standard source。
 
 ### 5.3 方向性绑定与 omissions
 
-ASSEMBLY 每条标量 `fieldConfig` 以一个存在的 `standardFieldRef` 为 target，同一模板中不得重复。未出现在 `fieldConfigs` 的 ASSEMBLY 标量 Standard Field 必须生成 omission candidate。每条 omission 至少保留：
+ASSEMBLY 每条标量 `fieldConfig` 以一个存在的 `standardTarget.standardFieldRef` 为 target，同一模板中不得重复。未出现在 `fieldConfigs` 的 ASSEMBLY 标量 Standard Field 必须生成 omission candidate。每条 omission 至少保留：
 
 - `standardFieldRef`；
 - omission reason；
@@ -529,10 +530,10 @@ Standard Validator 还必须校验：
 Template Validator 还必须校验：
 
 - Standard identity、version 和 content hash 精确匹配；
-- 每个 field config 的 `standardProjection.required/length/dataType` 与 Final Standard 完全一致；
+- ASSEMBLY `standardTarget.standardProjection` 与 Final Standard 完全一致；PARSE 全部 source ref 都能从精确绑定的 Final Standard 解析；
 - `bindingKind` 与方向、Standard 类型和 Parse target 相容；
-- ASSEMBLY target Standard Field reference 存在且不重复；
-- PARSE target Parse Field reference 存在、path/datatype 与 catalog 相容，表达式内 Standard FIELD_REF 存在；
+- ASSEMBLY `standardTarget` reference 存在且不重复；
+- PARSE target Parse Field reference 存在、path/datatype 与 catalog 相容，表达式/collection 内全部 Standard source reference 存在；
 - 标量字段值与 XML Key Value Expression 的结构、递归关系和顺序合法；
 - String/Boolean/Date/Number field config 必须有字段值表达式，Node/Object field config 不得有字段值表达式；
 - Rule ID、FIELD、FUNCTION 和 `mappingRuleName` 引用存在；Function 与 Mapping 数据类型为 String；
