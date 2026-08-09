@@ -2,7 +2,7 @@
 
 ## Status
 
-Draft. P0-T3 trusted chain is complete: reviewed Final SchemaIR/Standard/Template fixtures, matching results, released rules, deterministic Configuration Workbook, explicit workspace/CLI and structured Golden regression are implemented. P0-T4 Draft generators remain.
+Draft. P0-T3 trusted chain is complete. P0-T4 is In Progress: provider-neutral Draft runtime、六个 deterministic b2e0061 responses 与四类 CLI 已实现；Final DocIR Human Review、freeze 和完整 Draft-to-Workbook closure 尚未完成。
 
 ## 1. 阶段目标
 
@@ -36,10 +36,12 @@ LLM、Agent 或 workflow 可以生成 Draft，但不能替代 Validator、人工
 - `interface-template/v1` 与 `interface-template-validation-result/v1`、Template Validator 及双方向 b2e0061 Final fixtures/results；ASSEMBLY/PARSE hash 分别为 `sha256:b9966a449ddc29e08fa29c6cf7838273ce3cab91e00dbb38092767d21af2f561`、`sha256:16eb305b6ac3944f28cb1060b943fdfc2d471f69e6bf8ea52ce059c797fb22f9`。ASSEMBLY 保留 4 个经接受 omission 和 4 个非阻塞 Warning，PARSE 为 0 WARNING；两者均为 0 ERROR、0 blocking、`finalEligible=true`。
 - Configuration Workbook 核心运行时、固定七 sheet、完整 validation-result equality gate、双规则版本、safe text、原子写入和 CREATE/REUSE/UPDATE。
 - 只读 `check --profile phase0`、固定路径 `generate-workbook`、ASSEMBLY/PARSE Golden Workbook 与结构化/CLI regression。
+- provider-neutral `DraftProvider`、严格 response/case loader、四类 Draft orchestration、固定 workspace publication、`generate-draft` CLI 与六个精确 b2e0061 fixture responses；JSON Draft 均保持 `DRAFT/PENDING`、0 ERROR、`finalEligible=false`。
 
 尚未完成：
 
-- 四类 IR Draft generator。
+- 对准确 DocIR candidate 完成 Human Review 并冻结 `docir-final.md`。
+- 从受控 Draft 输入到双方向 Golden Workbook 的完整 closure regression，以及 P0-T4/Phase0 Done 状态。
 
 `configuration-rules/v1` 与 v2 均已发布并冻结；v2 不改变其 27/207/14/5/6 catalog、Function String、Mapping/Replacement、字符长度默认 `STANDARD_1` 或业务 Condition 边界，只修订 Template Standard projection。现有 Final Standard 继续绑定 v1；Final InterfaceTemplateIR 精确绑定 v2。详细任务状态见 `docs/planning/00-phase0-poc-plan.md`。
 
@@ -90,7 +92,7 @@ SchemaIR Draft 保存银行 XML element、attribute、完整 path、父子层级
 
 Provider 接收 artifact kind、上游内容 hash 和适用的 direction/version/rule selector，返回严格 UTF-8 JSON envelope；envelope 只包含 `draft-provider-response/v1`、artifact kind、Draft 内容和 review notes。调用方必须在写入 workspace 前完成严格 envelope/JSON 解析、DocIR 最小结构检查或对应 JSON Validator 校验，并拒绝任何 `FINAL`、已批准 Review、未知 catalog、错误依赖或不匹配 hash。
 
-deterministic stub 只接受显式 `fixture-root` 中 `draft-stub-case/v1` 声明的精确 `b2e0061` 输入指纹。它不扫描目录、不选择最新版本，也不参与 Final trusted chain 的 `phase0` selector。文本输入使用 UTF-8 bytes SHA-256，JSON dependency 使用 canonical semantic SHA-256；任何不匹配都 fail closed。
+deterministic stub 只接受显式 `fixture-root` 中 `draft-stub-case/v1` 声明的精确 `b2e0061` 输入指纹。它不扫描目录、不选择最新版本，也不参与 Final trusted chain 的 `phase0` selector。文本输入使用 UTF-8 bytes SHA-256，JSON dependency 使用 canonical semantic SHA-256；`.gitattributes` 显式保留既有 Golden/Draft Markdown 的 CRLF bytes baseline，并固定 fixture JSON 的 LF，避免 checkout 平台改变 hash。任何不匹配都 fail closed。
 
 DocIR 没有独立可信链 Validator。DocIR Draft 只执行章节、Metadata/Fields 表和 XML 方向的最小结构检查；Human Review 对准确内容 hash 确认后，才可冻结为 `docir-final.md` 并成为 SchemaIR generator 输入。三个 JSON generator 只保存 `DRAFT/PENDING` artifact、匹配 validation result 和 review notes，且结果必须无 ERROR、`finalEligible=false`。
 

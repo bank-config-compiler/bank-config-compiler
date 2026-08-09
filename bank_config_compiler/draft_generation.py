@@ -1,0 +1,695 @@
+from __future__ import annotations
+
+import hashlib
+import json
+import logging
+import os
+import re
+import tempfile
+from dataclasses import dataclass
+from pathlib import Path
+from typing import Any, Literal, Protocol
+
+from .artifact_validation import content_hash
+from .configuration_rules import RulePackage
+from .interface_standard_validator import validate_interface_standard
+from .interface_template_validator import validate_interface_template
+from .schemair_validator import validate_schemair
+from .workspace import artifact_path, ensure_workspace_dir
+
+
+LOGGER = logging.getLogger(__name__)
+
+PROVIDER_RESPONSE_CONTRACT = "draft-provider-response/v1"
+STUB_CASE_CONTRACT = "draft-stub-case/v1"
+ARTIFACT_KINDS = {"docir", "schemair", "standard", "template"}
+DIRECTIONS = {"ASSEMBLY", "PARSE"}
+SHA256_PATTERN = re.compile(r"^sha256:[0-9a-f]{64}$")
+VERSION_PATTERN = re.compile(r"^v[1-9]\d*$")
+STABLE_ID_PATTERN = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
+RESPONSE_PROPERTIES = {"contractVersion", "artifactKind", "artifactContent", "reviewNotes"}
+CASE_PROPERTIES = {"contractVersion", "caseId", "responses"}
+CASE_ENTRY_PROPERTIES = {"request", "artifactFile", "reviewNotesFile"}
+CASE_REQUEST_PROPERTIES = {
+    "artifactKind",
+    "sourceHash",
+    "direction",
+    "standardVersion",
+    "templateId",
+    "templateVersion",
+    "rulePackageVersion",
+}
+
+ArtifactKind = Literal["docir", "schemair", "standard", "template"]
+
+
+class DraftGenerationError(Exception):
+    """Raised when a provider or generated Draft fails the P0 trust boundary."""
+
+
+class DraftProvider(Protocol):
+    name: str
+
+    def generate(self, request: DraftGenerationRequest) -> str:
+        """Return one UTF-8 JSON response envelope as text."""
+
+
+@dataclass(frozen=True, slots=True)
+class DraftGenerationRequest:
+    task_id: str
+    artifact_kind: ArtifactKind
+    source_hash: str
+    direction: str | None = None
+    standard_version: str | None = None
+    template_id: str | None = None
+    template_version: str | None = None
+    rule_package_version: str | None = None
+
+    def __post_init__(self) -> None:
+        if not isinstance(self.task_id, str) or not self.task_id.strip():
+            raise DraftGenerationError("task_id must be a non-empty string")
+        if self.artifact_kind not in ARTIFACT_KINDS:
+            raise DraftGenerationError(f"unsupported artifact kind: {self.artifact_kind}")
+        if not isinstance(self.source_hash, str) or not SHA256_PATTERN.fullmatch(
+            self.source_hash
+        ):
+            raise DraftGenerationError("source_hash must use sha256:<64 lowercase hex>")
+        if self.direction is not None and self.direction not in DIRECTIONS:
+            raise DraftGenerationError("direction must be exactly ASSEMBLY or PARSE")
+        if self.standard_version is not None and not VERSION_PATTERN.fullmatch(
+            self.standard_version
+        ):
+            raise DraftGenerationError("standard_version must match v<positive integer>")
+        if self.template_id is not None and not STABLE_ID_PATTERN.fullmatch(self.template_id):
+            raise DraftGenerationError("template_id must be a kebab-case stable ID")
+        if self.template_version is not None and not VERSION_PATTERN.fullmatch(self.template_version):
+            raise DraftGenerationError("template_version must match v<positive integer>")
+        if self.rule_package_version is not None and not VERSION_PATTERN.fullmatch(
+            self.rule_package_version
+        ):
+            raise DraftGenerationError("rule_package_version must match v<positive integer>")
+        self._validate_selectors()
+
+    def _validate_selectors(self) -> None:
+        if self.artifact_kind in {"docir", "schemair"}:
+            if any(
+                value is not None
+                for value in (
+                    self.direction,
+                    self.standard_version,
+                    self.template_id,
+                    self.template_version,
+                    self.rule_package_version,
+                )
+            ):
+                raise DraftGenerationError(f"{self.artifact_kind} request does not accept selectors")
+            return
+        if self.artifact_kind == "standard":
+            if (
+                self.direction is None
+                or self.standard_version is None
+                or self.rule_package_version is None
+            ):
+                raise DraftGenerationError(
+                    "standard request requires direction, standard_version and rule_package_version"
+                )
+            if self.template_id is not None or self.template_version is not None:
+                raise DraftGenerationError("standard request does not accept template selectors")
+            return
+        if any(
+            value is None
+            for value in (
+                self.direction,
+                self.standard_version,
+                self.template_id,
+                self.template_version,
+                self.rule_package_version,
+            )
+        ):
+            raise DraftGenerationError(
+                "template request requires direction, standard_version, template_id, "
+                "template_version and rule_package_version"
+            )
+
+    def case_fingerprint(self) -> dict[str, str]:
+        values = {
+            "artifactKind": self.artifact_kind,
+            "sourceHash": self.source_hash,
+            "direction": self.direction,
+            "standardVersion": self.standard_version,
+            "templateId": self.template_id,
+            "templateVersion": self.template_version,
+            "rulePackageVersion": self.rule_package_version,
+        }
+        return {key: value for key, value in values.items() if value is not None}
+
+
+@dataclass(frozen=True, slots=True)
+class GeneratedDraft:
+    request: DraftGenerationRequest
+    provider_name: str
+    artifact: str | dict[str, Any]
+    review_notes: str
+    validation_result: dict[str, Any] | None
+    content_hash: str
+
+
+class FixtureDraftProvider:
+    """Load deterministic responses from one explicitly selected P0 stub case."""
+
+    name = "fixture"
+
+    def __init__(self, fixture_root: Path) -> None:
+        self.fixture_root = fixture_root.resolve()
+        if not self.fixture_root.is_dir():
+            raise DraftGenerationError(f"fixture root is not a directory: {self.fixture_root}")
+        manifest_path = self.fixture_root / "draft-stub-case.json"
+        manifest = _strict_json_object(_read_utf8_text(manifest_path), label="draft-stub-case.json")
+        _require_exact_properties(manifest, CASE_PROPERTIES, label="draft-stub-case.json")
+        if manifest.get("contractVersion") != STUB_CASE_CONTRACT:
+            raise DraftGenerationError(f"fixture case contractVersion must be {STUB_CASE_CONTRACT}")
+        case_id = manifest.get("caseId")
+        if not isinstance(case_id, str) or not STABLE_ID_PATTERN.fullmatch(case_id):
+            raise DraftGenerationError("fixture caseId must be a kebab-case stable ID")
+        responses = manifest.get("responses")
+        if not isinstance(responses, list) or not responses:
+            raise DraftGenerationError("fixture responses must be a non-empty array")
+        self.case_id = case_id
+        self._responses = self._validate_responses(responses)
+
+    def _validate_responses(self, responses: list[Any]) -> dict[str, tuple[Path, Path]]:
+        indexed: dict[str, tuple[Path, Path]] = {}
+        for index, entry in enumerate(responses):
+            label = f"responses[{index}]"
+            if not isinstance(entry, dict):
+                raise DraftGenerationError(f"{label} must be an object")
+            _require_exact_properties(entry, CASE_ENTRY_PROPERTIES, label=label)
+            request = _request_from_case(entry.get("request"), label=f"{label}.request")
+            key = _fingerprint_key(request.case_fingerprint())
+            if key in indexed:
+                raise DraftGenerationError(f"duplicate fixture request: {key}")
+            artifact_path = self._case_file(entry.get("artifactFile"), label=f"{label}.artifactFile")
+            notes_path = self._case_file(entry.get("reviewNotesFile"), label=f"{label}.reviewNotesFile")
+            indexed[key] = (artifact_path, notes_path)
+        return indexed
+
+    def _case_file(self, value: Any, *, label: str) -> Path:
+        if not isinstance(value, str) or not value:
+            raise DraftGenerationError(f"{label} must be a non-empty relative path")
+        relative = Path(value)
+        if relative.is_absolute() or ".." in relative.parts:
+            raise DraftGenerationError(f"{label} must stay within the fixture root")
+        resolved = (self.fixture_root / relative).resolve()
+        try:
+            resolved.relative_to(self.fixture_root)
+        except ValueError as exc:
+            raise DraftGenerationError(f"{label} must stay within the fixture root") from exc
+        if not resolved.is_file():
+            raise DraftGenerationError(f"{label} does not exist: {value}")
+        return resolved
+
+    def generate(self, request: DraftGenerationRequest) -> str:
+        key = _fingerprint_key(request.case_fingerprint())
+        files = self._responses.get(key)
+        if files is None:
+            raise DraftGenerationError(
+                f"fixture case {self.case_id} has no exact response for request {key}"
+            )
+        artifact_content = _read_utf8_text(files[0])
+        review_notes = _read_utf8_text(files[1])
+        return json.dumps(
+            {
+                "contractVersion": PROVIDER_RESPONSE_CONTRACT,
+                "artifactKind": request.artifact_kind,
+                "artifactContent": artifact_content,
+                "reviewNotes": review_notes,
+            },
+            ensure_ascii=False,
+            separators=(",", ":"),
+        )
+
+
+def generate_docir_draft(*, raw_doc: str, provider: DraftProvider, task_id: str) -> GeneratedDraft:
+    request = DraftGenerationRequest(
+        task_id=task_id,
+        artifact_kind="docir",
+        source_hash=_text_hash(raw_doc),
+    )
+    artifact_content, review_notes = _provider_content(provider, request)
+    _validate_docir_structure(artifact_content)
+    draft_hash = _text_hash(artifact_content)
+    return _generated(
+        request=request,
+        provider=provider,
+        artifact=artifact_content,
+        review_notes=review_notes,
+        validation_result=None,
+        draft_hash=draft_hash,
+    )
+
+
+def generate_schemair_draft(
+    *,
+    docir_final: str,
+    provider: DraftProvider,
+    task_id: str,
+) -> GeneratedDraft:
+    request = DraftGenerationRequest(
+        task_id=task_id,
+        artifact_kind="schemair",
+        source_hash=_text_hash(docir_final),
+    )
+    artifact_content, review_notes = _provider_content(provider, request)
+    artifact = _strict_json_object(artifact_content, label="SchemaIR Draft")
+    _require_pending_draft(artifact, label="SchemaIR")
+    result = validate_schemair(artifact)
+    _require_valid_draft_result(result, label="SchemaIR")
+    return _generated_json(request, provider, artifact, review_notes, result)
+
+
+def generate_interface_standard_draft(
+    *,
+    schemair_final: dict[str, Any],
+    rule_package: RulePackage,
+    direction: str,
+    standard_version: str,
+    provider: DraftProvider,
+    task_id: str,
+) -> GeneratedDraft:
+    _require_released_rule_package(rule_package)
+    schema_result = validate_schemair(schemair_final)
+    if not schema_result.get("finalEligible"):
+        raise DraftGenerationError("Standard generator requires a reviewed Final SchemaIR")
+    request = DraftGenerationRequest(
+        task_id=task_id,
+        artifact_kind="standard",
+        source_hash=content_hash(schemair_final),
+        direction=direction,
+        standard_version=standard_version,
+        rule_package_version=rule_package.version,
+    )
+    artifact_content, review_notes = _provider_content(provider, request)
+    artifact = _strict_json_object(artifact_content, label="InterfaceStandardIR Draft")
+    _require_pending_draft(artifact, label="InterfaceStandardIR")
+    result = validate_interface_standard(
+        artifact,
+        schemair=schemair_final,
+        rule_package=rule_package,
+    )
+    _require_valid_draft_result(result, label="InterfaceStandardIR")
+    return _generated_json(request, provider, artifact, review_notes, result)
+
+
+def generate_interface_template_draft(
+    *,
+    standard_final: dict[str, Any],
+    rule_package: RulePackage,
+    direction: str,
+    standard_version: str,
+    template_id: str,
+    template_version: str,
+    provider: DraftProvider,
+    task_id: str,
+) -> GeneratedDraft:
+    _require_released_rule_package(rule_package)
+    review = standard_final.get("review") if isinstance(standard_final, dict) else None
+    if (
+        not isinstance(standard_final, dict)
+        or standard_final.get("status") != "FINAL"
+        or not isinstance(review, dict)
+        or review.get("status") != "APPROVED"
+    ):
+        raise DraftGenerationError("Template generator requires a reviewed Final InterfaceStandardIR")
+    if standard_final.get("direction") != direction:
+        raise DraftGenerationError("Template direction must match the Final InterfaceStandardIR")
+    if standard_final.get("standardVersion") != standard_version:
+        raise DraftGenerationError("Template standard_version must match the Final InterfaceStandardIR")
+    request = DraftGenerationRequest(
+        task_id=task_id,
+        artifact_kind="template",
+        source_hash=content_hash(standard_final),
+        direction=direction,
+        standard_version=standard_version,
+        template_id=template_id,
+        template_version=template_version,
+        rule_package_version=rule_package.version,
+    )
+    artifact_content, review_notes = _provider_content(provider, request)
+    artifact = _strict_json_object(artifact_content, label="InterfaceTemplateIR Draft")
+    _require_pending_draft(artifact, label="InterfaceTemplateIR")
+    result = validate_interface_template(artifact, standard=standard_final, rule_package=rule_package)
+    _require_valid_draft_result(result, label="InterfaceTemplateIR")
+    return _generated_json(request, provider, artifact, review_notes, result)
+
+
+def publish_generated_draft(
+    workspace_path: Path,
+    generated: GeneratedDraft,
+    *,
+    overwrite: bool = False,
+) -> dict[str, Path]:
+    """Publish one fully validated Draft output set without exposing temporary files."""
+
+    ensure_workspace_dir(workspace_path)
+    names = _draft_artifact_names(generated.request)
+    outputs = {key: artifact_path(workspace_path, name) for key, name in names.items()}
+    payloads: dict[str, bytes] = {
+        "artifact": _serialize_artifact(generated.artifact),
+        "review_notes": generated.review_notes.encode("utf-8"),
+    }
+    if generated.validation_result is not None:
+        payloads["validation_result"] = _serialize_json(generated.validation_result)
+    if set(outputs) != set(payloads):
+        raise DraftGenerationError("generated Draft output set is internally inconsistent")
+
+    existing = [path for path in outputs.values() if path.exists()]
+    if existing and not overwrite:
+        rendered = ", ".join(path.name for path in existing)
+        raise DraftGenerationError(
+            f"Draft output already exists: {rendered}; pass --overwrite to replace it"
+        )
+
+    staged: dict[str, Path] = {}
+    try:
+        for key, output_path in outputs.items():
+            output_path.parent.mkdir(parents=True, exist_ok=True)
+            descriptor, temporary_name = tempfile.mkstemp(
+                dir=output_path.parent,
+                prefix=f".{output_path.name}.",
+                suffix=".tmp",
+            )
+            temporary_path = Path(temporary_name)
+            staged[key] = temporary_path
+            with os.fdopen(descriptor, "wb") as handle:
+                handle.write(payloads[key])
+                handle.flush()
+                os.fsync(handle.fileno())
+        # 普通文件系统不能跨多个文件提交事务；逐文件原子替换后由 result hash 保证中断状态 fail closed。
+        for key, output_path in outputs.items():
+            os.replace(staged.pop(key), output_path)
+    except (OSError, ValueError, TypeError) as exc:
+        for temporary_path in staged.values():
+            try:
+                temporary_path.unlink(missing_ok=True)
+            except OSError:
+                pass
+        raise DraftGenerationError(f"failed to publish Draft outputs: {type(exc).__name__}") from exc
+    return outputs
+
+
+def _draft_artifact_names(request: DraftGenerationRequest) -> dict[str, str]:
+    if request.artifact_kind == "docir":
+        return {
+            "artifact": "docir-draft.md",
+            "review_notes": "docir-review-notes.md",
+        }
+    if request.artifact_kind == "schemair":
+        return {
+            "artifact": "schemair-draft.json",
+            "review_notes": "schemair-review-notes.md",
+            "validation_result": "schemair-validation-result.json",
+        }
+    direction = request.direction.lower() if request.direction else ""
+    if request.artifact_kind == "standard":
+        root = f"standards/{direction}/{request.standard_version}"
+        return {
+            "artifact": f"{root}/standard-draft.json",
+            "review_notes": f"{root}/standard-review-notes.md",
+            "validation_result": f"{root}/standard-validation-result.json",
+        }
+    root = f"templates/{direction}/{request.template_id}/{request.template_version}"
+    return {
+        "artifact": f"{root}/template-draft.json",
+        "review_notes": f"{root}/template-review-notes.md",
+        "validation_result": f"{root}/template-validation-result.json",
+    }
+
+
+def _serialize_artifact(artifact: str | dict[str, Any]) -> bytes:
+    if isinstance(artifact, str):
+        return artifact.encode("utf-8")
+    return _serialize_json(artifact)
+
+
+def _serialize_json(value: dict[str, Any]) -> bytes:
+    try:
+        return (
+            json.dumps(value, ensure_ascii=False, indent=2, allow_nan=False) + "\n"
+        ).encode("utf-8")
+    except (TypeError, ValueError) as exc:
+        raise DraftGenerationError("Draft output must contain only finite JSON values") from exc
+
+
+def _provider_content(provider: DraftProvider, request: DraftGenerationRequest) -> tuple[str, str]:
+    provider_name = getattr(provider, "name", None)
+    if not isinstance(provider_name, str) or not provider_name:
+        raise DraftGenerationError("provider must expose a non-empty name")
+    LOGGER.info(
+        "Generating IR Draft",
+        extra={
+            "component": "draft_generation",
+            "task_id": request.task_id,
+            "provider": provider_name,
+            "artifact_kind": request.artifact_kind,
+            "direction": request.direction,
+            "outcome": "started",
+        },
+    )
+    try:
+        response_text = provider.generate(request)
+        response = _strict_json_object(response_text, label="provider response")
+        _require_exact_properties(response, RESPONSE_PROPERTIES, label="provider response")
+        if response.get("contractVersion") != PROVIDER_RESPONSE_CONTRACT:
+            raise DraftGenerationError(
+                f"provider response contractVersion must be {PROVIDER_RESPONSE_CONTRACT}"
+            )
+        if response.get("artifactKind") != request.artifact_kind:
+            raise DraftGenerationError("provider response artifactKind does not match the request")
+        artifact_content = response.get("artifactContent")
+        review_notes = response.get("reviewNotes")
+        if not isinstance(artifact_content, str) or not artifact_content.strip():
+            raise DraftGenerationError("provider response artifactContent must be a non-empty string")
+        if not isinstance(review_notes, str) or not review_notes.strip():
+            raise DraftGenerationError("provider response reviewNotes must be a non-empty string")
+    except DraftGenerationError:
+        LOGGER.warning(
+            "IR Draft generation failed",
+            extra={
+                "component": "draft_generation",
+                "task_id": request.task_id,
+                "provider": provider_name,
+                "artifact_kind": request.artifact_kind,
+                "direction": request.direction,
+                "outcome": "failed",
+            },
+        )
+        raise
+    except Exception as exc:
+        LOGGER.warning(
+            "IR Draft provider failed",
+            extra={
+                "component": "draft_generation",
+                "task_id": request.task_id,
+                "provider": provider_name,
+                "artifact_kind": request.artifact_kind,
+                "direction": request.direction,
+                "outcome": "failed",
+                "error_type": type(exc).__name__,
+            },
+        )
+        raise DraftGenerationError(f"provider {provider_name} failed: {type(exc).__name__}") from exc
+    return artifact_content, review_notes
+
+
+def _generated_json(
+    request: DraftGenerationRequest,
+    provider: DraftProvider,
+    artifact: dict[str, Any],
+    review_notes: str,
+    result: dict[str, Any],
+) -> GeneratedDraft:
+    validated = result.get("validatedArtifact")
+    draft_hash = validated.get("contentHash") if isinstance(validated, dict) else None
+    if not isinstance(draft_hash, str) or not SHA256_PATTERN.fullmatch(draft_hash):
+        raise DraftGenerationError("Validator result is missing a valid content hash")
+    return _generated(request, provider, artifact, review_notes, result, draft_hash)
+
+
+def _generated(
+    request: DraftGenerationRequest,
+    provider: DraftProvider,
+    artifact: str | dict[str, Any],
+    review_notes: str,
+    validation_result: dict[str, Any] | None,
+    draft_hash: str,
+) -> GeneratedDraft:
+    bound_notes = (
+        "# Generated Draft Review Context\n\n"
+        f"Artifact content hash: `{draft_hash}`\n\n"
+        f"Provider: `{provider.name}`\n\n"
+        f"Artifact kind: `{request.artifact_kind}`\n\n"
+        "---\n\n"
+        f"{review_notes.strip()}\n"
+    )
+    generated = GeneratedDraft(
+        request=request,
+        provider_name=provider.name,
+        artifact=artifact,
+        review_notes=bound_notes,
+        validation_result=validation_result,
+        content_hash=draft_hash,
+    )
+    LOGGER.info(
+        "Generated IR Draft",
+        extra={
+            "component": "draft_generation",
+            "task_id": request.task_id,
+            "provider": provider.name,
+            "artifact_kind": request.artifact_kind,
+            "direction": request.direction,
+            "outcome": "succeeded",
+        },
+    )
+    return generated
+
+
+def _require_pending_draft(artifact: dict[str, Any], *, label: str) -> None:
+    review = artifact.get("review")
+    if artifact.get("status") != "DRAFT":
+        raise DraftGenerationError(f"{label} provider output must use status=DRAFT")
+    if not isinstance(review, dict) or review.get("status") != "PENDING":
+        raise DraftGenerationError(f"{label} provider output must use review.status=PENDING")
+    if review.get("reviewer") is not None or review.get("reviewedAt") is not None:
+        raise DraftGenerationError(f"{label} pending review cannot contain reviewer metadata")
+
+
+def _require_valid_draft_result(result: dict[str, Any], *, label: str) -> None:
+    summary = result.get("summary")
+    if not isinstance(summary, dict) or summary.get("errorCount") != 0:
+        raise DraftGenerationError(f"{label} Draft must pass structural validation with zero errors")
+    if result.get("finalEligible") is not False:
+        raise DraftGenerationError(f"{label} Draft must remain ineligible for the trusted chain")
+    issues = result.get("issues")
+    codes = (
+        {item.get("code") for item in issues if isinstance(item, dict)}
+        if isinstance(issues, list)
+        else set()
+    )
+    required = {"ARTIFACT_NOT_FINAL", "REVIEW_NOT_APPROVED"}
+    if not required.issubset(codes):
+        raise DraftGenerationError(f"{label} Draft is missing lifecycle blocking issues")
+
+
+def _require_released_rule_package(rule_package: RulePackage) -> None:
+    if not isinstance(rule_package, RulePackage) or rule_package.status != "RELEASED":
+        raise DraftGenerationError("Draft generator requires a validated RELEASED rule package")
+
+
+def _validate_docir_structure(content: str) -> None:
+    required_headings = (
+        "# Interface",
+        "# Envelope",
+        "# Message: ASSEMBLY",
+        "# Message: PARSE",
+    )
+    for heading in required_headings:
+        if content.count(heading) != 1:
+            raise DraftGenerationError(f"DocIR Draft must contain exactly one {heading} section")
+    if "| Message Format | XML |" not in content:
+        raise DraftGenerationError("DocIR Draft must declare Message Format XML")
+    sections = {
+        heading: content.index(heading)
+        for heading in required_headings
+    }
+    ordered = sorted(sections.items(), key=lambda item: item[1])
+    for index, (heading, start) in enumerate(ordered):
+        end = ordered[index + 1][1] if index + 1 < len(ordered) else len(content)
+        section = content[start:end]
+        if "## Metadata" not in section:
+            raise DraftGenerationError(f"DocIR {heading} section must contain a Metadata table")
+        if heading != "# Interface" and "## Fields" not in section:
+            raise DraftGenerationError(f"DocIR {heading} section must contain a Fields table")
+
+
+def _request_from_case(value: Any, *, label: str) -> DraftGenerationRequest:
+    if not isinstance(value, dict):
+        raise DraftGenerationError(f"{label} must be an object")
+    unknown = set(value) - CASE_REQUEST_PROPERTIES
+    if unknown:
+        raise DraftGenerationError(f"{label} has unknown properties: {', '.join(sorted(unknown))}")
+    required = {"artifactKind", "sourceHash"}
+    missing = required - set(value)
+    if missing:
+        raise DraftGenerationError(f"{label} is missing properties: {', '.join(sorted(missing))}")
+    return DraftGenerationRequest(
+        task_id="fixture-case-validation",
+        artifact_kind=value.get("artifactKind"),
+        source_hash=value.get("sourceHash"),
+        direction=value.get("direction"),
+        standard_version=value.get("standardVersion"),
+        template_id=value.get("templateId"),
+        template_version=value.get("templateVersion"),
+        rule_package_version=value.get("rulePackageVersion"),
+    )
+
+
+def _strict_json_object(text: str, *, label: str) -> dict[str, Any]:
+    if not isinstance(text, str):
+        raise DraftGenerationError(f"{label} must be UTF-8 text")
+    if text.startswith("\ufeff"):
+        raise DraftGenerationError(f"{label} must be UTF-8 without BOM")
+    try:
+        value = json.loads(
+            text,
+            object_pairs_hook=_reject_duplicate_keys,
+            parse_constant=_reject_non_finite_number,
+        )
+    except (json.JSONDecodeError, ValueError) as exc:
+        raise DraftGenerationError(f"{label} must contain strict JSON: {exc}") from exc
+    if not isinstance(value, dict):
+        raise DraftGenerationError(f"{label} JSON root must be an object")
+    return value
+
+
+def _reject_duplicate_keys(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
+    result: dict[str, Any] = {}
+    for key, value in pairs:
+        if key in result:
+            raise ValueError(f"duplicate object property: {key}")
+        result[key] = value
+    return result
+
+
+def _reject_non_finite_number(value: str) -> None:
+    raise ValueError(f"non-finite JSON number: {value}")
+
+
+def _read_utf8_text(path: Path) -> str:
+    if not path.is_file():
+        raise DraftGenerationError(f"fixture file does not exist: {path}")
+    data = path.read_bytes()
+    if data.startswith(b"\xef\xbb\xbf"):
+        raise DraftGenerationError(f"fixture file must be UTF-8 without BOM: {path.name}")
+    try:
+        return data.decode("utf-8")
+    except UnicodeDecodeError as exc:
+        raise DraftGenerationError(f"fixture file must be valid UTF-8: {path.name}") from exc
+
+
+def _require_exact_properties(value: dict[str, Any], allowed: set[str], *, label: str) -> None:
+    missing = allowed - set(value)
+    unknown = set(value) - allowed
+    if missing:
+        raise DraftGenerationError(f"{label} is missing properties: {', '.join(sorted(missing))}")
+    if unknown:
+        raise DraftGenerationError(f"{label} has unknown properties: {', '.join(sorted(unknown))}")
+
+
+def _fingerprint_key(value: dict[str, str]) -> str:
+    return json.dumps(value, sort_keys=True, separators=(",", ":"))
+
+
+def _text_hash(value: str) -> str:
+    if not isinstance(value, str):
+        raise DraftGenerationError("text input must be a string")
+    return f"sha256:{hashlib.sha256(value.encode('utf-8')).hexdigest()}"

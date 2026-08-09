@@ -1,0 +1,475 @@
+{
+  "contractVersion": "interface-template/v1",
+  "templateId": "b2e0061-parse-common",
+  "templateVersion": "v1",
+  "status": "DRAFT",
+  "interfaceCode": "b2e0061",
+  "direction": "PARSE",
+  "standardRef": {
+    "standardId": "b2e0061-parse-standard",
+    "standardVersion": "v1",
+    "contentHash": "sha256:33efa544460ac19f216734712c1e6ae2610321ea17eb750eff35493ecca9d57e"
+  },
+  "rulePackageVersion": "v2",
+  "fieldConfigs": [
+    {
+      "bindingKind": "VALUE",
+      "parseTarget": {
+        "parseFieldRef": "sourceMessageId",
+        "name": "sourceMessageId",
+        "parentPath": "Root",
+        "fullPath": "Root.sourceMessageId",
+        "dataType": "STRING"
+      },
+      "valueExpression": {
+        "mode": "FIELD",
+        "sequence": 1,
+        "ruleReferences": [
+          "TPL.VALUE.FIELD"
+        ],
+        "standardFieldRef": "b2e0061-parse-bocb2e-trans-trn-b2e0061-rs-b2e0061-rs-insid"
+      },
+      "processingPolicies": {
+        "emptyHandling": "BLANK",
+        "overlengthHandling": "INTERCEPT",
+        "rowLimit": 1,
+        "chineseCharacterLength": "STANDARD_1",
+        "replacementRuleName": null
+      },
+      "ruleReferences": [
+        "TPL.BIND.PARSE",
+        "TPL.BIND.STANDARD_PROJECTION",
+        "TPL.PROCESS.EMPTY_HANDLING",
+        "TPL.PROCESS.OVERLENGTH",
+        "TPL.PROCESS.ROW_LIMIT",
+        "TPL.PROCESS.CHAR_LENGTH"
+      ],
+      "evidence": [
+        {
+          "kind": "FINAL_STANDARD",
+          "sourceRef": "b2e0061-parse-bocb2e-trans-trn-b2e0061-rs-b2e0061-rs-insid",
+          "note": "Standard 镜像来自已冻结的 Final InterfaceStandardIR v1。"
+        },
+        {
+          "kind": "TARGET_SYSTEM_FORMAL_EXPORT",
+          "sourceRef": "docs/reference/samples/b2eboc/b2e0061-parse-template.json#lineList[1]",
+          "note": "Value Expression 与 processing policy 来自正式导出的已观察配置。"
+        }
+      ],
+      "confidence": 1.0,
+      "uncertain": false,
+      "uncertainReason": null,
+      "reviewNote": null
+    },
+    {
+      "bindingKind": "VALUE",
+      "parseTarget": {
+        "parseFieldRef": "bankReturnCode",
+        "name": "bankReturnCode",
+        "parentPath": "Root",
+        "fullPath": "Root.bankReturnCode",
+        "dataType": "STRING"
+      },
+      "valueExpression": {
+        "mode": "FIELD",
+        "sequence": 1,
+        "ruleReferences": [
+          "TPL.VALUE.FIELD"
+        ],
+        "standardFieldRef": "b2e0061-parse-bocb2e-trans-trn-b2e0061-rs-b2e0061-rs-status-rspcod"
+      },
+      "processingPolicies": {
+        "emptyHandling": "BLANK",
+        "overlengthHandling": "INTERCEPT",
+        "rowLimit": 1,
+        "chineseCharacterLength": "STANDARD_1",
+        "replacementRuleName": null
+      },
+      "ruleReferences": [
+        "TPL.BIND.PARSE",
+        "TPL.BIND.STANDARD_PROJECTION",
+        "TPL.PROCESS.EMPTY_HANDLING",
+        "TPL.PROCESS.OVERLENGTH",
+        "TPL.PROCESS.ROW_LIMIT",
+        "TPL.PROCESS.CHAR_LENGTH"
+      ],
+      "evidence": [
+        {
+          "kind": "FINAL_STANDARD",
+          "sourceRef": "b2e0061-parse-bocb2e-trans-trn-b2e0061-rs-b2e0061-rs-status-rspcod",
+          "note": "Standard 镜像来自已冻结的 Final InterfaceStandardIR v1。"
+        },
+        {
+          "kind": "TARGET_SYSTEM_FORMAL_EXPORT",
+          "sourceRef": "docs/reference/samples/b2eboc/b2e0061-parse-template.json#lineList[4]",
+          "note": "Value Expression 与 processing policy 来自正式导出的已观察配置。"
+        }
+      ],
+      "confidence": 1.0,
+      "uncertain": false,
+      "uncertainReason": null,
+      "reviewNote": null
+    },
+    {
+      "bindingKind": "VALUE",
+      "parseTarget": {
+        "parseFieldRef": "bankReturnMessage",
+        "name": "bankReturnMessage",
+        "parentPath": "Root",
+        "fullPath": "Root.bankReturnMessage",
+        "dataType": "STRING"
+      },
+      "valueExpression": {
+        "mode": "FIELD",
+        "sequence": 1,
+        "ruleReferences": [
+          "TPL.VALUE.FIELD"
+        ],
+        "standardFieldRef": "b2e0061-parse-bocb2e-trans-trn-b2e0061-rs-b2e0061-rs-status-rspmsg"
+      },
+      "processingPolicies": {
+        "emptyHandling": "BLANK",
+        "overlengthHandling": "INTERCEPT",
+        "rowLimit": 1,
+        "chineseCharacterLength": "STANDARD_1",
+        "replacementRuleName": null
+      },
+      "ruleReferences": [
+        "TPL.BIND.PARSE",
+        "TPL.BIND.STANDARD_PROJECTION",
+        "TPL.PROCESS.EMPTY_HANDLING",
+        "TPL.PROCESS.OVERLENGTH",
+        "TPL.PROCESS.ROW_LIMIT",
+        "TPL.PROCESS.CHAR_LENGTH"
+      ],
+      "evidence": [
+        {
+          "kind": "FINAL_STANDARD",
+          "sourceRef": "b2e0061-parse-bocb2e-trans-trn-b2e0061-rs-b2e0061-rs-status-rspmsg",
+          "note": "Standard 镜像来自已冻结的 Final InterfaceStandardIR v1。"
+        },
+        {
+          "kind": "TARGET_SYSTEM_FORMAL_EXPORT",
+          "sourceRef": "docs/reference/samples/b2eboc/b2e0061-parse-template.json#lineList[5]",
+          "note": "Value Expression 与 processing policy 来自正式导出的已观察配置。"
+        }
+      ],
+      "confidence": 1.0,
+      "uncertain": false,
+      "uncertainReason": null,
+      "reviewNote": null
+    },
+    {
+      "bindingKind": "VALUE",
+      "parseTarget": {
+        "parseFieldRef": "failReason",
+        "name": "failReason",
+        "parentPath": "Root",
+        "fullPath": "Root.failReason",
+        "dataType": "STRING"
+      },
+      "valueExpression": {
+        "mode": "CONCATENATE",
+        "sequence": 1,
+        "ruleReferences": [
+          "TPL.VALUE.CONCATENATE"
+        ],
+        "children": [
+          {
+            "mode": "FIELD",
+            "sequence": 1,
+            "ruleReferences": [
+              "TPL.VALUE.FIELD"
+            ],
+            "standardFieldRef": "b2e0061-parse-bocb2e-trans-trn-b2e0061-rs-b2e0061-rs-status-rspcod"
+          },
+          {
+            "mode": "FIXED_VALUE",
+            "sequence": 2,
+            "ruleReferences": [
+              "TPL.VALUE.FIXED_VALUE"
+            ],
+            "payload": {
+              "kind": "LITERAL",
+              "value": "-"
+            }
+          },
+          {
+            "mode": "FIELD",
+            "sequence": 3,
+            "ruleReferences": [
+              "TPL.VALUE.FIELD"
+            ],
+            "standardFieldRef": "b2e0061-parse-bocb2e-trans-trn-b2e0061-rs-b2e0061-rs-status-rspmsg"
+          }
+        ]
+      },
+      "processingPolicies": {
+        "emptyHandling": "BLANK",
+        "overlengthHandling": "INTERCEPT",
+        "rowLimit": 1,
+        "chineseCharacterLength": "STANDARD_1",
+        "replacementRuleName": null
+      },
+      "ruleReferences": [
+        "TPL.BIND.PARSE",
+        "TPL.BIND.STANDARD_PROJECTION",
+        "TPL.PROCESS.EMPTY_HANDLING",
+        "TPL.PROCESS.OVERLENGTH",
+        "TPL.PROCESS.ROW_LIMIT",
+        "TPL.PROCESS.CHAR_LENGTH"
+      ],
+      "evidence": [
+        {
+          "kind": "FINAL_STANDARD",
+          "sourceRef": "b2e0061-parse-bocb2e-trans-trn-b2e0061-rs-b2e0061-rs-status-rspcod",
+          "note": "Standard 镜像来自已冻结的 Final InterfaceStandardIR v1。"
+        },
+        {
+          "kind": "TARGET_SYSTEM_FORMAL_EXPORT",
+          "sourceRef": "docs/reference/samples/b2eboc/b2e0061-parse-template.json#lineList[6]",
+          "note": "Value Expression 与 processing policy 来自正式导出的已观察配置。"
+        }
+      ],
+      "confidence": 1.0,
+      "uncertain": false,
+      "uncertainReason": null,
+      "reviewNote": null
+    },
+    {
+      "bindingKind": "COLLECTION_ITEM",
+      "parseTarget": {
+        "parseFieldRef": "paymentLineList",
+        "name": "paymentLineList",
+        "parentPath": "Root",
+        "fullPath": "Root.paymentLineList",
+        "dataType": "LIST"
+      },
+      "valueExpression": null,
+      "processingPolicies": {
+        "emptyHandling": "BLANK",
+        "overlengthHandling": "INTERCEPT",
+        "rowLimit": 1,
+        "chineseCharacterLength": "STANDARD_1",
+        "replacementRuleName": null
+      },
+      "ruleReferences": [
+        "TPL.BIND.PARSE",
+        "TPL.BIND.STANDARD_PROJECTION",
+        "TPL.PROCESS.EMPTY_HANDLING",
+        "TPL.PROCESS.OVERLENGTH",
+        "TPL.PROCESS.ROW_LIMIT",
+        "TPL.PROCESS.CHAR_LENGTH",
+        "TPL.BIND.COLLECTION_ITEM"
+      ],
+      "evidence": [
+        {
+          "kind": "FINAL_STANDARD",
+          "sourceRef": "b2e0061-parse-bocb2e-trans-trn-b2e0061-rs-b2e0061-rs",
+          "note": "Standard 镜像来自已冻结的 Final InterfaceStandardIR v1。"
+        },
+        {
+          "kind": "TARGET_SYSTEM_FORMAL_EXPORT",
+          "sourceRef": "docs/reference/samples/b2eboc/b2e0061-parse-template.json#lineList[7]",
+          "note": "Value Expression 与 processing policy 来自正式导出的已观察配置。"
+        }
+      ],
+      "confidence": 1.0,
+      "uncertain": false,
+      "uncertainReason": null,
+      "reviewNote": null,
+      "standardSource": {
+        "standardFieldRef": "b2e0061-parse-bocb2e-trans-trn-b2e0061-rs-b2e0061-rs"
+      }
+    },
+    {
+      "bindingKind": "VALUE",
+      "parseTarget": {
+        "parseFieldRef": "paymentNumber",
+        "name": "paymentNumber",
+        "parentPath": "Root.paymentLineList",
+        "fullPath": "Root.paymentLineList.paymentNumber",
+        "dataType": "STRING"
+      },
+      "valueExpression": {
+        "mode": "FUNCTION",
+        "sequence": 1,
+        "ruleReferences": [
+          "TPL.VALUE.FUNCTION"
+        ],
+        "functionCode": "SinglePaymentGetPaymentNo",
+        "arguments": [
+          {
+            "position": 1,
+            "kind": "FIELD_REF",
+            "standardFieldRef": "b2e0061-parse-bocb2e-trans-trn-b2e0061-rs-b2e0061-rs-insid"
+          }
+        ]
+      },
+      "processingPolicies": {
+        "emptyHandling": "BLANK",
+        "overlengthHandling": "INTERCEPT",
+        "rowLimit": 1,
+        "chineseCharacterLength": "STANDARD_1",
+        "replacementRuleName": null
+      },
+      "ruleReferences": [
+        "TPL.BIND.PARSE",
+        "TPL.BIND.STANDARD_PROJECTION",
+        "TPL.PROCESS.EMPTY_HANDLING",
+        "TPL.PROCESS.OVERLENGTH",
+        "TPL.PROCESS.ROW_LIMIT",
+        "TPL.PROCESS.CHAR_LENGTH"
+      ],
+      "evidence": [
+        {
+          "kind": "FINAL_STANDARD",
+          "sourceRef": "b2e0061-parse-bocb2e-trans-trn-b2e0061-rs-b2e0061-rs-insid",
+          "note": "Standard 镜像来自已冻结的 Final InterfaceStandardIR v1。"
+        },
+        {
+          "kind": "TARGET_SYSTEM_FORMAL_EXPORT",
+          "sourceRef": "docs/reference/samples/b2eboc/b2e0061-parse-template.json#lineList[8]",
+          "note": "Value Expression 与 processing policy 来自正式导出的已观察配置。"
+        }
+      ],
+      "confidence": 1.0,
+      "uncertain": false,
+      "uncertainReason": null,
+      "reviewNote": null
+    },
+    {
+      "bindingKind": "VALUE",
+      "parseTarget": {
+        "parseFieldRef": "lineBankReturnCode",
+        "name": "lineBankReturnCode",
+        "parentPath": "Root.paymentLineList",
+        "fullPath": "Root.paymentLineList.lineBankReturnCode",
+        "dataType": "STRING"
+      },
+      "valueExpression": {
+        "mode": "FIELD",
+        "sequence": 1,
+        "ruleReferences": [
+          "TPL.VALUE.FIELD"
+        ],
+        "standardFieldRef": "b2e0061-parse-bocb2e-trans-trn-b2e0061-rs-b2e0061-rs-status-rspcod"
+      },
+      "processingPolicies": {
+        "emptyHandling": "BLANK",
+        "overlengthHandling": "INTERCEPT",
+        "rowLimit": 1,
+        "chineseCharacterLength": "STANDARD_1",
+        "replacementRuleName": null
+      },
+      "ruleReferences": [
+        "TPL.BIND.PARSE",
+        "TPL.BIND.STANDARD_PROJECTION",
+        "TPL.PROCESS.EMPTY_HANDLING",
+        "TPL.PROCESS.OVERLENGTH",
+        "TPL.PROCESS.ROW_LIMIT",
+        "TPL.PROCESS.CHAR_LENGTH"
+      ],
+      "evidence": [
+        {
+          "kind": "FINAL_STANDARD",
+          "sourceRef": "b2e0061-parse-bocb2e-trans-trn-b2e0061-rs-b2e0061-rs-status-rspcod",
+          "note": "Standard 镜像来自已冻结的 Final InterfaceStandardIR v1。"
+        },
+        {
+          "kind": "TARGET_SYSTEM_FORMAL_EXPORT",
+          "sourceRef": "docs/reference/samples/b2eboc/b2e0061-parse-template.json#lineList[11]",
+          "note": "Value Expression 与 processing policy 来自正式导出的已观察配置。"
+        }
+      ],
+      "confidence": 1.0,
+      "uncertain": false,
+      "uncertainReason": null,
+      "reviewNote": null
+    },
+    {
+      "bindingKind": "VALUE",
+      "parseTarget": {
+        "parseFieldRef": "paymentFailReason",
+        "name": "paymentFailReason",
+        "parentPath": "Root.paymentLineList",
+        "fullPath": "Root.paymentLineList.paymentFailReason",
+        "dataType": "STRING"
+      },
+      "valueExpression": {
+        "mode": "CONCATENATE",
+        "sequence": 1,
+        "ruleReferences": [
+          "TPL.VALUE.CONCATENATE"
+        ],
+        "children": [
+          {
+            "mode": "FIELD",
+            "sequence": 1,
+            "ruleReferences": [
+              "TPL.VALUE.FIELD"
+            ],
+            "standardFieldRef": "b2e0061-parse-bocb2e-trans-trn-b2e0061-rs-b2e0061-rs-status-rspcod"
+          },
+          {
+            "mode": "FIXED_VALUE",
+            "sequence": 2,
+            "ruleReferences": [
+              "TPL.VALUE.FIXED_VALUE"
+            ],
+            "payload": {
+              "kind": "LITERAL",
+              "value": "-"
+            }
+          },
+          {
+            "mode": "FIELD",
+            "sequence": 3,
+            "ruleReferences": [
+              "TPL.VALUE.FIELD"
+            ],
+            "standardFieldRef": "b2e0061-parse-bocb2e-trans-trn-b2e0061-rs-b2e0061-rs-status-rspmsg"
+          }
+        ]
+      },
+      "processingPolicies": {
+        "emptyHandling": "BLANK",
+        "overlengthHandling": "INTERCEPT",
+        "rowLimit": 1,
+        "chineseCharacterLength": "STANDARD_1",
+        "replacementRuleName": null
+      },
+      "ruleReferences": [
+        "TPL.BIND.PARSE",
+        "TPL.BIND.STANDARD_PROJECTION",
+        "TPL.PROCESS.EMPTY_HANDLING",
+        "TPL.PROCESS.OVERLENGTH",
+        "TPL.PROCESS.ROW_LIMIT",
+        "TPL.PROCESS.CHAR_LENGTH"
+      ],
+      "evidence": [
+        {
+          "kind": "FINAL_STANDARD",
+          "sourceRef": "b2e0061-parse-bocb2e-trans-trn-b2e0061-rs-b2e0061-rs-status-rspcod",
+          "note": "Standard 镜像来自已冻结的 Final InterfaceStandardIR v1。"
+        },
+        {
+          "kind": "TARGET_SYSTEM_FORMAL_EXPORT",
+          "sourceRef": "docs/reference/samples/b2eboc/b2e0061-parse-template.json#lineList[13]",
+          "note": "Value Expression 与 processing policy 来自正式导出的已观察配置。"
+        }
+      ],
+      "confidence": 1.0,
+      "uncertain": false,
+      "uncertainReason": null,
+      "reviewNote": null
+    }
+  ],
+  "omissions": [],
+  "review": {
+    "status": "PENDING",
+    "reviewer": null,
+    "reviewedAt": null,
+    "note": null
+  }
+}

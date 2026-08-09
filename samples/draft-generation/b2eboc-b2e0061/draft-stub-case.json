@@ -1,0 +1,70 @@
+{
+  "contractVersion": "draft-stub-case/v1",
+  "caseId": "b2eboc-b2e0061",
+  "responses": [
+    {
+      "request": {
+        "artifactKind": "docir",
+        "sourceHash": "sha256:0d5ccd0e33ed70c1a8d0d9dda6426328a0ad82b67140c05bf64cb21ae68c489e"
+      },
+      "artifactFile": "artifacts/docir-draft.md",
+      "reviewNotesFile": "notes/docir-review.md"
+    },
+    {
+      "request": {
+        "artifactKind": "schemair",
+        "sourceHash": "sha256:31d7fc002ccc2b840f401206f54665e36771f2bb5502d480566defdff9ac7585"
+      },
+      "artifactFile": "artifacts/schemair-draft.json",
+      "reviewNotesFile": "notes/schemair-review.md"
+    },
+    {
+      "request": {
+        "artifactKind": "standard",
+        "sourceHash": "sha256:4729131ad59fd29899895b1149a476c1f95b71f304cb43bd17749985f19e7162",
+        "direction": "ASSEMBLY",
+        "standardVersion": "v1",
+        "rulePackageVersion": "v1"
+      },
+      "artifactFile": "artifacts/standard-assembly-draft.json",
+      "reviewNotesFile": "notes/standard-review.md"
+    },
+    {
+      "request": {
+        "artifactKind": "standard",
+        "sourceHash": "sha256:4729131ad59fd29899895b1149a476c1f95b71f304cb43bd17749985f19e7162",
+        "direction": "PARSE",
+        "standardVersion": "v1",
+        "rulePackageVersion": "v1"
+      },
+      "artifactFile": "artifacts/standard-parse-draft.json",
+      "reviewNotesFile": "notes/standard-review.md"
+    },
+    {
+      "request": {
+        "artifactKind": "template",
+        "sourceHash": "sha256:9c77e0e92447907fa89d6ef705501dc0947d695998b80bb154476f696e9b982e",
+        "direction": "ASSEMBLY",
+        "standardVersion": "v1",
+        "templateId": "b2e0061-assembly-common",
+        "templateVersion": "v1",
+        "rulePackageVersion": "v2"
+      },
+      "artifactFile": "artifacts/template-assembly-draft.json",
+      "reviewNotesFile": "notes/template-assembly-review.md"
+    },
+    {
+      "request": {
+        "artifactKind": "template",
+        "sourceHash": "sha256:33efa544460ac19f216734712c1e6ae2610321ea17eb750eff35493ecca9d57e",
+        "direction": "PARSE",
+        "standardVersion": "v1",
+        "templateId": "b2e0061-parse-common",
+        "templateVersion": "v1",
+        "rulePackageVersion": "v2"
+      },
+      "artifactFile": "artifacts/template-parse-draft.json",
+      "reviewNotesFile": "notes/template-parse-review.md"
+    }
+  ]
+}

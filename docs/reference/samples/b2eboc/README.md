@@ -8,7 +8,7 @@ Reference / Draft. Not golden sample.
 
 本目录是当前维护的 reference input。已过期的 toy 示例不再保留，避免与当前 Standard/Template Configuration Workbook 契约混淆。
 
-`b2e0061.md` 已作为 Phase0 raw doc 输入，并在 `samples/golden/b2eboc-b2e0061/` 中形成 DocIR / SchemaIR Review Golden sample。本 reference 目录本身不是 golden sample；正式导出和字段清单已经进入已发布规则包的证据链。InterfaceStandardIR/InterfaceTemplateIR Validator、双方向 Final fixtures/results、Configuration Workbook 与 structured assertions 已在 `samples/trusted-chain/b2eboc-b2e0061/` 落地并冻结。
+`b2e0061.md` 已作为 Phase0 raw doc 输入，并在 `samples/golden/b2eboc-b2e0061/` 中形成 DocIR / SchemaIR Review Golden sample。本 reference 目录本身不是 golden sample；正式导出和字段清单已经进入已发布规则包的证据链。InterfaceStandardIR/InterfaceTemplateIR Validator、双方向 Final fixtures/results、Configuration Workbook 与 structured assertions 已在 `samples/trusted-chain/b2eboc-b2e0061/` 落地并冻结。P0-T4 的唯一 deterministic provider case 位于 `samples/draft-generation/b2eboc-b2e0061/`，只引用已存在的 Review candidates，不从本 reference 目录推断新事实。
 
 | 文件 | 说明 | 当前用途 |
 |---|---|---|

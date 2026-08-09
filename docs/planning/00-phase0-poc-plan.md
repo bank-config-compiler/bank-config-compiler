@@ -2,7 +2,7 @@
 
 ## Status
 
-Active. P0-T3 is Done. `configuration-rules/v1` and v2 are released and immutable. SchemaIR v2、InterfaceStandardIR、InterfaceTemplateIR、Configuration Workbook、显式 `phase0` workspace/CLI 与双方向 structured Golden regression 已闭合。P0-T4 Draft generators 为 Next，且不属于本批实现范围。
+Active. P0-T3 is Done. P0-T4 is In Progress：provider-neutral runtime、六个 deterministic b2e0061 responses 与四类 CLI 已完成，当前停在 Final DocIR Human Review Gate；未获准确 bytes hash 确认前不冻结 `docir-final.md`，也不进入完整 Draft-to-Workbook closure。
 
 ## 1. 目标与边界
 
@@ -32,7 +32,7 @@ Phase0 不实现 UI、JSON 银行报文、目标系统 Import JSON/API、Excel �
 | P0-T1：`b2e0061` IR candidate / Review | Done | P0-T0 | 无 | Candidate DocIR / SchemaIR 经 Human Review 更新，正式 IR 设计和 reference 边界清晰。 |
 | P0-T2：Review Golden sample boundary | Done | P0-T1 | 无 | Expected DocIR、修订前 expected SchemaIR、expected review notes 和 v1 validation result 已冻结为审查前 Golden。 |
 | P0-T3：Trusted chain | Done | P0-T2、`configuration-rules/v1` 与 v2 RELEASED | 无 | 两个配置 IR/Validator、Workbook 和完整 trusted-chain regression 已完成。 |
-| P0-T4：Draft generators | Next | P0-T3 | 无；前置依赖已满足 | Provider-neutral generator interface 与四类确定性 stub 可运行，且无法绕过 Validator/Human Review 写入 Final。 |
+| P0-T4：Draft generators | In Progress | P0-T3 | Final DocIR candidate 等待准确 bytes hash Human Review | Provider-neutral generator interface 与四类确定性 stub 可运行，且无法绕过 Validator/Human Review 写入 Final。 |
 
 状态定义：
 
@@ -56,10 +56,11 @@ Phase0 不实现 UI、JSON 银行报文、目标系统 Import JSON/API、Excel �
 - `interface-template/v1`、Template Validator、双方向 Final/results 与 APPROVED Review；ASSEMBLY hash `sha256:b9966a449ddc29e08fa29c6cf7838273ce3cab91e00dbb38092767d21af2f561`，保留 4 个经接受 omission 和 4 个非阻塞 Warning；PARSE hash `sha256:16eb305b6ac3944f28cb1060b943fdfc2d471f69e6bf8ea52ce059c797fb22f9`，0 WARNING；两者均为 0 ERROR、0 blocking、`finalEligible=true`
 - Configuration Workbook 运行时、三份 result 完整相等门禁、Standard/Template 双规则版本门禁、固定七个 sheet、安全文本、脱敏日志与同目录原子发布
 - 显式 `Phase0Selection`、固定六 artifact 路径、只读 `check --profile phase0` 和固定目标 `generate-workbook` CLI；不扫描、不推断最新版
+- provider-neutral Draft runtime、严格 `draft-provider-response/v1` / `draft-stub-case/v1`、固定 Draft publication、`generate-draft` CLI 和六个 b2e0061 deterministic responses
 - 提交的 ASSEMBLY/PARSE CREATE Golden Workbook 与结构化回读 regression；行数分别为 Standard 36/19、Template 26/8、Expression 30/13、Warning 38/15
 - PR #12 / merge commit `2de9f69`：最新 requirements、design、ADR amendment、reference 边界和规则事实收束
 
-这些证据证明 DocIR/SchemaIR 的修订前 Review boundary、SchemaIR v2 machine contract/Final fixture，以及 P0-T3 从 released rules、Final Standard/Template 到 Configuration Workbook 和 structured Golden regression 的完整可信链路；不证明 P0-T4 Draft generators 或 Phase0-PoC 最终门禁已经完成。
+这些证据证明 P0-T3 完整可信链路以及 P0-T4 Draft runtime/受控 fixture 已形成；不证明 Final DocIR 已获批、完整 Draft-to-Workbook closure 已完成或 Phase0-PoC 最终门禁已满足。
 
 ### 2.3 存量代码差距
 
@@ -68,14 +69,14 @@ Phase0 不实现 UI、JSON 银行报文、目标系统 Import JSON/API、Excel �
 | `schemair_validator.py` | `schemair/v2` 与 result v2；XML-only、encoding evidence、Condition、层级/type/occurs、lifecycle 和 hash 已实现 | 无；b2e0061 Final facts 与 Review metadata 已冻结 | 已完成 |
 | SchemaIR validation result | 保存 identity/version/contract/hash、`finalEligible`、summary、coverage 和 blocking issues | 无；已存在与 Final hash 匹配且 `finalEligible=true` 的结果 | 已完成 |
 | `workspace.py` | `raw` profile、受边界保护的嵌套严格 JSON I/O、不可变 `Phase0Selection`、固定链路路径和加载 | 无；`phase0` 显式选择固定六份输入 artifact 与 Workbook 输出路径 | 已完成 |
-| `cli.py` | `ingest`、`check --profile raw|phase0` 与 `generate-workbook`；`phase0a` 已移除 | 无；`phase0` 要求完整 selector 和两个显式规则包路径 | 已完成 |
+| `cli.py` | `ingest`、`check --profile raw|phase0`、`generate-workbook` 与 `generate-draft docir|schemair|standard|template`；`phase0a` 已移除 | 无；Draft provider/fixture root 与适用 selector 必须显式提供 | P0-T4 Commit 7B |
 | 规则资产 | v1 已于 2026-08-06 发布并冻结；v2 继承 catalog 并修订方向性 Standard projection，已于 2026-08-09 发布并冻结 | 无；Template 必须显式绑定适用的 RELEASED 规则版本 | 已完成 |
 | Standard | `interface-standard/v1`、result v1、Validator、双方向 Final/results 和 APPROVED Review 已实现 | 无；两份 Final identity/version/hash 已冻结 | 已完成 |
 | Template | `interface-template/v1`、result v1、Validator、双方向 Final/results 和 APPROVED Review 已实现并绑定 RELEASED v2 | 无；两份 Final identity/version/hash 与四条 ASSEMBLY omission 已冻结 | 已完成 |
 | Workbook | openpyxl Generator、完整 Final/result/rule gate、七个 sheet 投影、safe text、原子写入、双方向 Golden Workbook、structured/CLI regression 已实现 | 无；P0-T3 完成门禁已覆盖 | 已完成 |
-| Draft generators | 未实现 | 四类核心 IR 仍依赖人工 fixture，Phase0 通过条件未满足 | P0-T4 |
+| Draft generators | provider-neutral runtime、四类 orchestration、六个受控 response、CLI 与 Draft publication 已实现 | Final DocIR Review/freeze 和完整 closure regression 未完成 | P0-T4 Commit 7C/7D |
 
-当前 regression、三类 Final validation results、v1/v2 发布记录、Standard/Template Final golden 与双方向 Configuration Workbook 共同证明 P0-T3 trusted chain 已稳定闭合；P0-T4 Draft generators 仍未实现。
+当前 regression、三类 Final validation results、v1/v2 发布记录、Standard/Template Final golden 与双方向 Configuration Workbook 共同证明 P0-T3 trusted chain 已稳定闭合；P0-T4 runtime 已完成，但 Final DocIR gate 与完整 closure 仍未完成。
 
 ## 3. 已确认迁移原则
 
@@ -438,7 +439,7 @@ Phase0 不实现 UI、JSON 银行报文、目标系统 Import JSON/API、Excel �
 - `DraftProvider.generate(DraftGenerationRequest) -> str` 是统一 provider contract。Request 保存 task/artifact kind、上游 `sourceHash` 和适用的 direction/version/rule selector；CLI task ID 使用 workspace 目录名。
 - Provider 返回严格 UTF-8 `draft-provider-response/v1` JSON envelope，只包含 `contractVersion`、`artifactKind`、`artifactContent` 和 `reviewNotes`。未知/缺失/额外属性、BOM、非 UTF-8、重复 JSON property 或 kind mismatch 均拒绝。
 - Phase0 只实现调用者显式选择的 fixture provider。`draft-stub-case/v1` 使用准确 request fingerprint 匹配 DocIR、SchemaIR、双向 Standard 和双向 Template 六个响应；不扫描、不选择最新版，也不进入 `phase0` trusted-chain selector。
-- 文本上游使用 UTF-8 bytes SHA-256，JSON Final dependency 使用 canonical semantic SHA-256。fixture root、input hash、selector 或规则版本不匹配时 fail closed。
+- 文本上游使用 UTF-8 bytes SHA-256，JSON Final dependency 使用 canonical semantic SHA-256。`.gitattributes` 显式保留既有 Golden/Draft Markdown 的 CRLF bytes baseline，并固定 fixture JSON 的 LF；fixture root、input hash、selector 或规则版本不匹配时 fail closed。
 - DocIR 只执行章节、Metadata/Fields 表和 ASSEMBLY/PARSE XML 方向的最小结构检查，不新增第四个 trusted-chain Validator。Human 必须先确认准确 DocIR bytes hash，才可冻结 `docir-final.md`。
 - SchemaIR、Standard、Template provider output 必须为 `DRAFT/PENDING`；对应 Validator 必须为 0 ERROR、`finalEligible=false` 并保留 lifecycle blocking issue。任何 `FINAL/APPROVED` 输出在写盘前拒绝。
 - Draft、匹配 validation result 和 review notes 全部先在内存校验，再分别使用同目录临时文件原子替换。文件系统不承诺跨文件事务；任何中断后的缺失或 result hash mismatch 必须阻止下游。
@@ -570,7 +571,7 @@ Phase0 不实现 UI、JSON 银行报文、目标系统 Import JSON/API、Excel �
 - Verification：双方向 CLI smoke、Workbook 回读、完整 regression、pytest、build、docs-sync、BOM、diff、ZIP/公式/外链/宏和敏感信息检查。
 - Next starts when：已满足；Commit 6B 是后续开发基线，P0-T4 可开始实现四类 Draft generators。
 
-### Commit 7A：冻结 P0-T4 contract
+### 已完成 Commit 7A：冻结 P0-T4 contract
 
 - Suggested message：`docs: define P0-T4 draft generation contract`
 - Scope/Files：Phase0 requirements、system overview、ADR-0003 amendment、active plan 与已知 P0-T3 状态漂移；不修改 runtime。
@@ -578,7 +579,7 @@ Phase0 不实现 UI、JSON 银行报文、目标系统 Import JSON/API、Excel �
 - Verification：内部链接、UTF-8 no BOM、`git diff --check`。
 - Next starts when：文档与已确认实施计划一致。
 
-### Commit 7B：provider-neutral runtime 与 Draft candidate
+### 已完成 Commit 7B：provider-neutral runtime 与 Draft candidate
 
 - Suggested message：`feat: add provider-neutral IR draft generation`
 - Scope/Files：provider contract、strict response/case loader、四类 orchestration、DocIR structure check、workspace publication、`generate-draft` CLI、六类 deterministic responses、tests、README/docs-sync；不冻结 Final DocIR。

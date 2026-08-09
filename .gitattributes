@@ -1,0 +1,3 @@
+samples/golden/b2eboc-b2e0061/*.md text eol=crlf
+samples/draft-generation/** text eol=lf
+samples/draft-generation/**/*.md text eol=crlf
