@@ -435,25 +435,29 @@ Phase0 不实现 UI、JSON 银行报文、目标系统 Import JSON/API、Excel �
 
 ### 5.1 技术边界
 
-- 定义 provider-neutral Draft Generator interface，不在 Phase0 绑定 OpenAI-specific API、网络配置或模型实现。
-- 为 DocIR、SchemaIR、InterfaceStandardIR、InterfaceTemplateIR 提供四个确定性 stub，用受控输入稳定生成合法 Draft。
-- Provider 和 stub 只能写 Draft artifact；不得写 Final、构造 Human Review 结论或调用 Workbook Generator 绕过可信链路。
-- SchemaIR generator 只输出 XML；Standard generator 必须接收 Final SchemaIR 与明确规则版本；Template generator 必须接收精确 Final Standard identity/version/hash 和规则版本。
-- 外部 provider response 在信任边界处校验；缺配置、未知 catalog 或不合法输出 fail closed。
-- 日志只记录 task/artifact identifier、provider、contract version 和 outcome，不记录完整银行原文、生成内容、secret 或安全固定值。
+- `DraftProvider.generate(DraftGenerationRequest) -> str` 是统一 provider contract。Request 保存 task/artifact kind、上游 `sourceHash` 和适用的 direction/version/rule selector；CLI task ID 使用 workspace 目录名。
+- Provider 返回严格 UTF-8 `draft-provider-response/v1` JSON envelope，只包含 `contractVersion`、`artifactKind`、`artifactContent` 和 `reviewNotes`。未知/缺失/额外属性、BOM、非 UTF-8、重复 JSON property 或 kind mismatch 均拒绝。
+- Phase0 只实现调用者显式选择的 fixture provider。`draft-stub-case/v1` 使用准确 request fingerprint 匹配 DocIR、SchemaIR、双向 Standard 和双向 Template 六个响应；不扫描、不选择最新版，也不进入 `phase0` trusted-chain selector。
+- 文本上游使用 UTF-8 bytes SHA-256，JSON Final dependency 使用 canonical semantic SHA-256。fixture root、input hash、selector 或规则版本不匹配时 fail closed。
+- DocIR 只执行章节、Metadata/Fields 表和 ASSEMBLY/PARSE XML 方向的最小结构检查，不新增第四个 trusted-chain Validator。Human 必须先确认准确 DocIR bytes hash，才可冻结 `docir-final.md`。
+- SchemaIR、Standard、Template provider output 必须为 `DRAFT/PENDING`；对应 Validator 必须为 0 ERROR、`finalEligible=false` 并保留 lifecycle blocking issue。任何 `FINAL/APPROVED` 输出在写盘前拒绝。
+- Draft、匹配 validation result 和 review notes 全部先在内存校验，再分别使用同目录临时文件原子替换。文件系统不承诺跨文件事务；任何中断后的缺失或 result hash mismatch 必须阻止下游。
+- Provider 和 stub 不得构造 Final/Human Review、调用 Workbook Generator 或硬编码银行事实到 runtime。日志只记录 task/artifact identifier、provider、contract version、direction 和 outcome，不记录银行原文、Draft、review notes、secret 或安全固定值。
+- 不实现真实 LLM/API、Prompt、网络、认证、重试、模型配置、通用银行推理、Review UI、自动 promotion 或 Phase1 能力。
 
 ### 5.2 完成标志
 
-- 四类 Draft generator 均可通过同一 provider contract 调用，stub 输出确定且通过对应结构校验。
-- LLM/provider 输出无法直接形成 Final；人工修改后必须重新 Validator。
-- Standard/Template generator 在规则版本不存在、Standard 非 Final 或 hash 不匹配时拒绝运行。
-- 完整 Phase0 回归能从受控 Draft 输入经过 Validator/Human Review fixtures 生成双方向 Workbook。
+- `generate-draft docir|schemair|standard|template` 通过同一 provider contract 调用；相同 request/fixture 产生相同 Draft/result/review notes。
+- 固定写入 `docir-draft.md`、`schemair-draft.json`、`standards/{direction}/{standardVersion}/standard-draft.json`、`templates/{direction}/{templateId}/{templateVersion}/template-draft.json` 及同级 review notes/result；默认拒绝覆盖。
+- LLM/provider 输出无法直接形成 Final；DocIR 先经准确 bytes hash Human Review，三个 JSON Draft 人工修改后必须重新 Validator。
+- Standard/Template generator 在规则版本不存在或非 RELEASED、dependency 非 Final、selector/hash 不匹配时拒绝运行。
+- 完整 Phase0 回归从受控 Draft 输入开始，显式装载已审核 Final fixtures 表达 Human Review，再生成双方向 Workbook；测试和 runtime 都不得自动提升 Draft。
 - P0-T4 改为 `Done` 后，Phase0-PoC 才满足通过条件。
 
 ### 5.3 验证
 
-- 四类 stub golden、provider error translation、非法输出、缺配置、Final 写入拒绝和敏感日志测试。
-- 完整 pytest、Draft-to-Workbook regression、docs-sync 和用户命令 smoke test。
+- 六类 stub golden、provider error translation、严格 response/case、DocIR 结构、JSON lifecycle/Validator、dependency/hash/rules、overwrite/失败清理和敏感日志测试。
+- 完整 pytest、双方向 Draft-to-Workbook regression、build、docs-sync、BOM/diff/secret 检查和用户命令 smoke test。
 
 ## 6. 逻辑 Commit Plan
 
@@ -566,12 +570,41 @@ Phase0 不实现 UI、JSON 银行报文、目标系统 Import JSON/API、Excel �
 - Verification：双方向 CLI smoke、Workbook 回读、完整 regression、pytest、build、docs-sync、BOM、diff、ZIP/公式/外链/宏和敏感信息检查。
 - Next starts when：已满足；Commit 6B 是后续开发基线，P0-T4 可开始实现四类 Draft generators。
 
-### Future Commit 7：四类 Draft generators
+### Commit 7A：冻结 P0-T4 contract
 
-- Suggested message：`feat: add provider-neutral IR draft generators`
-- Scope/Files：provider contract、四类 deterministic stub、workspace/CLI entrypoints、tests 和 docs-sync。
-- Completion signal：Draft 生成不会绕过可信边界，完整 Phase0 验收闭合。
-- Verification：stub/provider/错误路径/敏感日志测试和 Draft-to-Workbook regression。
+- Suggested message：`docs: define P0-T4 draft generation contract`
+- Scope/Files：Phase0 requirements、system overview、ADR-0003 amendment、active plan 与已知 P0-T3 状态漂移；不修改 runtime。
+- Completion signal：provider/request/response、fixture case、workspace paths、Human Review gate 和验收命令 decision complete。
+- Verification：内部链接、UTF-8 no BOM、`git diff --check`。
+- Next starts when：文档与已确认实施计划一致。
+
+### Commit 7B：provider-neutral runtime 与 Draft candidate
+
+- Suggested message：`feat: add provider-neutral IR draft generation`
+- Scope/Files：provider contract、strict response/case loader、四类 orchestration、DocIR structure check、workspace publication、`generate-draft` CLI、六类 deterministic responses、tests、README/docs-sync；不冻结 Final DocIR。
+- Completion signal：六个受控调用确定性输出，所有非法 provider/dependency/path/lifecycle 在写盘前 fail closed；生成准确 DocIR candidate 和 PENDING review notes。
+- Verification：targeted/full pytest、CLI smoke、build、docs-sync、BOM/diff/secret 检查。
+- Next starts when：向 Human 展示 DocIR candidate 准确 bytes hash、Review Golden diff、结构结果和 review notes。
+
+### Human Review Gate：Final DocIR
+
+- Human 只确认准确 DocIR candidate；它可以保留忠实反映 raw doc 的冲突和不确定项，但不得把后续 SchemaIR/Standard 事实倒灌到 DocIR。
+- 未获具名 reviewer 对准确 bytes hash 的明确确认前，不写入 `docir-final.md`，不启用完整 Draft-to-Workbook regression，也不把 P0-T4 标为 Done。
+
+### Commit 7C：冻结 reviewed Final DocIR
+
+- Suggested message：`chore: freeze reviewed Final DocIR fixture`
+- Scope/Files：获批 `docir-final.md`、具名 reviewer/time/hash 记录、byte/hash regression 和最小状态同步；不改变 generator runtime。
+- Completion signal：SchemaIR stub case 只接受获批 Final DocIR hash；任一内容变化都会使 Review 和 case 匹配失效。
+- Verification：candidate/hash equality、Review 记录、完整 pytest、docs-sync、BOM/diff 检查。
+- Next starts when：Final DocIR commit 成为当前开发基线。
+
+### Commit 7D：完整 Draft-to-Workbook closure
+
+- Suggested message：`feat: complete phase0 draft generation workflow`
+- Scope/Files：完整受控回归、双方向 CLI smoke、structured Workbook comparison、README/phase/plan/sample 状态；测试中显式装载已审核 Final fixtures，不实现自动 promotion。
+- Completion signal：四类 generator 不能绕过可信边界，相同 fixture 可重复生成 Draft，双方向 Workbook 与 Golden 一致，P0-T4/Phase0 改为 Done。
+- Verification：完整 pytest/build/docs-sync、BOM/diff/secret 和 Workbook 公式/宏/外链检查。
 - Next starts when：Phase0-PoC 满足全部通过条件，可进入 Phase1 planning。
 
 ## 7. 整体验收与验证要求

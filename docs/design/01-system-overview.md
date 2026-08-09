@@ -93,7 +93,7 @@ Configuration Workbook 是派生交付物，不是事实源，也不是可导入
 
 不负责解释银行字段或目标系统规则。
 
-### 2.2 LLM Draft Generators
+### 2.2 Provider-neutral Draft Generators
 
 职责：
 
@@ -102,6 +102,8 @@ Configuration Workbook 是派生交付物，不是事实源，也不是可导入
 - 从 Final SchemaIR 与指定规则版本生成 InterfaceStandardIR Draft。
 - 从 Final InterfaceStandardIR、方向性 FIELD catalog 与指定规则版本生成 InterfaceTemplateIR Draft。
 
+Phase0 中四类 generator 通过同一个 `DraftProvider` contract 调用。provider 返回严格 UTF-8 的 `draft-provider-response/v1` JSON envelope，包含 artifact kind、Draft 内容和 review notes；编排层负责严格解析、dependency/hash/rule 校验、Validator 调用和 workspace 发布。deterministic fixture provider 只加载调用者显式指定的 `draft-stub-case/v1`，不扫描 workspace 或自动选择版本。
+
 约束：
 
 - 只能输出 Draft。
@@ -109,6 +111,8 @@ Configuration Workbook 是派生交付物，不是事实源，也不是可导入
 - 不得在缺少 catalog 事实时根据相近名称推断字段、function、mapping 或业务 Condition。
 - 输出必须经过结构校验和人工 Review。
 - 不生成最终工作簿。
+- 不得返回或写入 `FINAL/APPROVED` artifact；DocIR 必须先由 Human 对准确 bytes hash 确认，三个 JSON Draft 则必须保存匹配 result 且保持 `finalEligible=false`。
+- Provider response、原始银行文档、Draft 内容、review notes 和敏感固定值不得进入日志。
 
 ### 2.3 Validators
 
@@ -194,7 +198,7 @@ Phase0 可以用受控 fixture 或命令流程表达人工确认；Phase1 才提
 
 规则版本一旦发布不可原地覆盖。InterfaceStandardIR、InterfaceTemplateIR、Validator result 和 Configuration Workbook 必须记录实际使用的精确规则版本及 Rule ID。标准和后续模板可以使用不同规则版本，但模板对标准 artifact 的绑定不因此改变。
 
-`configuration-rules/v1` 与只修订方向相关 Standard projection 的 v2 均已发布并冻结。SchemaIR v2、InterfaceStandardIR 与 InterfaceTemplateIR 的 runtime、已评审 Final fixtures 和匹配 validation results 均已实现并冻结；当前进入 Workbook Generator 批次。Final IR 必须精确引用适用的 `RELEASED` 规则版本。
+`configuration-rules/v1` 与只修订方向相关 Standard projection 的 v2 均已发布并冻结。SchemaIR v2、InterfaceStandardIR、InterfaceTemplateIR、Configuration Workbook、双方向 Golden 与匹配 validation results 均已实现并冻结；P0-T3 已完成，当前进入 P0-T4 Draft Generator 批次。Final IR 必须精确引用适用的 `RELEASED` 规则版本。
 
 ## 4. 候选任务状态
 
@@ -227,22 +231,26 @@ CONFIGURATION_WORKBOOK_GENERATED
 workspace/{taskId}/
 ├── raw-doc.md
 ├── docir-draft.md
+├── docir-review-notes.md
 ├── docir-final.md
 ├── schemair-draft.json
+├── schemair-review-notes.md
 ├── schemair-validation-result.json
 ├── schemair-final.json
 ├── standards/{direction}/{standardVersion}/
 │   ├── standard-draft.json
+│   ├── standard-review-notes.md
 │   ├── standard-validation-result.json
 │   └── standard-final.json
 └── templates/{direction}/{templateId}/{templateVersion}/
     ├── template-draft.json
+    ├── template-review-notes.md
     ├── template-validation-result.json
     ├── template-final.json
     └── configuration-workbook.xlsx
 ```
 
-根级 SchemaIR artifact、library JSON I/O、通用 workspace selector/path contract 与完整 `phase0` CLI profile 均已实现。`phase0` 不扫描目录或自动选择最新版，只接受显式 direction/version/template selector，并分别加载 Standard 与 Template 实际引用的规则包。
+根级 SchemaIR artifact、library JSON I/O、通用 workspace selector/path contract 与完整 `phase0` CLI profile 均已实现。`phase0` 不扫描目录或自动选择最新版，只接受显式 direction/version/template selector，并分别加载 Standard 与 Template 实际引用的规则包。Draft 与 validation result 分别使用同目录临时文件原子替换；普通文件系统不提供跨文件事务，任何中断后的缺失或 canonical hash 不匹配都必须阻止下游。
 
 ## 6. 分阶段交付
 

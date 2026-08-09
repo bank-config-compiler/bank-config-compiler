@@ -84,7 +84,17 @@ DocIR Draft 至少保留接口编码、XML 格式、ASSEMBLY/PARSE、字段表�
 
 SchemaIR Draft 保存银行 XML element、attribute、完整 path、父子层级、类型、required、length、occurs、condition、方向级 `xmlEncoding` 和 evidence。SchemaIR Validator 必须提供字段级错误。Human 先完成包括 Final lifecycle/Review metadata 在内的完整 candidate，再重新运行 Validator；只有 identity/version/contract/canonical hash 匹配且 `finalEligible=true` 的结果可以进入下游。b2e0061 两个方向已由 Human 与银行线下确认为 `UTF-8`；显式文档 evidence 冲突产生 blocking Warning，直到 Human Review 处置。Final encoding 不生成 Standard 字段。
 
-### 5.2 规则包
+### 5.2 Draft Generator 边界
+
+四类 Draft generator 通过同一个 provider-neutral contract 调用。Phase0 只实现显式配置的 deterministic fixture provider，不绑定 OpenAI-specific API、Prompt、网络、认证、重试或模型配置，也不声称能够泛化到其他银行接口。
+
+Provider 接收 artifact kind、上游内容 hash 和适用的 direction/version/rule selector，返回严格 UTF-8 JSON envelope；envelope 只包含 `draft-provider-response/v1`、artifact kind、Draft 内容和 review notes。调用方必须在写入 workspace 前完成严格 envelope/JSON 解析、DocIR 最小结构检查或对应 JSON Validator 校验，并拒绝任何 `FINAL`、已批准 Review、未知 catalog、错误依赖或不匹配 hash。
+
+deterministic stub 只接受显式 `fixture-root` 中 `draft-stub-case/v1` 声明的精确 `b2e0061` 输入指纹。它不扫描目录、不选择最新版本，也不参与 Final trusted chain 的 `phase0` selector。文本输入使用 UTF-8 bytes SHA-256，JSON dependency 使用 canonical semantic SHA-256；任何不匹配都 fail closed。
+
+DocIR 没有独立可信链 Validator。DocIR Draft 只执行章节、Metadata/Fields 表和 XML 方向的最小结构检查；Human Review 对准确内容 hash 确认后，才可冻结为 `docir-final.md` 并成为 SchemaIR generator 输入。三个 JSON generator 只保存 `DRAFT/PENDING` artifact、匹配 validation result 和 review notes，且结果必须无 ERROR、`finalEligible=false`。
+
+### 5.3 规则包
 
 Phase0 必须使用业务负责人确认的版本化规则包；`configuration-rules/v1` 与 v2 都是接口无关、非全量且不可变的 BKL configuration rules 子集。Final IR 只能精确引用适用的 `RELEASED` 版本，不能自动选择最新版本。规则包包含：
 
@@ -95,7 +105,7 @@ Phase0 必须使用业务负责人确认的版本化规则包；`configuration-r
 
 未确认事实保持 `UNKNOWN`，不得制造占位业务标识。Template 只保存全局唯一 `mappingRuleName`，不内联 entries；当前 catalog 是样例子集，不声称全量覆盖。
 
-### 5.3 InterfaceStandardIR
+### 5.4 InterfaceStandardIR
 
 LLM 结合 Final SchemaIR 和规则版本生成 Standard Draft，至少覆盖：
 
@@ -113,7 +123,7 @@ LLM 结合 Final SchemaIR 和规则版本生成 Standard Draft，至少覆盖：
 
 Standard Validator 只校验结构、来源引用和确定性 invariant。人工确认后形成 Final Standard。
 
-### 5.4 InterfaceTemplateIR
+### 5.5 InterfaceTemplateIR
 
 LLM 基于 Final Standard 和规则版本生成 Template Draft，至少覆盖：
 
@@ -131,7 +141,7 @@ LLM 基于 Final Standard 和规则版本生成 Template Draft，至少覆盖：
 
 未确认 ASSEMBLY 标量 omission 阻止 Final Template；确认有意省略后允许 Final 并继续进入 Workbook Warnings。Node/Object 不产生 omission；有 XML Key 或结构绑定需求时必须有适用结构行，缺失配置直接报错。未配置 Parse Field 不产生 omission/warning。Template Validator 不能代替人工判断 function、mapping、目的系统业务 Condition 或 omission 的业务语义。
 
-### 5.5 Configuration Workbook
+### 5.6 Configuration Workbook
 
 Generator 只读取 Final SchemaIR、Final Standard、选定的 Final Template、三份匹配的校验结果、精确规则版本和显式 Standard Action。
 

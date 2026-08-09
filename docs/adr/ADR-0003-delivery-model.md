@@ -30,6 +30,12 @@ Skill、Agent 和 Dify workflow 可以作为组件或辅助方式：
 - Agent 可用于 DocIR Draft 和 SchemaIR Draft 生成，但不是可信边界。
 - Dify workflow 可用于 Phase0 的 LLM 编排实验，但不替代 Validator、Workbook Generator、Human Review 边界和 golden sample regression。
 
+### P0-T4 Amendment: provider-neutral Draft boundary
+
+Phase0 的四类 Draft generator 使用 provider-neutral interface，不把 OpenAI-specific API、网络、认证、重试或模型配置写入核心运行时。PoC 只提供由调用者显式选择的 deterministic fixture provider，用精确上游内容 hash、方向、artifact version 和规则版本匹配受控 `b2e0061` case。
+
+Provider 只返回 UTF-8 Draft response envelope；编排层在 workspace 写入前校验 envelope、Draft lifecycle、依赖、规则版本和对应 Validator 结果。Provider、Agent 或 workflow 均不得写入 Final、构造 Human Review 结论或调用 Workbook Generator 绕过 trusted chain。真实 provider 由后续阶段在相同边界下增加，不改变 Human Review、Validator 和 canonical hash 门禁。
+
 ## Alternatives Considered
 
 ### 只交付 Skill
@@ -104,3 +110,4 @@ Why not chosen:
 - Phase1 应控制为轻量 Review Tool，不提前引入生产权限、审批流、多用户协同或复杂部署。
 - Phase2 才根据真实试点证据判断是否向内部系统演进。
 - Agent、Skill、Dify workflow 相关能力应在设计文档中标记为组件或辅助工具，而不是可信边界。
+- 新 provider 只能实现 Draft generation contract；provider-specific 配置、错误和外部响应必须在边界处转换，不能泄漏为 Final artifact 或长期业务契约。
