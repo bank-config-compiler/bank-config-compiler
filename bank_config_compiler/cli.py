@@ -7,6 +7,15 @@ from pathlib import Path
 
 from .configuration_rules import RulePackageValidationError, load_rule_package
 from .configuration_workbook import WorkbookGenerationError, generate_configuration_workbook
+from .draft_generation import (
+    DraftGenerationError,
+    FixtureDraftProvider,
+    generate_docir_draft,
+    generate_interface_standard_draft,
+    generate_interface_template_draft,
+    generate_schemair_draft,
+    publish_generated_draft,
+)
 from .workspace import (
     Phase0Selection,
     WorkspaceError,
@@ -14,6 +23,8 @@ from .workspace import (
     ingest_raw_doc,
     load_phase0_artifacts,
     phase0_workbook_path,
+    read_json_artifact,
+    read_text_artifact,
 )
 
 
@@ -58,7 +69,79 @@ def build_parser() -> argparse.ArgumentParser:
         help="Atomically replace an existing configuration-workbook.xlsx.",
     )
 
+    draft = subparsers.add_parser(
+        "generate-draft",
+        help="Generate one provider-backed IR Draft without crossing the Human Review boundary.",
+    )
+    draft_kinds = draft.add_subparsers(dest="draft_kind", required=True)
+
+    docir = draft_kinds.add_parser("docir", help="Generate docir-draft.md from raw-doc.md.")
+    _add_draft_provider_arguments(docir)
+
+    schemair = draft_kinds.add_parser("schemair", help="Generate SchemaIR Draft from docir-final.md.")
+    _add_draft_provider_arguments(schemair)
+
+    standard = draft_kinds.add_parser(
+        "standard",
+        help="Generate one InterfaceStandardIR Draft from Final SchemaIR.",
+    )
+    _add_draft_provider_arguments(standard)
+    _add_draft_direction(standard)
+    standard.add_argument("--standard-version", required=True, help="Output Standard version.")
+    standard.add_argument(
+        "--rule-package",
+        required=True,
+        type=Path,
+        help="Path to the Standard's RELEASED rule package.",
+    )
+
+    template = draft_kinds.add_parser(
+        "template",
+        help="Generate one InterfaceTemplateIR Draft from a reviewed Final Standard.",
+    )
+    _add_draft_provider_arguments(template)
+    _add_draft_direction(template)
+    template.add_argument("--standard-version", required=True, help="Bound Final Standard version.")
+    template.add_argument("--template-id", required=True, help="Output Template stable ID.")
+    template.add_argument("--template-version", required=True, help="Output Template version.")
+    template.add_argument(
+        "--rule-package",
+        required=True,
+        type=Path,
+        help="Path to the Template's RELEASED rule package.",
+    )
+
     return parser
+
+
+def _add_draft_provider_arguments(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument("--workspace", required=True, type=Path, help="Workspace directory.")
+    parser.add_argument(
+        "--provider",
+        required=True,
+        choices=["fixture"],
+        help="Explicit Draft provider implementation.",
+    )
+    parser.add_argument(
+        "--fixture-root",
+        required=True,
+        type=Path,
+        help="Directory containing one explicit draft-stub-case.json.",
+    )
+    parser.add_argument(
+        "--overwrite",
+        action="store_true",
+        help="Replace existing Draft, review notes and matching validation result.",
+    )
+
+
+def _add_draft_direction(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument(
+        "--direction",
+        required=True,
+        choices=["assembly", "parse"],
+        help="Selected message direction.",
+    )
 
 
 def _add_phase0_arguments(parser: argparse.ArgumentParser, *, required: bool) -> None:
@@ -123,12 +206,59 @@ def main(argv: list[str] | None = None) -> int:
             )
             print(f"saved configuration workbook: {output}")
             return 0
-    except (WorkspaceError, RulePackageValidationError, WorkbookGenerationError) as exc:
+        if args.command == "generate-draft":
+            output = _generate_draft(args)
+            print(f"saved {args.draft_kind} Draft: {output}")
+            return 0
+    except (DraftGenerationError, WorkspaceError, RulePackageValidationError, WorkbookGenerationError) as exc:
         print(f"error: {_safe_error(exc)}", file=sys.stderr)
         return 2
 
     parser.error(f"unsupported command: {args.command}")
     return 2
+
+
+def _generate_draft(args: argparse.Namespace) -> Path:
+    workspace = args.workspace.resolve()
+    provider = FixtureDraftProvider(args.fixture_root)
+    task_id = workspace.name
+    if args.draft_kind == "docir":
+        generated = generate_docir_draft(
+            raw_doc=read_text_artifact(workspace, "raw-doc.md"),
+            provider=provider,
+            task_id=task_id,
+        )
+    elif args.draft_kind == "schemair":
+        generated = generate_schemair_draft(
+            docir_final=read_text_artifact(workspace, "docir-final.md"),
+            provider=provider,
+            task_id=task_id,
+        )
+    elif args.draft_kind == "standard":
+        generated = generate_interface_standard_draft(
+            schemair_final=read_json_artifact(workspace, "schemair-final.json"),
+            rule_package=load_rule_package(args.rule_package),
+            direction=args.direction.upper(),
+            standard_version=args.standard_version,
+            provider=provider,
+            task_id=task_id,
+        )
+    elif args.draft_kind == "template":
+        standard_path = f"standards/{args.direction}/{args.standard_version}/standard-final.json"
+        generated = generate_interface_template_draft(
+            standard_final=read_json_artifact(workspace, standard_path),
+            rule_package=load_rule_package(args.rule_package),
+            direction=args.direction.upper(),
+            standard_version=args.standard_version,
+            template_id=args.template_id,
+            template_version=args.template_version,
+            provider=provider,
+            task_id=task_id,
+        )
+    else:
+        raise DraftGenerationError(f"unsupported Draft kind: {args.draft_kind}")
+    outputs = publish_generated_draft(workspace, generated, overwrite=args.overwrite)
+    return outputs["artifact"]
 
 
 def _phase0_selection(args: argparse.Namespace) -> Phase0Selection:
