@@ -2,7 +2,7 @@
 
 ## Status
 
-Draft. Logical contract confirmed; `configuration-rules/v1` and the v2 direction-specific projection semantics are released and immutable. InterfaceStandardIR machine wire/Validator and two reviewed Final Standards are implemented and frozen; InterfaceTemplateIR machine wire remains P0-T3 work.
+Draft. Logical contract confirmed; `configuration-rules/v1` and the v2 direction-specific projection semantics are released and immutable. InterfaceStandardIR machine wire/Validator and two reviewed Final Standards are implemented and frozen; InterfaceTemplateIR machine wire/Validator and two Draft candidates are implemented, pending Human Review.
 
 ## 1. 目的与边界
 
@@ -237,10 +237,12 @@ String、Boolean、Date、Number 标量 field config 必须具有一个字段值
 
 ### 4.4 XML Key Expressions
 
-若标准字段存在模板行，则标准定义的每个 XML Key 必须恰好具有一个独立 Value Expression。标量字段值表达式与 XML Key 表达式共享六种 Mode，但使用不同 Scope。Node/Object 没有字段值表达式，但不影响其 XML Key 使用这些 Mode。
+若 ASSEMBLY Standard 字段存在 Template 行，则标准定义的每个 XML Key 必须恰好具有一个独立 Value Expression。标量字段值表达式与 XML Key 表达式共享六种 Mode，但使用不同 Scope。Node/Object 没有字段值表达式，但不影响其 XML Key 使用这些 Mode；PARSE field config 不允许 `xmlKeyExpressions`。
 
 ```text
-standardFieldRef: document-field
+standardTarget:
+  standardFieldRef: document-field
+  standardProjection: ...
 fieldValueExpression: ...
 xmlKeyExpressions:
   @version: FIXED_VALUE("1.0")
@@ -280,13 +282,13 @@ Standard Validator 必须校验：
 Template Validator 必须校验：
 
 - standard ID、version 和 content hash 精确匹配；
-- 每个 `standardProjection.required/length/dataType` 与 Final Standard 完全一致；
+- 每个 ASSEMBLY `standardTarget.standardProjection.required/length/dataType` 与 Final Standard 完全一致；PARSE source projection 可从表达式/collection reference 确定性解析；
 - `VALUE | STRUCTURE_ONLY | COLLECTION_ITEM` 与方向、Standard 类型和 Parse target 相容；
 - ASSEMBLY target Standard Field reference 存在且不重复；
 - PARSE target Parse Field reference 存在、path/datatype 与 catalog 相容，表达式内 Standard FIELD_REF 存在；
 - 表达式结构、递归顺序和 catalog 引用；
 - String/Boolean/Date/Number field config 必须有字段值表达式，Node/Object field config 不得有字段值表达式；
-- XML Key expressions 完整且无未知 key；
+- ASSEMBLY XML Key expressions 完整且无未知 key；PARSE 不允许该属性；
 - 每个缺失 ASSEMBLY 标量 Standard Field 都有 omission Warning；Node/Object 不参加 omission coverage，未配置 Parse Field 不自动产生 coverage issue；
 - 有 XML Key 或结构绑定需求的容器必须有适用结构行和完整 key expressions；
 - FIXED_VALUE payload 只允许 `LITERAL | SECURE_INPUT_REF`，且安全引用不得包含真实值；

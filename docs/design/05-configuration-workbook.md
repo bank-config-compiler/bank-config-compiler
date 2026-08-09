@@ -2,7 +2,7 @@
 
 ## Status
 
-Draft. Product contract confirmed; `configuration-rules/v1` and v2 direction-specific projection semantics are released and immutable, and the Standard Validator plus two reviewed Final Standards exist. Generation remains pending the P0-T3 InterfaceTemplateIR contract/Validator/fixtures.
+Draft. Product contract confirmed; `configuration-rules/v1` and v2 direction-specific projection semantics are released and immutable, the Standard Validator plus two reviewed Final Standards exist, and the Template Validator plus two Draft candidates exist. Generation remains pending reviewed Final InterfaceTemplateIR fixtures.
 
 ## 1. 目的与粒度
 

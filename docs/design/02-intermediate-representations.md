@@ -2,7 +2,7 @@
 
 ## Status
 
-Draft. DocIR / SchemaIR 的 P0-T2 baseline 继续作为不可变 Review Golden；SchemaIR v2 wire、Validator 和已评审 Final fixture 已实现。`configuration-rules/v1` 与 v2 方向性 projection 修订均已发布并冻结；InterfaceStandardIR wire/Validator 和双方向 Final fixture 已实现并冻结。InterfaceTemplateIR wire schema 尚未冻结。
+Draft. DocIR / SchemaIR 的 P0-T2 baseline 继续作为不可变 Review Golden；SchemaIR v2 wire、Validator 和已评审 Final fixture 已实现。`configuration-rules/v1` 与 v2 方向性 projection 修订均已发布并冻结；InterfaceStandardIR wire/Validator 和双方向 Final fixture 已实现并冻结。InterfaceTemplateIR wire/Validator 与双方向 Draft fixture/result 已实现，仍等待 Human Review 后冻结 Final。
 
 ## 1. 设计原则
 

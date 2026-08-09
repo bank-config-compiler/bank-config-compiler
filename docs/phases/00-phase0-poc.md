@@ -2,7 +2,7 @@
 
 ## Status
 
-Draft. Trusted-chain work is partially implemented; the rule runtime, reviewed Final SchemaIR v2 fixture, InterfaceStandardIR runtime and two reviewed Final Standards are complete. InterfaceTemplateIR and Configuration Workbook remain P0-T3 work.
+Draft. Trusted-chain work is partially implemented; the rule runtime, reviewed Final SchemaIR v2 fixture, InterfaceStandardIR runtime/two reviewed Final Standards, and InterfaceTemplateIR Draft runtime/candidates are complete. Final InterfaceTemplateIR and Configuration Workbook remain P0-T3 work.
 
 ## 1. 阶段目标
 
@@ -33,15 +33,16 @@ LLM、Agent 或 workflow 可以生成 Draft，但不能替代 Validator、人工
 - `configuration-rules/v1` 已收束为接口无关、非全量的 BKL configuration rules 子集，并具有仓库内 safe loader、严格 schema/semantic validator 和引用闭合测试；双 reviewer 已确认候选并于 2026-08-06 发布，默认 loader 可直接加载该 `RELEASED` 版本。
 - `configuration-rules/v2` 继承 v1 的全部 catalog，只修订方向相关 Standard projection；maintainer 与 business reviewer 已确认准确候选，并于 2026-08-09 发布为 `RELEASED` 后冻结。
 - `interface-standard/v1` 与 `interface-standard-validation-result/v1`、Standard Validator 及双方向 b2e0061 Final fixture；两个 Standard 均经 `deng` 确认准确 hash，结果为 0 ERROR、0 WARNING、0 blocking issue，`finalEligible=true`。
+- `interface-template/v1` 与 `interface-template-validation-result/v1`、Template Validator 及双方向 b2e0061 Draft fixture；ASSEMBLY/PARSE 候选 hash 分别为 `sha256:356b83c1aff90d83d82fa3bbc14f7fe8277c34605a3d5edb4cb99abd71c49957`、`sha256:33cd4f7ae02701d6ab19cf46628398354590dba3d612f91e43b06f78d1356621`，仍等待 Human Review。
 
 尚未完成：
 
 - 四类 IR Draft generator。
-- InterfaceTemplateIR machine wire contract、人工确认 fixture 和 Validator。
+- 人工确认并冻结双方向 Final InterfaceTemplateIR fixture/result。
 - Configuration Workbook Generator、expected workbook 和结构化 assertions。
 - 覆盖完整可信链路的 golden regression。
 
-`configuration-rules/v1` 与 v2 均已发布并冻结；v2 不改变其 27/207/14/5/6 catalog、Function String、Mapping/Replacement、字符长度默认 `STANDARD_1` 或业务 Condition 边界，只修订 Template Standard projection。现有 Final Standard 继续绑定 v1；InterfaceTemplateIR 从当前批次开始绑定 v2。详细任务状态见 `docs/planning/00-phase0-poc-plan.md`。
+`configuration-rules/v1` 与 v2 均已发布并冻结；v2 不改变其 27/207/14/5/6 catalog、Function String、Mapping/Replacement、字符长度默认 `STANDARD_1` 或业务 Condition 边界，只修订 Template Standard projection。现有 Final Standard 继续绑定 v1；当前 InterfaceTemplateIR Draft 精确绑定 v2。详细任务状态见 `docs/planning/00-phase0-poc-plan.md`。
 
 ## 3. In Scope
 
@@ -55,7 +56,7 @@ LLM、Agent 或 workflow 可以生成 Draft，但不能替代 Validator、人工
 - 一个标准关联多份同方向模板，模板精确绑定不可变标准版本。
 - ASSEMBLY 模板字段子集/omission 与 PARSE Standard source 到 Parse Field target。
 - 方向级 `messages[].xmlEncoding`、显式 evidence/conflict disposition Review，并在 Workbook Overview 展示。
-- Template 每个配置行显式镜像 Standard required/length/dataType。
+- ASSEMBLY Template 显式镜像 Standard target 的 required/length/dataType；PARSE 从表达式或 collection source 的 Standard reference 派生。
 - `VALUE | STRUCTURE_ONLY | COLLECTION_ITEM` 结构绑定；b2e0061 重复响应 Node 创建 `paymentLineList` 元素。
 - 银行文档明确条件与基础 Required 分离，并在 Standard/Workbook 中可追溯。
 - 标量字段值和 XML Key 使用同一递归 Value Expression 模型；Node/Object 无字段值表达式。
@@ -86,7 +87,7 @@ SchemaIR Draft 保存银行 XML element、attribute、完整 path、父子层级
 
 ### 5.2 规则包
 
-Phase0 必须使用业务负责人确认的版本化 `configuration-rules/v1`；它是接口无关、非全量的 BKL configuration rules 子集。Draft 用于实现，Final IR 只能引用发布后不可变的 RELEASED 版本。规则包包含：
+Phase0 必须使用业务负责人确认的版本化规则包；`configuration-rules/v1` 与 v2 都是接口无关、非全量且不可变的 BKL configuration rules 子集。Final IR 只能精确引用适用的 `RELEASED` 版本，不能自动选择最新版本。规则包包含：
 
 - Interface Standard 的路径、类型和约束映射规则；
 - 六种 Value Mode 和模板处理策略；
@@ -162,12 +163,12 @@ Phase0 golden regression 至少覆盖：
 - SchemaIR/Standard 差异、规则冲突和 warnings；
 - 七个固定 workbook sheet、Standard Action 和状态列。
 
-具体业务字段、function、`mappingRuleName` 和 Rule ID 只能来自已确认的 v1 catalog。MAPPING/Replacement 属于 P0 专项 golden；目的系统业务 Condition 不属于 P0 golden 成功路径。
+具体业务字段、function、`mappingRuleName` 和 Rule ID 只能来自 IR 精确引用的已发布 catalog。MAPPING/Replacement 属于 P0 专项 golden；目的系统业务 Condition 不属于 P0 golden 成功路径。
 
 ## 7. 通过条件
 
 - 四类 IR 逻辑契约与机器格式均已冻结。
-- `configuration-rules/v1` 内容可追溯且经业务负责人确认。
+- `configuration-rules/v1` 与 v2 内容可追溯且经业务负责人确认。
 - 三个 Validator 都能返回可定位的错误。
 - 四个 Draft generator 可运行，且不会绕过人工确认形成 Final。
 - Template 只能基于精确绑定的 Final Standard 生成。

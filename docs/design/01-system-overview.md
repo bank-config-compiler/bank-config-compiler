@@ -194,7 +194,7 @@ Phase0 可以用受控 fixture 或命令流程表达人工确认；Phase1 才提
 
 规则版本一旦发布不可原地覆盖。InterfaceStandardIR、InterfaceTemplateIR、Validator result 和 Configuration Workbook 必须记录实际使用的精确规则版本及 Rule ID。标准和后续模板可以使用不同规则版本，但模板对标准 artifact 的绑定不因此改变。
 
-`configuration-rules/v1` 与只修订方向相关 Standard projection 的 v2 均已发布并冻结。SchemaIR v2 runtime 与已评审 Final fixture、InterfaceStandardIR wire/Validator 和双方向 Final fixture 已实现并冻结。InterfaceTemplateIR wire/Validator 为当前实施批次，之后才进入 Final fixture 和 Workbook Generator。Final IR 必须精确引用适用的 `RELEASED` 规则版本。
+`configuration-rules/v1` 与只修订方向相关 Standard projection 的 v2 均已发布并冻结。SchemaIR v2 runtime 与已评审 Final fixture、InterfaceStandardIR wire/Validator 和双方向 Final fixture 已实现并冻结。InterfaceTemplateIR wire/Validator 与双方向 Draft fixture/result 已实现，当前等待 Human Review 后冻结 Final；之后才进入 Workbook Generator。Final IR 必须精确引用适用的 `RELEASED` 规则版本。
 
 ## 4. 候选任务状态
 

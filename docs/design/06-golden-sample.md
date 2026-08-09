@@ -2,7 +2,7 @@
 
 ## Status
 
-Draft. The immutable P0-T2 DocIR/SchemaIR Review Golden and the separate reviewed P0-T3 Final SchemaIR v2 fixture both exist. `configuration-rules/v1` and v2 projection semantics are released and frozen; two reviewed Final InterfaceStandardIR fixtures and matching results exist, while InterfaceTemplateIR and Configuration Workbook golden work remain in progress.
+Draft. The immutable P0-T2 DocIR/SchemaIR Review Golden and the separate reviewed P0-T3 Final SchemaIR v2 fixture both exist. `configuration-rules/v1` and v2 projection semantics are released and frozen; two reviewed Final InterfaceStandardIR fixtures plus two InterfaceTemplateIR Draft candidates and matching results exist. Final Template Review and Configuration Workbook golden work remain in progress.
 
 ## 1. 目的
 
@@ -32,7 +32,7 @@ Golden sample 是 Prompt、四类 IR、三个 Validator、Workbook Generator 和
 
 ## 3. 规则来源边界
 
-具体 Rule ID、FIELD、FUNCTION 和 `mappingRuleName` 只能来自已确认的 `configuration-rules/v1`。正式导出可以证明 b2e0061 实际配置和调用形态，但必须先经规则包治理和人工确认，不能被测试直接当作 expected IR。不得为满足覆盖创建占位业务标识或内联 Mapping entries。
+具体 Rule ID、FIELD、FUNCTION 和 `mappingRuleName` 只能来自适用的已发布规则版本。现有 Final Standard 精确引用 `configuration-rules/v1`，Template Draft 精确引用 `configuration-rules/v2`。正式导出可以证明 b2e0061 实际配置和调用形态，但必须先经规则包治理和人工确认，不能被测试直接当作 expected IR。不得为满足覆盖创建占位业务标识或内联 Mapping entries。
 
 Standard 与 Template fixture 必须分别记录实际使用的规则版本。模板必须绑定 expected Standard 的 stable ID、version 和 content hash。
 
@@ -63,7 +63,7 @@ Golden 至少覆盖：
 - 六种 Value Mode；MAPPING 覆盖单一 FIELD input、预设规则引用和 unmatched error；
 - Replacement 覆盖单一预设规则、片段替换、空 target 删除和未命中内容保留；
 - ASSEMBLY 与 PARSE 使用同一表达结构，但 ASSEMBLY target 为 Standard Field、PARSE target 为 Parse Field；
-- 每个配置行显式镜像 Standard required/length/dataType，任一不一致校验失败；
+- ASSEMBLY 配置行在 `standardTarget.standardProjection` 显式镜像 Standard required/length/dataType，任一不一致校验失败；PARSE 从表达式/collection source 的 Standard reference 派生；
 - `VALUE`、`STRUCTURE_ONLY`、`COLLECTION_ITEM`，包括 `b2e0061-rs(Node) -> paymentLineList(List)`；
 - String/Boolean/Date/Number 标量字段必须有字段值表达式，Node/Object 不得有字段值表达式；
 - ASSEMBLY 模板 target 是标准字段子集；
@@ -72,7 +72,7 @@ Golden 至少覆盖：
 - 未确认 omission 阻止 Final；
 - 已确认 omission 带原因进入 Final，并继续出现在 Workbook Warnings；
 - omission、EMPTY 与 Empty Handling 三者不同；
-- 同一 standardFieldRef 重复时校验失败；
+- 同一 ASSEMBLY `standardTarget.standardFieldRef` 或 PARSE `parseTarget.parseFieldRef` 重复时校验失败；
 - 存在模板行时，每个标准 XML Key 有独立表达式；
 - 未知或缺失 XML Key expression 校验失败；
 - FIXED_VALUE 同时覆盖 `LITERAL` 与只保存引用标识的 `SECURE_INPUT_REF`；
@@ -129,9 +129,9 @@ Legend
 
 ## 8. 当前执行边界
 
-`configuration-rules/v1`、`configuration-rules/v2`、Standard runtime 和双方向 Final Standard 已冻结。P0-T3 当前继续：
+`configuration-rules/v1`、`configuration-rules/v2`、Standard runtime 和双方向 Final Standard 已冻结；Template Validator 和双方向 Draft/result 已实现。P0-T3 当前继续：
 
-- InterfaceTemplateIR fixture 与 Template Validator expected result；
+- Human Review 并冻结双方向 Final InterfaceTemplateIR fixture/result；
 - expected Configuration Workbook 和相关 assertions。
 
 这些资产必须按 Final SchemaIR → Standard → RELEASED Template rules → Template → Workbook 顺序补齐。P0-T2 expected artifacts 不改写；SchemaIR v2 Final fixture 已落实两个方向的 `UTF-8` Human/银行 evidence，并按已确认 canonical content hash 冻结。ASSEMBLY Final Standard 为 36 fields、3 XML Keys、1 condition，hash 为 `sha256:9c77e0e92447907fa89d6ef705501dc0947d695998b80bb154476f696e9b982e`；PARSE Final Standard 为 19 fields、3 XML Keys、4 approved differences，hash 为 `sha256:33efa544460ac19f216734712c1e6ae2610321ea17eb750eff35493ecca9d57e`。规则包 v1/v2 均保持冻结；v2 仍使用正式导出观察到的 5 个 Function、String 类型、字符长度默认 `STANDARD_1`、MAPPING 和 Replacement 契约，不得把 Function 或 Mapping 子集扩张成全量 catalog。

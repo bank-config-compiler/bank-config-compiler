@@ -2,7 +2,7 @@
 
 ## Status
 
-Active. P0-T3 is In Progress. `configuration-rules/v1` remains released and immutable; v2 has passed its double-review release gate and is also released and frozen. SchemaIR v2 and InterfaceStandardIR runtimes/final fixtures remain frozen at their confirmed hashes. InterfaceTemplateIR runtime is the current implementation batch.
+Active. P0-T3 is In Progress. `configuration-rules/v1` and v2 are released and immutable. SchemaIR v2 and InterfaceStandardIR runtimes/final fixtures remain frozen at their confirmed hashes. InterfaceTemplateIR runtime and two Draft candidates/results are implemented; Human Review and Final freeze are the current gate.
 
 ## 1. 目标与边界
 
@@ -31,7 +31,7 @@ Phase0 不实现 UI、JSON 银行报文、目标系统 Import JSON/API、Excel �
 | P0-T0：Bootstrap | Done | 无 | 无 | `ingest` 与 `check --profile raw` 保留；legacy `phase0a` 已在 SchemaIR v2 批次移除。 |
 | P0-T1：`b2e0061` IR candidate / Review | Done | P0-T0 | 无 | Candidate DocIR / SchemaIR 经 Human Review 更新，正式 IR 设计和 reference 边界清晰。 |
 | P0-T2：Review Golden sample boundary | Done | P0-T1 | 无 | Expected DocIR、修订前 expected SchemaIR、expected review notes 和 v1 validation result 已冻结为审查前 Golden。 |
-| P0-T3：Trusted chain | In Progress | P0-T2、`configuration-rules/v1` 与 v2 RELEASED | Template/Workbook 尚未实现 | 完成两个配置 IR/Validator、Workbook 和完整 trusted-chain regression。 |
+| P0-T3：Trusted chain | In Progress | P0-T2、`configuration-rules/v1` 与 v2 RELEASED | Template Draft 等待 Human Review/Final freeze；Workbook 尚未实现 | 完成两个配置 IR/Validator、Workbook 和完整 trusted-chain regression。 |
 | P0-T4：Draft generators | Blocked | P0-T3 | 三个 Final contract、Validator 和 trusted-chain 尚未冻结 | Provider-neutral generator interface 与四类确定性 stub 可运行，且无法绕过 Validator/Human Review 写入 Final。 |
 
 状态定义：
@@ -53,9 +53,10 @@ Phase0 不实现 UI、JSON 银行报文、目标系统 Import JSON/API、Excel �
 - `configuration-rules/v2` RELEASED：catalog 与 v1 一致，只修订 `TPL.BIND.STANDARD_PROJECTION`；准确候选 `f2cf454b53541ccfa171f8f3ede59dae9e609583` 已完成双签
 - 规则包 safe loader、严格 schema/semantic validator、聚合错误与 RELEASED/DRAFT 正反向测试
 - `interface-standard/v1`、Standard Validator、双方向 Final/results 与 APPROVED Review；ASSEMBLY hash `sha256:9c77e0e92447907fa89d6ef705501dc0947d695998b80bb154476f696e9b982e`，PARSE hash `sha256:33efa544460ac19f216734712c1e6ae2610321ea17eb750eff35493ecca9d57e`
+- `interface-template/v1`、Template Validator、双方向 Draft/results；ASSEMBLY candidate hash `sha256:356b83c1aff90d83d82fa3bbc14f7fe8277c34605a3d5edb4cb99abd71c49957`，PARSE candidate hash `sha256:33cd4f7ae02701d6ab19cf46628398354590dba3d612f91e43b06f78d1356621`
 - PR #12 / merge commit `2de9f69`：最新 requirements、design、ADR amendment、reference 边界和规则事实收束
 
-这些证据证明 DocIR/SchemaIR 的修订前 Review boundary、SchemaIR v2 machine contract/Final fixture、P0-T3 资料契约、规则运行时/v1 发布，以及 InterfaceStandardIR machine contract、Validator 和双方向 Final fixtures；不证明 InterfaceTemplateIR、Configuration Workbook 或完整可信链路已经实现。
+这些证据证明 DocIR/SchemaIR 的修订前 Review boundary、SchemaIR v2 machine contract/Final fixture、P0-T3 资料契约、规则运行时/v1/v2 发布、InterfaceStandardIR machine contract/Final fixtures，以及 InterfaceTemplateIR machine contract/Draft candidates；不证明 Final InterfaceTemplateIR、Configuration Workbook 或完整可信链路已经实现。
 
 ### 2.3 存量代码差距
 
@@ -67,11 +68,11 @@ Phase0 不实现 UI、JSON 银行报文、目标系统 Import JSON/API、Excel �
 | `cli.py` | `ingest` 和 `check --profile raw`；`phase0a` 已移除 | 完整 `phase0` selector/check 与 Workbook 入口尚未实现 | P0-T3 Workbook |
 | 规则资产 | v1 已于 2026-08-06 发布并冻结；v2 继承 catalog 并修订方向性 Standard projection，已于 2026-08-09 发布并冻结 | 无；Template 必须显式绑定适用的 RELEASED 规则版本 | 已完成 |
 | Standard | `interface-standard/v1`、result v1、Validator、双方向 Final/results 和 APPROVED Review 已实现 | 无；两份 Final identity/version/hash 已冻结 | 已完成 |
-| Template | 只有逻辑设计和正式导出证据 | 无 machine wire contract、Validator、Final fixture 或 validation result | P0-T3 Template |
+| Template | `interface-template/v1`、result v1、Validator、双方向 Draft/results 已实现并绑定 RELEASED v2 | 无经 Human Review 冻结的双方向 Final fixture/result | P0-T3 Template freeze |
 | Workbook | 只有七个 sheet 和来源矩阵设计 | 无 openpyxl Generator、回读 assertions 或确定性 regression | P0-T3 Workbook |
 | Draft generators | 未实现 | 四类核心 IR 仍依赖人工 fixture，Phase0 通过条件未满足 | P0-T4 |
 
-当前 regression、Final SchemaIR/Standard validation results 和 v1/v2 双签发布记录说明 legacy baseline、SchemaIR/Standard/规则运行时稳定；v2 发布只关闭 Template 的规则前置门禁，不能作为 InterfaceTemplateIR 已实现的证据。
+当前 regression、Final SchemaIR/Standard validation results、v1/v2 发布记录和 Template Draft golden 说明 legacy baseline、SchemaIR/Standard/规则运行时及 Template machine contract 稳定；Draft/PENDING Template 仍不能作为 Final InterfaceTemplateIR 或完整 trusted chain 的证据。
 
 ## 3. 已确认迁移原则
 
@@ -234,12 +235,12 @@ Phase0 不实现 UI、JSON 银行报文、目标系统 Import JSON/API、Excel �
 
 ### 4.4 InterfaceTemplateIR contract、Validator 与双向 fixture
 
-**状态：Next。依赖 Final Standard fixtures 与可用的 v1 FIELD/function/Mapping catalog，均已满足。**
+**状态：In Progress。Machine contract、Validator 与双向 Draft/results 已完成，等待 Human Review 后冻结 Final。**
 
 **边界**
 
 - 冻结 Template 和 Template validation-result contract。
-- 实现 Standard identity/version/hash 精确绑定与 `standardProjection.required/length/dataType` 镜像。
+- 实现 Standard identity/version/hash 精确绑定、ASSEMBLY `standardTarget.standardProjection` 镜像与 PARSE source projection 确定性解析。
 - 实现 `VALUE | STRUCTURE_ONLY | COLLECTION_ITEM`、方向性 source/target、六种 Value Mode 和 XML Key expressions。
 - 实现 function String 参数、递归 CONCATENATE、MAPPING、Replacement 和完整 processing policies。
 - 实现 ASSEMBLY 标量 omission coverage；Node/Object 不产生 omission，PARSE 只校验实际配置 target。
@@ -401,13 +402,22 @@ Phase0 不实现 UI、JSON 银行报文、目标系统 Import JSON/API、Excel �
 - Completion signal：v2 四文件为 `RELEASED`，review 记录准确候选与双 reviewer，默认 loader、完整 pytest/build/docs-sync 和内容检查全部通过。
 - Next starts when：发布 commit 成为当前开发基线，Template runtime 才能绑定 v2。
 
-### Current Commit 5A / Future Commit 5B：InterfaceTemplateIR Draft runtime / Final freeze
+### 已完成 Commit 5A：InterfaceTemplateIR Draft runtime
 
-- Suggested messages：`feat: add InterfaceTemplateIR validation` / `chore: freeze reviewed interface templates`
-- Scope/Files：5A 绑定 RELEASED v2，冻结方向相关 Template/expression/processing contract、validator 与双向 Draft/results；5B 只提交获批 Final/results/review。
-- Completion signal：双向 Final Template、omissions 和专项 Mapping/Replacement evidence 经 Human Review 冻结。
+- Suggested message：`feat: add InterfaceTemplateIR validation`
+- Scope/Files：绑定 RELEASED v2，冻结方向相关 Template/expression/processing machine contract、Validator 与双向 Draft/results；不修改 Final SchemaIR、Final Standard 或规则事实。
+- Completion signal：ASSEMBLY/PARSE Draft 分别为 0 ERROR、10/2 个预期 blocking Warning；候选 hash 分别为 `sha256:356b83c1aff90d83d82fa3bbc14f7fe8277c34605a3d5edb4cb99abd71c49957`、`sha256:33cd4f7ae02701d6ab19cf46628398354590dba3d612f91e43b06f78d1356621`。
 - Verification：Template UT、专项 fixtures、双向 golden、完整 pytest 和 docs-sync。
-- Next starts when：4D 已发布 v2；5B 完成后 Workbook 所需三份 Final 与三份匹配结果完整。
+- Review gate：展示本 commit SHA、两个准确候选 hash、预期 Warning 与业务事实边界，等待 reviewer `deng` 明确确认。
+- Next starts when：Human Review 确认两个准确候选；任何 Template 业务内容变化都会使确认失效。
+
+### Future Commit 5B：冻结 Final InterfaceTemplateIR
+
+- Suggested message：`chore: freeze reviewed interface templates`
+- Scope/Files：只提交获批双向 Final/results/review 与状态同步；不改变 Template Validator 语义。
+- Completion signal：双向 Final Template、四条 ASSEMBLY omissions、Function/processing 选择和专项 Mapping/Replacement contract evidence 经 Human Review 冻结，结果为 0 blocking issue 且 `finalEligible=true`。
+- Verification：Final Template golden equality、hash mismatch、完整 pytest、docs-sync、BOM、diff 和敏感信息检查。
+- Next starts when：Workbook 所需三份 Final 与三份匹配 validation result 完整。
 
 ### Future Commit 6：Configuration Workbook、`phase0` 与完整 regression
 

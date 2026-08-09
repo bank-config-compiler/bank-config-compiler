@@ -1,0 +1,12 @@
+{
+  "mappingExpression": {
+    "mode": "MAPPING",
+    "sequence": 1,
+    "ruleReferences": [
+      "TPL.VALUE.MAPPING"
+    ],
+    "assemblyFieldRef": "chargeBearer",
+    "mappingRuleName": "BDC-ChargeBearer-List"
+  },
+  "replacementRuleName": "Swift_illegalCharacter_List_For_ING_Turkey"
+}
