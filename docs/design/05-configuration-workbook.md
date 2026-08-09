@@ -2,7 +2,7 @@
 
 ## Status
 
-Draft. Product contract confirmed; `configuration-rules/v1` and v2 direction-specific projection semantics are released and immutable, and the Standard/Template Validators plus reviewed Final fixtures exist for both directions. The openpyxl core generator, exact trusted-chain gate, fixed seven-sheet projection, safe text handling and atomic write path are implemented as a library; `phase0` workspace/CLI and committed Golden Workbooks remain the current P0-T3 batch.
+Implemented for P0-T3. `configuration-rules/v1` and v2 direction-specific projection semantics are released and immutable. The openpyxl generator, exact trusted-chain gate, fixed seven-sheet projection, safe text handling, atomic write path, explicit `phase0` workspace/CLI and committed ASSEMBLY/PARSE Golden Workbooks are covered by structured regression.
 
 ## 1. 目的与粒度
 

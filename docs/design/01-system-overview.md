@@ -242,7 +242,7 @@ workspace/{taskId}/
     └── configuration-workbook.xlsx
 ```
 
-根级 SchemaIR artifact 名称和 library JSON I/O 已实现，trusted-chain fixture 中的 Standard/Template 子目录已按上述结构冻结；通用 workspace selector/path contract 仍待 Workbook 批次实现。完整 `phase0` CLI profile 不扫描目录或自动选择最新版，将在 Workbook 批次通过显式 direction/version/template selector 启用。
+根级 SchemaIR artifact、library JSON I/O、通用 workspace selector/path contract 与完整 `phase0` CLI profile 均已实现。`phase0` 不扫描目录或自动选择最新版，只接受显式 direction/version/template selector，并分别加载 Standard 与 Template 实际引用的规则包。
 
 ## 6. 分阶段交付
 

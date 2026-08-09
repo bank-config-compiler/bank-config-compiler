@@ -2,7 +2,7 @@
 
 ## Status
 
-Draft. The immutable P0-T2 DocIR/SchemaIR Review Golden and the separate reviewed P0-T3 Final SchemaIR v2 fixture both exist. `configuration-rules/v1` and v2 projection semantics are released and frozen; two reviewed Final InterfaceStandardIR fixtures and two reviewed Final InterfaceTemplateIR fixtures with matching results exist. The Workbook library projector and unit-level structured assertions exist; committed ASSEMBLY/PARSE Golden Workbooks and full CLI regression remain in progress.
+Implemented for P0-T3. The immutable P0-T2 Review Golden remains separate from the reviewed P0-T3 Final chain. Released v1/v2 rules, both Final Standard/Template directions, matching validation results, committed ASSEMBLY/PARSE Configuration Workbooks and full structured/CLI regression now exist.
 
 ## 1. 目的
 
@@ -129,6 +129,6 @@ Legend
 
 ## 8. 当前执行边界
 
-`configuration-rules/v1`、`configuration-rules/v2`、Standard/Template runtime、双方向 Final Standard/Template 与匹配 validation results 已冻结。Workbook 核心运行时已能从两条 Final chain 生成并回读固定结构；P0-T3 当前继续提交 expected Configuration Workbook、workspace/CLI 和完整 assertions。
+`configuration-rules/v1`、`configuration-rules/v2`、Standard/Template runtime、双方向 Final Standard/Template、匹配 validation results 与 expected Configuration Workbook 已冻结。结构化 assertions 会以固定任务上下文重新生成两份 Workbook，并比较 sheet/row/cell type、关键样式、data validation、warnings 和 ZIP 安全边界；不比较 `.xlsx` ZIP 字节。
 
 这些资产必须按 Final SchemaIR → Standard → RELEASED Template rules → Template → Workbook 顺序补齐。P0-T2 expected artifacts 不改写；SchemaIR v2 Final fixture 已落实两个方向的 `UTF-8` Human/银行 evidence，并按已确认 canonical content hash 冻结。ASSEMBLY Final Standard 为 36 fields、3 XML Keys、1 condition，hash 为 `sha256:9c77e0e92447907fa89d6ef705501dc0947d695998b80bb154476f696e9b982e`；PARSE Final Standard 为 19 fields、3 XML Keys、4 approved differences，hash 为 `sha256:33efa544460ac19f216734712c1e6ae2610321ea17eb750eff35493ecca9d57e`。规则包 v1/v2 均保持冻结；v2 仍使用正式导出观察到的 5 个 Function、String 类型、字符长度默认 `STANDARD_1`、MAPPING 和 Replacement 契约，不得把 Function 或 Mapping 子集扩张成全量 catalog。

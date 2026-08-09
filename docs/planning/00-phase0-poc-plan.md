@@ -2,7 +2,7 @@
 
 ## Status
 
-Active. P0-T3 is In Progress. `configuration-rules/v1` and v2 are released and immutable. SchemaIR v2, InterfaceStandardIR and InterfaceTemplateIR runtimes/final fixtures are frozen at their confirmed hashes. The Configuration Workbook core library runtime is complete; `phase0` workspace/CLI, committed Golden Workbooks and the complete trusted-chain regression are the current gate.
+Active. P0-T3 is Done. `configuration-rules/v1` and v2 are released and immutable. SchemaIR v2、InterfaceStandardIR、InterfaceTemplateIR、Configuration Workbook、显式 `phase0` workspace/CLI 与双方向 structured Golden regression 已闭合。P0-T4 Draft generators 为 Next，且不属于本批实现范围。
 
 ## 1. 目标与边界
 
@@ -31,8 +31,8 @@ Phase0 不实现 UI、JSON 银行报文、目标系统 Import JSON/API、Excel �
 | P0-T0：Bootstrap | Done | 无 | 无 | `ingest` 与 `check --profile raw` 保留；legacy `phase0a` 已在 SchemaIR v2 批次移除。 |
 | P0-T1：`b2e0061` IR candidate / Review | Done | P0-T0 | 无 | Candidate DocIR / SchemaIR 经 Human Review 更新，正式 IR 设计和 reference 边界清晰。 |
 | P0-T2：Review Golden sample boundary | Done | P0-T1 | 无 | Expected DocIR、修订前 expected SchemaIR、expected review notes 和 v1 validation result 已冻结为审查前 Golden。 |
-| P0-T3：Trusted chain | In Progress | P0-T2、`configuration-rules/v1` 与 v2 RELEASED | `phase0` workspace/CLI、Golden Workbook 和完整 regression 尚未实现 | 完成两个配置 IR/Validator、Workbook 和完整 trusted-chain regression。 |
-| P0-T4：Draft generators | Blocked | P0-T3 | `phase0` CLI、Golden Workbook 和完整 trusted-chain regression 尚未完成 | Provider-neutral generator interface 与四类确定性 stub 可运行，且无法绕过 Validator/Human Review 写入 Final。 |
+| P0-T3：Trusted chain | Done | P0-T2、`configuration-rules/v1` 与 v2 RELEASED | 无 | 两个配置 IR/Validator、Workbook 和完整 trusted-chain regression 已完成。 |
+| P0-T4：Draft generators | Next | P0-T3 | 无；前置依赖已满足 | Provider-neutral generator interface 与四类确定性 stub 可运行，且无法绕过 Validator/Human Review 写入 Final。 |
 
 状态定义：
 
@@ -54,9 +54,12 @@ Phase0 不实现 UI、JSON 银行报文、目标系统 Import JSON/API、Excel �
 - 规则包 safe loader、严格 schema/semantic validator、聚合错误与 RELEASED/DRAFT 正反向测试
 - `interface-standard/v1`、Standard Validator、双方向 Final/results 与 APPROVED Review；ASSEMBLY hash `sha256:9c77e0e92447907fa89d6ef705501dc0947d695998b80bb154476f696e9b982e`，PARSE hash `sha256:33efa544460ac19f216734712c1e6ae2610321ea17eb750eff35493ecca9d57e`
 - `interface-template/v1`、Template Validator、双方向 Final/results 与 APPROVED Review；ASSEMBLY hash `sha256:b9966a449ddc29e08fa29c6cf7838273ce3cab91e00dbb38092767d21af2f561`，保留 4 个经接受 omission 和 4 个非阻塞 Warning；PARSE hash `sha256:16eb305b6ac3944f28cb1060b943fdfc2d471f69e6bf8ea52ce059c797fb22f9`，0 WARNING；两者均为 0 ERROR、0 blocking、`finalEligible=true`
+- Configuration Workbook 运行时、三份 result 完整相等门禁、Standard/Template 双规则版本门禁、固定七个 sheet、安全文本、脱敏日志与同目录原子发布
+- 显式 `Phase0Selection`、固定六 artifact 路径、只读 `check --profile phase0` 和固定目标 `generate-workbook` CLI；不扫描、不推断最新版
+- 提交的 ASSEMBLY/PARSE CREATE Golden Workbook 与结构化回读 regression；行数分别为 Standard 36/19、Template 26/8、Expression 30/13、Warning 38/15
 - PR #12 / merge commit `2de9f69`：最新 requirements、design、ADR amendment、reference 边界和规则事实收束
 
-这些证据证明 DocIR/SchemaIR 的修订前 Review boundary、SchemaIR v2 machine contract/Final fixture、P0-T3 资料契约、规则运行时/v1/v2 发布，以及 InterfaceStandardIR/InterfaceTemplateIR machine contract 与 Final fixtures；不证明 Configuration Workbook 或完整可信链路已经实现。
+这些证据证明 DocIR/SchemaIR 的修订前 Review boundary、SchemaIR v2 machine contract/Final fixture，以及 P0-T3 从 released rules、Final Standard/Template 到 Configuration Workbook 和 structured Golden regression 的完整可信链路；不证明 P0-T4 Draft generators 或 Phase0-PoC 最终门禁已经完成。
 
 ### 2.3 存量代码差距
 
@@ -64,15 +67,15 @@ Phase0 不实现 UI、JSON 银行报文、目标系统 Import JSON/API、Excel �
 |---|---|---|---|
 | `schemair_validator.py` | `schemair/v2` 与 result v2；XML-only、encoding evidence、Condition、层级/type/occurs、lifecycle 和 hash 已实现 | 无；b2e0061 Final facts 与 Review metadata 已冻结 | 已完成 |
 | SchemaIR validation result | 保存 identity/version/contract/hash、`finalEligible`、summary、coverage 和 blocking issues | 无；已存在与 Final hash 匹配且 `finalEligible=true` 的结果 | 已完成 |
-| `workspace.py` | `raw` profile；支持受边界保护的嵌套严格 JSON I/O | Standard/Template 固定路径和完整 `phase0` 链路选择尚未实现 | P0-T3 Workbook |
-| `cli.py` | `ingest` 和 `check --profile raw`；`phase0a` 已移除 | 完整 `phase0` selector/check 与 Workbook 入口尚未实现 | P0-T3 Workbook |
+| `workspace.py` | `raw` profile、受边界保护的嵌套严格 JSON I/O、不可变 `Phase0Selection`、固定链路路径和加载 | 无；`phase0` 显式选择固定六份输入 artifact 与 Workbook 输出路径 | 已完成 |
+| `cli.py` | `ingest`、`check --profile raw|phase0` 与 `generate-workbook`；`phase0a` 已移除 | 无；`phase0` 要求完整 selector 和两个显式规则包路径 | 已完成 |
 | 规则资产 | v1 已于 2026-08-06 发布并冻结；v2 继承 catalog 并修订方向性 Standard projection，已于 2026-08-09 发布并冻结 | 无；Template 必须显式绑定适用的 RELEASED 规则版本 | 已完成 |
 | Standard | `interface-standard/v1`、result v1、Validator、双方向 Final/results 和 APPROVED Review 已实现 | 无；两份 Final identity/version/hash 已冻结 | 已完成 |
 | Template | `interface-template/v1`、result v1、Validator、双方向 Final/results 和 APPROVED Review 已实现并绑定 RELEASED v2 | 无；两份 Final identity/version/hash 与四条 ASSEMBLY omission 已冻结 | 已完成 |
-| Workbook | openpyxl 核心 Generator、完整 Final/result/rule gate、七个 sheet 投影、safe text、原子写入和 unit-level 回读 assertions 已实现 | 尚无 `phase0` workspace/CLI、提交的双方向 Golden Workbook 和完整 regression | P0-T3 Workbook |
+| Workbook | openpyxl Generator、完整 Final/result/rule gate、七个 sheet 投影、safe text、原子写入、双方向 Golden Workbook、structured/CLI regression 已实现 | 无；P0-T3 完成门禁已覆盖 | 已完成 |
 | Draft generators | 未实现 | 四类核心 IR 仍依赖人工 fixture，Phase0 通过条件未满足 | P0-T4 |
 
-当前 regression、三类 Final validation results、v1/v2 发布记录和 Template Final golden 说明 legacy baseline、SchemaIR/Standard/规则运行时及 Template machine contract 稳定；Workbook 与完整 trusted chain 仍未完成。
+当前 regression、三类 Final validation results、v1/v2 发布记录、Standard/Template Final golden 与双方向 Configuration Workbook 共同证明 P0-T3 trusted chain 已稳定闭合；P0-T4 Draft generators 仍未实现。
 
 ## 3. 已确认迁移原则
 
@@ -286,7 +289,7 @@ Phase0 不实现 UI、JSON 银行报文、目标系统 Import JSON/API、Excel �
 
 ### 4.5 Configuration Workbook 与 trusted-chain regression
 
-**状态：In Progress。Commit 6A 核心运行时已完成；Commit 6B workspace/CLI 与完整 regression 是 P0-T3 唯一剩余实现批次。**
+**状态：Done。Commit 6A 核心运行时与 Commit 6B workspace/CLI、双方向 Golden Workbook 和完整 regression 均已完成。**
 
 **依赖**
 
@@ -411,7 +414,7 @@ Phase0 不实现 UI、JSON 银行报文、目标系统 Import JSON/API、Excel �
 - MAPPING/Replacement 受控测试只展示 rule name，不复制 entries；SECURE_INPUT_REF 只展示安全引用标识。
 - 相同 Final 输入、validation results、规则版本、Standard Action 和固定 `generated_at` 生成相同结构化内容；变化只发生在显式任务上下文。
 - `check --profile raw` 与现有 `ingest` 行为保持兼容；`phase0a` 继续拒绝。
-- P0-T3 全部验收通过后改为 `Done`，P0-T4 解锁；四类 Draft generator 不属于 P0-T3 完成条件。
+- P0-T3 全部验收已通过并标记为 `Done`，P0-T4 已解锁；四类 Draft generator 不属于 P0-T3 完成条件。
 
 **测试与验证**
 
@@ -554,14 +557,14 @@ Phase0 不实现 UI、JSON 银行报文、目标系统 Import JSON/API、Excel �
 - Verification：Workbook unit/projection/controlled fixture tests、完整 pytest、build、docs-sync、BOM、diff、公式/敏感信息检查。
 - Next starts when：公开生成接口、输入门禁、sheet/row/expression/warning/rule projection 已稳定，CLI 无需重新设计核心语义。
 
-### Future Commit 6B：`phase0` workspace/CLI 与完整 regression
+### 已完成 Commit 6B：`phase0` workspace/CLI 与完整 regression
 
 - Suggested message：`feat: complete phase0 workbook workflow`
 - Scope：实现 `Phase0Selection`、固定 artifact paths、只读 `check --profile phase0`、`generate-workbook`、双方向 CREATE Golden Workbook、openpyxl 回读 assertions、CLI smoke 和阶段状态同步；不实现 Draft generators。
 - Files：`bank_config_compiler/workspace.py`、`bank_config_compiler/cli.py`、workspace/CLI/golden tests、`samples/trusted-chain/b2eboc-b2e0061/templates/{assembly,parse}/v1/configuration-workbook.xlsx`、根 README、Phase0 phase/planning 和 reference/trusted-chain 状态文档。
 - Completion signal：显式选择的 ASSEMBLY/PARSE trusted chain 均能先只读检查、再生成固定路径 Workbook；结构化 golden regression 通过，P0-T3 改为 Done，P0-T4 解锁。
 - Verification：双方向 CLI smoke、Workbook 回读、完整 regression、pytest、build、docs-sync、BOM、diff、ZIP/公式/外链/宏和敏感信息检查。
-- Next starts when：Commit 6B 已成为后续开发基线；P0-T4 才可实现四类 Draft generators。
+- Next starts when：已满足；Commit 6B 是后续开发基线，P0-T4 可开始实现四类 Draft generators。
 
 ### Future Commit 7：四类 Draft generators
 
@@ -586,6 +589,8 @@ Phase0 不实现 UI、JSON 银行报文、目标系统 Import JSON/API、Excel �
 
 ### 7.2 P0-T3 完成门禁
 
+**状态：PASS。以下门禁均由运行时、fixture 和自动化 regression 覆盖。**
+
 - `configuration-rules/v1`、v2 均为 RELEASED 且不可变，Standard/Template 分别加载其实际引用版本。
 - SchemaIR/Standard/Template machine contract 和 validation result contract 已冻结。
 - 每条方向链的 SchemaIR/Standard/Template Final artifact 均具有 Human Review 证据和完整相等的重新计算 validation result。
@@ -594,7 +599,7 @@ Phase0 不实现 UI、JSON 银行报文、目标系统 Import JSON/API、Excel �
 - `check --profile phase0` 与 `generate-workbook` 使用显式 selector 和两个规则包路径，不扫描、猜测或自动选择最新版。
 - Workbook 输入错误 fail closed；输出无业务公式、宏、外链、敏感固定值、Mapping entries/target 或静默截断。
 - 相同 Final chain、results、规则版本、Standard Action 和固定任务上下文可重复生成相同结构化内容。
-- 完整 P0-T3 链路不依赖未确认业务默认值、历史导出 ID 或模型常识；满足后 P0-T3 改为 Done 并解锁 P0-T4。
+- 完整 P0-T3 链路不依赖未确认业务默认值、历史导出 ID 或模型常识；该门禁已满足，P0-T3 为 Done，P0-T4 已解锁。
 
 ### 7.3 Phase0-PoC 最终门禁
 

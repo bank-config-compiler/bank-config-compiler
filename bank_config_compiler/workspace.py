@@ -1,8 +1,13 @@
 from __future__ import annotations
 
 import json
+import re
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
+
+from .configuration_rules import RulePackage
+from .configuration_workbook import validate_configuration_workbook_inputs
 
 
 RAW_DOC_ARTIFACT = "raw-doc.md"
@@ -14,10 +19,40 @@ TEXT_ARTIFACTS = {
 RAW_PROFILE_ARTIFACTS = (RAW_DOC_ARTIFACT,)
 SUPPORTED_RAW_DOC_SUFFIXES = {".md", ".txt"}
 UTF8_BOM = b"\xef\xbb\xbf"
+VERSION_PATTERN = re.compile(r"^v[1-9]\d*$")
+STABLE_ID_PATTERN = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
 
 
 class WorkspaceError(Exception):
     """Raised when CLI input or workspace artifacts fail validation."""
+
+
+@dataclass(frozen=True, slots=True)
+class Phase0Selection:
+    direction: str
+    standard_version: str
+    template_id: str
+    template_version: str
+
+    def __post_init__(self) -> None:
+        if self.direction not in {"assembly", "parse"}:
+            raise WorkspaceError("phase0 direction must be exactly assembly or parse")
+        if not isinstance(self.standard_version, str) or not VERSION_PATTERN.fullmatch(self.standard_version):
+            raise WorkspaceError("phase0 standard_version must match v<positive integer>")
+        if not isinstance(self.template_id, str) or not STABLE_ID_PATTERN.fullmatch(self.template_id):
+            raise WorkspaceError("phase0 template_id must be a kebab-case stable ID")
+        if not isinstance(self.template_version, str) or not VERSION_PATTERN.fullmatch(self.template_version):
+            raise WorkspaceError("phase0 template_version must match v<positive integer>")
+
+
+@dataclass(frozen=True, slots=True)
+class Phase0Artifacts:
+    schemair: dict[str, Any]
+    schemair_validation_result: dict[str, Any]
+    standard: dict[str, Any]
+    standard_validation_result: dict[str, Any]
+    template: dict[str, Any]
+    template_validation_result: dict[str, Any]
 
 
 def ingest_raw_doc(input_path: Path, workspace_path: Path, *, overwrite: bool = False) -> Path:
@@ -58,23 +93,105 @@ def ensure_workspace_dir(workspace_path: Path) -> None:
     workspace_path.mkdir(parents=True, exist_ok=True)
 
 
-def check_workspace(workspace_path: Path, *, profile: str) -> int:
+def check_workspace(
+    workspace_path: Path,
+    *,
+    profile: str,
+    selection: Phase0Selection | None = None,
+    standard_rule_package: RulePackage | None = None,
+    template_rule_package: RulePackage | None = None,
+) -> int:
     workspace_path = workspace_path.resolve()
-    if not workspace_path.exists():
-        raise WorkspaceError(f"workspace path does not exist: {workspace_path}")
-    if not workspace_path.is_dir():
-        raise WorkspaceError(f"workspace path is not a directory: {workspace_path}")
+    _require_existing_workspace(workspace_path)
 
-    artifacts = artifacts_for_profile(profile)
-    for artifact_name in artifacts:
-        read_text_artifact(workspace_path, artifact_name)
-    return len(artifacts)
+    if profile == "raw":
+        for artifact_name in RAW_PROFILE_ARTIFACTS:
+            read_text_artifact(workspace_path, artifact_name)
+        return len(RAW_PROFILE_ARTIFACTS)
+    if profile == "phase0":
+        if selection is None:
+            raise WorkspaceError("phase0 profile requires an explicit selection")
+        if not isinstance(standard_rule_package, RulePackage) or not isinstance(
+            template_rule_package, RulePackage
+        ):
+            raise WorkspaceError(
+                "phase0 profile requires validated Standard and Template rule packages"
+            )
+        artifacts = load_phase0_artifacts(workspace_path, selection)
+        validate_configuration_workbook_inputs(
+            schemair=artifacts.schemair,
+            schemair_validation_result=artifacts.schemair_validation_result,
+            standard=artifacts.standard,
+            standard_validation_result=artifacts.standard_validation_result,
+            template=artifacts.template,
+            template_validation_result=artifacts.template_validation_result,
+            standard_rule_package=standard_rule_package,
+            template_rule_package=template_rule_package,
+        )
+        return 6
+    raise WorkspaceError(f"unknown workspace profile: {profile}")
 
 
 def artifacts_for_profile(profile: str) -> tuple[str, ...]:
     if profile == "raw":
         return RAW_PROFILE_ARTIFACTS
     raise WorkspaceError(f"unknown workspace profile: {profile}")
+
+
+def load_phase0_artifacts(workspace_path: Path, selection: Phase0Selection) -> Phase0Artifacts:
+    workspace_path = workspace_path.resolve()
+    _require_existing_workspace(workspace_path)
+    paths = _phase0_artifact_names(selection)
+    artifacts = Phase0Artifacts(
+        schemair=read_json_artifact(workspace_path, paths["schemair"]),
+        schemair_validation_result=read_json_artifact(workspace_path, paths["schemair_validation_result"]),
+        standard=read_json_artifact(workspace_path, paths["standard"]),
+        standard_validation_result=read_json_artifact(workspace_path, paths["standard_validation_result"]),
+        template=read_json_artifact(workspace_path, paths["template"]),
+        template_validation_result=read_json_artifact(workspace_path, paths["template_validation_result"]),
+    )
+    expected_direction = selection.direction.upper()
+    mismatches: list[str] = []
+    if artifacts.standard.get("direction") != expected_direction:
+        mismatches.append("standard.direction")
+    if artifacts.standard.get("standardVersion") != selection.standard_version:
+        mismatches.append("standard.standardVersion")
+    if artifacts.template.get("direction") != expected_direction:
+        mismatches.append("template.direction")
+    if artifacts.template.get("templateId") != selection.template_id:
+        mismatches.append("template.templateId")
+    if artifacts.template.get("templateVersion") != selection.template_version:
+        mismatches.append("template.templateVersion")
+    if mismatches:
+        raise WorkspaceError(f"phase0 selector does not match loaded artifact: {', '.join(mismatches)}")
+    return artifacts
+
+
+def phase0_workbook_path(workspace_path: Path, selection: Phase0Selection) -> Path:
+    return artifact_path(workspace_path, _phase0_artifact_names(selection)["workbook"])
+
+
+def _phase0_artifact_names(selection: Phase0Selection) -> dict[str, str]:
+    standard_root = f"standards/{selection.direction}/{selection.standard_version}"
+    template_root = (
+        f"templates/{selection.direction}/{selection.template_id}/{selection.template_version}"
+    )
+    return {
+        "schemair": "schemair-final.json",
+        "schemair_validation_result": "schemair-validation-result.json",
+        "standard": f"{standard_root}/standard-final.json",
+        "standard_validation_result": f"{standard_root}/standard-validation-result.json",
+        "template": f"{template_root}/template-final.json",
+        "template_validation_result": f"{template_root}/template-validation-result.json",
+        "workbook": f"{template_root}/configuration-workbook.xlsx",
+    }
+
+
+def _require_existing_workspace(workspace_path: Path) -> None:
+    if not workspace_path.exists():
+        raise WorkspaceError(f"workspace path does not exist: {workspace_path}")
+    if not workspace_path.is_dir():
+        raise WorkspaceError(f"workspace path is not a directory: {workspace_path}")
 
 
 def write_text_artifact(workspace_path: Path, artifact_name: str, content: str) -> Path:
