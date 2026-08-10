@@ -12,4 +12,4 @@ Active.
 
 ## Documents
 
-- `00-phase0-poc-plan.md`：Phase0-PoC 唯一 active planning 文档，记录已完成的 P0-T3 trusted chain、当前 P0-T4 Draft generators 执行点和验证路径。
+- `00-phase0-poc-plan.md`：已完成的 Phase0-PoC 执行计划，记录 P0-T3 trusted chain、P0-T4 Draft-to-Workbook closure 和最终验证证据。

@@ -2,7 +2,7 @@
 
 ## Status
 
-Draft. P0-T3 trusted chain is complete. P0-T4 is In Progress: provider-neutral Draft runtime、六个 deterministic b2e0061 responses 与四类 CLI 已实现；准确 hash 的 Final DocIR 已由 `deng` 批准并冻结，完整 Draft-to-Workbook closure 尚未完成。
+Done. P0-T3 trusted chain 与 P0-T4 Draft-to-Workbook closure 均已完成；Phase0-PoC 最终门禁已通过。
 
 ## 1. 阶段目标
 
@@ -38,10 +38,7 @@ LLM、Agent 或 workflow 可以生成 Draft，但不能替代 Validator、人工
 - 只读 `check --profile phase0`、固定路径 `generate-workbook`、ASSEMBLY/PARSE Golden Workbook 与结构化/CLI regression。
 - provider-neutral `DraftProvider`、严格 response/case loader、四类 Draft orchestration、固定 workspace publication、`generate-draft` CLI 与六个精确 b2e0061 fixture responses；JSON Draft 均保持 `DRAFT/PENDING`、0 ERROR、`finalEligible=false`。
 - byte-identical Final DocIR、APPROVED Review 记录与 hash regression；获批 hash 为 `sha256:31d7fc002ccc2b840f401206f54665e36771f2bb5502d480566defdff9ac7585`，保留的冲突和不确定项不视为已确认业务事实。
-
-尚未完成：
-
-- 从受控 Draft 输入到双方向 Golden Workbook 的完整 closure regression，以及 P0-T4/Phase0 Done 状态。
+- 完整受控 Draft-to-Workbook regression：六份 Draft 均由 fixture provider 生成，测试显式装载已审核 Final fixtures 表达 Human Review，双方向 `phase0` check 与 Workbook 生成通过，结构化内容与 Golden 一致；缺少 Final 时下游生成 fail closed，runtime 与测试均不自动 promotion。
 
 `configuration-rules/v1` 与 v2 均已发布并冻结；v2 不改变其 27/207/14/5/6 catalog、Function String、Mapping/Replacement、字符长度默认 `STANDARD_1` 或业务 Condition 边界，只修订 Template Standard projection。现有 Final Standard 继续绑定 v1；Final InterfaceTemplateIR 精确绑定 v2。详细任务状态见 `docs/planning/00-phase0-poc-plan.md`。
 

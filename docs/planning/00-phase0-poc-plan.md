@@ -2,7 +2,7 @@
 
 ## Status
 
-Active. P0-T3 is Done. P0-T4 is In Progress：provider-neutral runtime、六个 deterministic b2e0061 responses、四类 CLI 与 reviewed Final DocIR 已完成；当前进入 Commit 7D 完整 Draft-to-Workbook closure，尚未把 P0-T4/Phase0 标记为 Done。
+Done. P0-T3 trusted chain 与 P0-T4 Draft-to-Workbook closure 均已完成；Phase0-PoC 最终门禁已通过，下一阶段可进入 Phase1 planning。
 
 ## 1. 目标与边界
 
@@ -32,7 +32,7 @@ Phase0 不实现 UI、JSON 银行报文、目标系统 Import JSON/API、Excel �
 | P0-T1：`b2e0061` IR candidate / Review | Done | P0-T0 | 无 | Candidate DocIR / SchemaIR 经 Human Review 更新，正式 IR 设计和 reference 边界清晰。 |
 | P0-T2：Review Golden sample boundary | Done | P0-T1 | 无 | Expected DocIR、修订前 expected SchemaIR、expected review notes 和 v1 validation result 已冻结为审查前 Golden。 |
 | P0-T3：Trusted chain | Done | P0-T2、`configuration-rules/v1` 与 v2 RELEASED | 无 | 两个配置 IR/Validator、Workbook 和完整 trusted-chain regression 已完成。 |
-| P0-T4：Draft generators | In Progress | P0-T3、reviewed Final DocIR | 完整 Draft-to-Workbook closure 尚未完成 | Provider-neutral generator interface 与四类确定性 stub 可运行，且无法绕过 Validator/Human Review 写入 Final。 |
+| P0-T4：Draft generators | Done | P0-T3、reviewed Final DocIR | 无 | Provider-neutral generator interface 与四类确定性 stub 可运行，显式 Human Review gate 和双方向 Workbook Golden closure 已通过。 |
 
 状态定义：
 
@@ -61,7 +61,7 @@ Phase0 不实现 UI、JSON 银行报文、目标系统 Import JSON/API、Excel �
 - 提交的 ASSEMBLY/PARSE CREATE Golden Workbook 与结构化回读 regression；行数分别为 Standard 36/19、Template 26/8、Expression 30/13、Warning 38/15
 - PR #12 / merge commit `2de9f69`：最新 requirements、design、ADR amendment、reference 边界和规则事实收束
 
-这些证据证明 P0-T3 完整可信链路、P0-T4 Draft runtime/受控 fixture 与 reviewed Final DocIR 已形成；不证明完整 Draft-to-Workbook closure 已完成或 Phase0-PoC 最终门禁已满足。
+这些证据与完整受控 Draft-to-Workbook regression 共同证明 P0-T3、P0-T4 和 Phase0-PoC 最终门禁均已完成。
 
 ### 2.3 存量代码差距
 
@@ -75,9 +75,9 @@ Phase0 不实现 UI、JSON 银行报文、目标系统 Import JSON/API、Excel �
 | Standard | `interface-standard/v1`、result v1、Validator、双方向 Final/results 和 APPROVED Review 已实现 | 无；两份 Final identity/version/hash 已冻结 | 已完成 |
 | Template | `interface-template/v1`、result v1、Validator、双方向 Final/results 和 APPROVED Review 已实现并绑定 RELEASED v2 | 无；两份 Final identity/version/hash 与四条 ASSEMBLY omission 已冻结 | 已完成 |
 | Workbook | openpyxl Generator、完整 Final/result/rule gate、七个 sheet 投影、safe text、原子写入、双方向 Golden Workbook、structured/CLI regression 已实现 | 无；P0-T3 完成门禁已覆盖 | 已完成 |
-| Draft generators | provider-neutral runtime、四类 orchestration、六个受控 response、CLI、Draft publication 与 reviewed Final DocIR 已实现 | 完整 closure regression 未完成 | P0-T4 Commit 7D |
+| Draft generators | provider-neutral runtime、四类 orchestration、六个受控 response、CLI、Draft publication、reviewed Final DocIR 与完整 closure regression 已实现 | 无 | P0-T4 Commit 7D |
 
-当前 regression、三类 Final validation results、v1/v2 发布记录、Standard/Template Final golden 与双方向 Configuration Workbook 共同证明 P0-T3 trusted chain 已稳定闭合；P0-T4 runtime 与 Final DocIR gate 已完成，但完整 closure 仍未完成。
+当前 regression、三类 Final validation results、v1/v2 发布记录、Standard/Template Final golden、双方向 Configuration Workbook 与显式 Human Review gate 共同证明 Phase0-PoC 已稳定闭合。
 
 ## 3. 已确认迁移原则
 
@@ -602,7 +602,7 @@ Phase0 不实现 UI、JSON 银行报文、目标系统 Import JSON/API、Excel �
 - Verification：candidate/hash equality、Review 记录、完整 pytest、docs-sync、BOM/diff 检查。
 - Next starts when：Final DocIR commit 成为当前开发基线。
 
-### Commit 7D：完整 Draft-to-Workbook closure
+### 已完成 Commit 7D：完整 Draft-to-Workbook closure
 
 - Suggested message：`feat: complete phase0 draft generation workflow`
 - Scope/Files：完整受控回归、双方向 CLI smoke、structured Workbook comparison、README/phase/plan/sample 状态；测试中显式装载已审核 Final fixtures，不实现自动 promotion。
@@ -639,6 +639,8 @@ Phase0 不实现 UI、JSON 银行报文、目标系统 Import JSON/API、Excel �
 
 ### 7.3 Phase0-PoC 最终门禁
 
+**状态：PASS。P0-T3 与 P0-T4 的完成标志均由实现和自动化 regression 覆盖。**
+
 - P0-T3 完成门禁全部通过。
 - 四类 deterministic Draft generator 可运行，通过同一 provider contract 产生合法 Draft，且不能生成 Final 或绕过 Human Review/Validator。
-- Draft-to-Workbook 完整回归可重复运行；Phase0-PoC 改为 Done 后才进入 Phase1 planning。
+- Draft-to-Workbook 完整回归可重复运行，显式装载 reviewed Final fixtures 后生成的双方向 Workbook 与 Golden 结构化一致；Phase0-PoC 已改为 Done，可进入 Phase1 planning。
