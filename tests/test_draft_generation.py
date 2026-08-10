@@ -8,6 +8,7 @@ from pathlib import Path
 
 import pytest
 
+import bank_config_compiler.draft_generation as draft_generation
 from bank_config_compiler.configuration_rules import load_rule_package
 from bank_config_compiler.draft_generation import (
     DraftGenerationError,
@@ -60,6 +61,13 @@ class FailingProvider:
 
     def generate(self, request: DraftGenerationRequest) -> str:
         raise RuntimeError("SECRET-BANK-PAYLOAD")
+
+
+class DraftErrorProvider:
+    name = "draft-error-test"
+
+    def generate(self, request: DraftGenerationRequest) -> str:
+        raise DraftGenerationError("SECRET-BANK-PAYLOAD")
 
 
 def load_json(relative_path: str) -> dict:
@@ -185,6 +193,72 @@ def test_standard_and_template_generators_require_exact_final_dependencies() -> 
         )
 
 
+@pytest.mark.parametrize(
+    ("direction", "standard_version", "message"),
+    [
+        ("PARSE", "v1", "direction"),
+        ("ASSEMBLY", "v2", "standardVersion"),
+    ],
+)
+def test_standard_generator_rejects_provider_output_for_different_request_selector(
+    direction: str,
+    standard_version: str,
+    message: str,
+) -> None:
+    schemair_final = load_json("samples/trusted-chain/b2eboc-b2e0061/schemair-final.json")
+    standard_final = load_json(
+        "samples/trusted-chain/b2eboc-b2e0061/standards/assembly/v1/standard-final.json"
+    )
+
+    with pytest.raises(DraftGenerationError, match=message):
+        generate_interface_standard_draft(
+            schemair_final=schemair_final,
+            rule_package=load_rule_package(REPO_ROOT / "configuration-rules/v1"),
+            direction=direction,
+            standard_version=standard_version,
+            provider=StaticProvider(
+                artifact_content=json.dumps(pending_draft(standard_final), ensure_ascii=False),
+                review_notes="# Standard Review\n",
+            ),
+            task_id="selector-mismatch",
+        )
+
+
+@pytest.mark.parametrize(
+    ("template_id", "template_version", "message"),
+    [
+        ("different-template", "v1", "templateId"),
+        ("b2e0061-assembly-common", "v2", "templateVersion"),
+    ],
+)
+def test_template_generator_rejects_provider_output_for_different_request_selector(
+    template_id: str,
+    template_version: str,
+    message: str,
+) -> None:
+    standard_final = load_json(
+        "samples/trusted-chain/b2eboc-b2e0061/standards/assembly/v1/standard-final.json"
+    )
+    template_final = load_json(
+        "samples/trusted-chain/b2eboc-b2e0061/templates/assembly/v1/template-final.json"
+    )
+
+    with pytest.raises(DraftGenerationError, match=message):
+        generate_interface_template_draft(
+            standard_final=standard_final,
+            rule_package=load_rule_package(REPO_ROOT / "configuration-rules/v2"),
+            direction="ASSEMBLY",
+            standard_version="v1",
+            template_id=template_id,
+            template_version=template_version,
+            provider=StaticProvider(
+                artifact_content=json.dumps(pending_draft(template_final), ensure_ascii=False),
+                review_notes="# Template Review\n",
+            ),
+            task_id="selector-mismatch",
+        )
+
+
 def test_fixture_provider_requires_exact_request_fingerprint(tmp_path: Path) -> None:
     artifact = tmp_path / "docir.md"
     notes = tmp_path / "notes.md"
@@ -259,6 +333,37 @@ def test_provider_exception_does_not_log_or_return_sensitive_payload(caplog: pyt
     assert "SECRET-BANK-PAYLOAD" not in str(caught.value)
     assert "SECRET-BANK-PAYLOAD" not in caplog.text
     assert "RuntimeError" in str(caught.value)
+
+
+def test_provider_draft_error_does_not_log_or_return_sensitive_payload(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    with caplog.at_level(logging.WARNING), pytest.raises(DraftGenerationError) as caught:
+        generate_docir_draft(
+            raw_doc="raw",
+            provider=DraftErrorProvider(),
+            task_id="safe-draft-error",
+        )
+
+    assert "SECRET-BANK-PAYLOAD" not in str(caught.value)
+    assert "SECRET-BANK-PAYLOAD" not in caplog.text
+    assert "DraftGenerationError" in str(caught.value)
+
+
+def test_docir_generator_rejects_provider_content_with_bom() -> None:
+    docir = (REPO_ROOT / "samples/golden/b2eboc-b2e0061/docir.expected.md").read_text(
+        encoding="utf-8"
+    )
+
+    with pytest.raises(DraftGenerationError, match="BOM"):
+        generate_docir_draft(
+            raw_doc="raw",
+            provider=StaticProvider(
+                artifact_content="\ufeff" + docir,
+                review_notes="# DocIR Review\n",
+            ),
+            task_id="bom-content",
+        )
 
 
 def test_fixture_provider_rejects_path_escape(tmp_path: Path) -> None:
@@ -395,3 +500,35 @@ def test_publish_generated_draft_is_fail_closed_and_refuses_overwrite(tmp_path: 
     assert outputs["artifact"].read_text(encoding="utf-8") == docir
     with pytest.raises(DraftGenerationError, match="already exists"):
         publish_generated_draft(tmp_path, generated, overwrite=False)
+
+
+def test_publish_generated_draft_cleans_temporary_files_after_partial_failure(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    docir = (REPO_ROOT / "samples/golden/b2eboc-b2e0061/docir.expected.md").read_text(
+        encoding="utf-8"
+    )
+    generated = generate_docir_draft(
+        raw_doc="raw",
+        provider=StaticProvider(artifact_content=docir, review_notes="# Review\n"),
+        task_id="partial-publish",
+    )
+    real_replace = draft_generation.os.replace
+    replace_count = 0
+
+    def fail_second_replace(source: Path, destination: Path) -> None:
+        nonlocal replace_count
+        replace_count += 1
+        if replace_count == 2:
+            raise OSError("simulated replace failure")
+        real_replace(source, destination)
+
+    monkeypatch.setattr(draft_generation.os, "replace", fail_second_replace)
+
+    with pytest.raises(DraftGenerationError, match="failed to publish Draft outputs"):
+        publish_generated_draft(tmp_path, generated)
+
+    assert (tmp_path / "docir-draft.md").is_file()
+    assert not (tmp_path / "docir-review-notes.md").exists()
+    assert list(tmp_path.rglob("*.tmp")) == []
