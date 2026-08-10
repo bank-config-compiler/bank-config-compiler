@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import json
 import logging
 from copy import deepcopy
@@ -285,6 +286,34 @@ def test_fixture_provider_rejects_path_escape(tmp_path: Path) -> None:
 
     with pytest.raises(DraftGenerationError, match="stay within the fixture root"):
         FixtureDraftProvider(tmp_path)
+
+
+def test_reviewed_final_docir_matches_the_approved_candidate() -> None:
+    fixture_root = REPO_ROOT / "samples/draft-generation/b2eboc-b2e0061"
+    approved_hash = "sha256:31d7fc002ccc2b840f401206f54665e36771f2bb5502d480566defdff9ac7585"
+    draft_bytes = (fixture_root / "artifacts/docir-draft.md").read_bytes()
+    final_bytes = (fixture_root / "docir-final.md").read_bytes()
+
+    assert final_bytes == draft_bytes
+    assert f"sha256:{hashlib.sha256(final_bytes).hexdigest()}" == approved_hash
+
+    review = (fixture_root / "docir-final-review.md").read_text(encoding="utf-8")
+    assert "Status: `APPROVED`" in review
+    assert "Reviewer：`deng`" in review
+    assert approved_hash in review
+
+    manifest = json.loads((fixture_root / "draft-stub-case.json").read_text(encoding="utf-8"))
+    schemair_requests = [
+        entry["request"]
+        for entry in manifest["responses"]
+        if entry["request"]["artifactKind"] == "schemair"
+    ]
+    assert schemair_requests == [
+        {
+            "artifactKind": "schemair",
+            "sourceHash": approved_hash,
+        }
+    ]
 
 
 def test_controlled_b2e0061_fixture_generates_all_six_drafts() -> None:

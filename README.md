@@ -25,7 +25,7 @@ LLM / Agent 只能生成 DocIR、SchemaIR、InterfaceStandardIR 和 InterfaceTem
 - DocIR / SchemaIR Review Golden sample 已落地；`configuration-rules/v1` 与 `configuration-rules/v2` 均已发布并冻结为接口无关、非全量的 BKL configuration rules 子集。v2 保持 v1 的 27/207/14/5/6 catalog，只修订方向相关 Standard projection：ASSEMBLY 显式镜像 target，PARSE 从精确绑定的 Final Standard 解析表达式/collection source。
 - 规则包 loader/validator 已作为库实现：只使用 `yaml.safe_load`，校验 UTF-8 no BOM、严格结构、生命周期、唯一性、值域、redaction 和跨文件引用。调用方显式选择 v1 或 v2 后，默认加载接受相应 `RELEASED` 版本；不会自动选择最新版本或迁移已有 Final IR。
 
-P0-T3 为 `Done`：SchemaIR v2、InterfaceStandardIR、InterfaceTemplateIR、Configuration Workbook、显式 `phase0` workspace/CLI 与双方向 Golden regression 已闭合。b2e0061 的 ASSEMBLY/PARSE Final Template hash 分别为 `sha256:b9966a449ddc29e08fa29c6cf7838273ce3cab91e00dbb38092767d21af2f561`、`sha256:16eb305b6ac3944f28cb1060b943fdfc2d471f69e6bf8ea52ce059c797fb22f9`；ASSEMBLY 的四条已接受 omission 继续出现在 Workbook Warnings。P0-T4 为 `In Progress`：provider-neutral runtime、六个受控 b2e0061 responses 与 CLI 已实现；当前停在 Final DocIR Human Review Gate，尚未冻结 `docir-final.md`，也未执行完整 Draft-to-Workbook closure。详细状态见 [Phase0-PoC 执行计划](docs/planning/00-phase0-poc-plan.md)。
+P0-T3 为 `Done`：SchemaIR v2、InterfaceStandardIR、InterfaceTemplateIR、Configuration Workbook、显式 `phase0` workspace/CLI 与双方向 Golden regression 已闭合。b2e0061 的 ASSEMBLY/PARSE Final Template hash 分别为 `sha256:b9966a449ddc29e08fa29c6cf7838273ce3cab91e00dbb38092767d21af2f561`、`sha256:16eb305b6ac3944f28cb1060b943fdfc2d471f69e6bf8ea52ce059c797fb22f9`；ASSEMBLY 的四条已接受 omission 继续出现在 Workbook Warnings。P0-T4 为 `In Progress`：provider-neutral runtime、六个受控 b2e0061 responses 与 CLI 已实现；准确 hash `sha256:31d7fc002ccc2b840f401206f54665e36771f2bb5502d480566defdff9ac7585` 的 Final DocIR 已由 `deng` 批准并冻结。下一步是完整 Draft-to-Workbook closure，P0-T4/Phase0 尚未标记为 Done。详细状态见 [Phase0-PoC 执行计划](docs/planning/00-phase0-poc-plan.md)。
 
 ## 快速开始
 
@@ -52,7 +52,7 @@ uv run bank-config-compiler generate-draft docir `
   --fixture-root samples/draft-generation/b2eboc-b2e0061
 ```
 
-固定输出为 `docir-draft.md` 和 `docir-review-notes.md`。fixture 使用完整 input hash 精确匹配；内容不匹配时命令 fail closed。生成结果不是 Final，必须先对准确 bytes hash 完成 Human Review，才能另行冻结 `docir-final.md`。
+固定输出为 `docir-draft.md` 和 `docir-review-notes.md`。fixture 使用完整 input hash 精确匹配；内容不匹配时命令 fail closed。生成结果不是 Final，必须先对准确 bytes hash 完成 Human Review，才能另行冻结 `docir-final.md`。受控 b2e0061 case 已保存 byte-identical 的获批 Final DocIR 与独立 APPROVED Review 记录；runtime 仍不会自动执行该 freeze。
 
 下游命令分别是 `generate-draft schemair`、`generate-draft standard` 和 `generate-draft template`。SchemaIR 固定读取 `docir-final.md`；Standard 还必须显式提供 direction、Standard version 和 RELEASED 规则包；Template 还必须显式提供匹配的 Final Standard、Template identity 和 RELEASED 规则包。完整参数以 `--help` 为准。默认拒绝覆盖任一 Draft 输出；`--overwrite` 会替换同组 Draft、review notes 和 validation result。
 
