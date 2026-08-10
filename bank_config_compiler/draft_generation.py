@@ -47,6 +47,10 @@ class DraftGenerationError(Exception):
     """Raised when a provider or generated Draft fails the P0 trust boundary."""
 
 
+class _FixtureProviderError(DraftGenerationError):
+    """仅标记受控 fixture 的可诊断错误；其他 provider 异常必须统一脱敏。"""
+
+
 class DraftProvider(Protocol):
     name: str
 
@@ -212,11 +216,14 @@ class FixtureDraftProvider:
         key = _fingerprint_key(request.case_fingerprint())
         files = self._responses.get(key)
         if files is None:
-            raise DraftGenerationError(
+            raise _FixtureProviderError(
                 f"fixture case {self.case_id} has no exact response for request {key}"
             )
-        artifact_content = _read_utf8_text(files[0])
-        review_notes = _read_utf8_text(files[1])
+        try:
+            artifact_content = _read_utf8_text(files[0])
+            review_notes = _read_utf8_text(files[1])
+        except DraftGenerationError as exc:
+            raise _FixtureProviderError(str(exc)) from exc
         return json.dumps(
             {
                 "contractVersion": PROVIDER_RESPONSE_CONTRACT,
@@ -291,6 +298,14 @@ def generate_interface_standard_draft(
     artifact_content, review_notes = _provider_content(provider, request)
     artifact = _strict_json_object(artifact_content, label="InterfaceStandardIR Draft")
     _require_pending_draft(artifact, label="InterfaceStandardIR")
+    _require_matching_request_identity(
+        artifact,
+        expected={
+            "direction": request.direction,
+            "standardVersion": request.standard_version,
+        },
+        label="InterfaceStandardIR",
+    )
     result = validate_interface_standard(
         artifact,
         schemair=schemair_final,
@@ -337,6 +352,15 @@ def generate_interface_template_draft(
     artifact_content, review_notes = _provider_content(provider, request)
     artifact = _strict_json_object(artifact_content, label="InterfaceTemplateIR Draft")
     _require_pending_draft(artifact, label="InterfaceTemplateIR")
+    _require_matching_request_identity(
+        artifact,
+        expected={
+            "direction": request.direction,
+            "templateId": request.template_id,
+            "templateVersion": request.template_version,
+        },
+        label="InterfaceTemplateIR",
+    )
     result = validate_interface_template(artifact, standard=standard_final, rule_package=rule_package)
     _require_valid_draft_result(result, label="InterfaceTemplateIR")
     return _generated_json(request, provider, artifact, review_notes, result)
@@ -386,7 +410,9 @@ def publish_generated_draft(
                 os.fsync(handle.fileno())
         # 普通文件系统不能跨多个文件提交事务；逐文件原子替换后由 result hash 保证中断状态 fail closed。
         for key, output_path in outputs.items():
-            os.replace(staged.pop(key), output_path)
+            temporary_path = staged[key]
+            os.replace(temporary_path, output_path)
+            staged.pop(key)
     except (OSError, ValueError, TypeError) as exc:
         for temporary_path in staged.values():
             try:
@@ -457,21 +483,7 @@ def _provider_content(provider: DraftProvider, request: DraftGenerationRequest) 
     )
     try:
         response_text = provider.generate(request)
-        response = _strict_json_object(response_text, label="provider response")
-        _require_exact_properties(response, RESPONSE_PROPERTIES, label="provider response")
-        if response.get("contractVersion") != PROVIDER_RESPONSE_CONTRACT:
-            raise DraftGenerationError(
-                f"provider response contractVersion must be {PROVIDER_RESPONSE_CONTRACT}"
-            )
-        if response.get("artifactKind") != request.artifact_kind:
-            raise DraftGenerationError("provider response artifactKind does not match the request")
-        artifact_content = response.get("artifactContent")
-        review_notes = response.get("reviewNotes")
-        if not isinstance(artifact_content, str) or not artifact_content.strip():
-            raise DraftGenerationError("provider response artifactContent must be a non-empty string")
-        if not isinstance(review_notes, str) or not review_notes.strip():
-            raise DraftGenerationError("provider response reviewNotes must be a non-empty string")
-    except DraftGenerationError:
+    except _FixtureProviderError:
         LOGGER.warning(
             "IR Draft generation failed",
             extra={
@@ -498,6 +510,37 @@ def _provider_content(provider: DraftProvider, request: DraftGenerationRequest) 
             },
         )
         raise DraftGenerationError(f"provider {provider_name} failed: {type(exc).__name__}") from exc
+
+    try:
+        response = _strict_json_object(response_text, label="provider response")
+        _require_exact_properties(response, RESPONSE_PROPERTIES, label="provider response")
+        if response.get("contractVersion") != PROVIDER_RESPONSE_CONTRACT:
+            raise DraftGenerationError(
+                f"provider response contractVersion must be {PROVIDER_RESPONSE_CONTRACT}"
+            )
+        if response.get("artifactKind") != request.artifact_kind:
+            raise DraftGenerationError("provider response artifactKind does not match the request")
+        artifact_content = response.get("artifactContent")
+        review_notes = response.get("reviewNotes")
+        if not isinstance(artifact_content, str) or not artifact_content.strip():
+            raise DraftGenerationError("provider response artifactContent must be a non-empty string")
+        if artifact_content.startswith("\ufeff"):
+            raise DraftGenerationError("provider response artifactContent must be UTF-8 without BOM")
+        if not isinstance(review_notes, str) or not review_notes.strip():
+            raise DraftGenerationError("provider response reviewNotes must be a non-empty string")
+    except DraftGenerationError:
+        LOGGER.warning(
+            "IR Draft generation failed",
+            extra={
+                "component": "draft_generation",
+                "task_id": request.task_id,
+                "provider": provider_name,
+                "artifact_kind": request.artifact_kind,
+                "direction": request.direction,
+                "outcome": "failed",
+            },
+        )
+        raise
     return artifact_content, review_notes
 
 
@@ -561,6 +604,19 @@ def _require_pending_draft(artifact: dict[str, Any], *, label: str) -> None:
         raise DraftGenerationError(f"{label} provider output must use review.status=PENDING")
     if review.get("reviewer") is not None or review.get("reviewedAt") is not None:
         raise DraftGenerationError(f"{label} pending review cannot contain reviewer metadata")
+
+
+def _require_matching_request_identity(
+    artifact: dict[str, Any],
+    *,
+    expected: dict[str, str | None],
+    label: str,
+) -> None:
+    for property_name, expected_value in expected.items():
+        if artifact.get(property_name) != expected_value:
+            raise DraftGenerationError(
+                f"{label} Draft {property_name} must match the request selector"
+            )
 
 
 def _require_valid_draft_result(result: dict[str, Any], *, label: str) -> None:
