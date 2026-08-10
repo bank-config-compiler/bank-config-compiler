@@ -15,7 +15,8 @@ LLM / Agent 只能生成 DocIR、SchemaIR、InterfaceStandardIR 和 InterfaceTem
 ## 当前能力
 
 - CLI 可以从 `.md` / `.txt` 输入创建 workspace，并保存 `raw-doc.md`。
-- CLI 提供 provider-neutral `generate-draft docir|schemair|standard|template`；Phase0 只实现调用者显式选择的 deterministic fixture provider。四类运行路径只写 Draft/PENDING artifact、review notes 和匹配的 Draft validation result，不会生成 Final 或自动通过 Human Review。
+- CLI 提供 provider-neutral `generate-draft docir|schemair|standard|template`；Phase0 只实现调用者显式选择的 deterministic fixture provider。四类运行路径只写 Draft/PENDING artifact 和 review notes；三个 JSON Draft 还会写入匹配的 Draft validation result，不会生成 Final 或自动通过 Human Review。
+- P0-T5 要求使用真实 OpenAI-compatible Chat API 完成四类 Draft、每层独立 Human Review/Final validation 与双方向 Workbook 验证；该 provider、运行时配置和真实调用证据尚未实现，因此 Phase0-PoC 尚未完成。
 - CLI 公开 `raw` 与只读 `phase0` profile；`phase0` 要求调用者显式选择 direction、Standard/Template 版本和两个 RELEASED 规则包，只校验一条 Final trusted chain，不扫描或猜测最新版本。
 - SchemaIR v2 Validator 已作为库实现：只接受 `schemair/v2` 与 XML 节点，严格校验 artifact identity/lifecycle、字段层级、方向级 encoding evidence、最小结构化银行条件和 Final eligibility，并以 canonical JSON SHA-256 将结果绑定到完整输入内容。
 - InterfaceStandardIR Validator 已作为库实现：严格绑定 Final SchemaIR identity/hash、方向与 `RELEASED` 规则包，校验字段覆盖、路径/顺序、XML Keys、三态约束、银行条件、差异 Review、Rule References 和 Final eligibility，并生成 `interface-standard-validation-result/v1`。
@@ -25,7 +26,7 @@ LLM / Agent 只能生成 DocIR、SchemaIR、InterfaceStandardIR 和 InterfaceTem
 - DocIR / SchemaIR Review Golden sample 已落地；`configuration-rules/v1` 与 `configuration-rules/v2` 均已发布并冻结为接口无关、非全量的 BKL configuration rules 子集。v2 保持 v1 的 27/207/14/5/6 catalog，只修订方向相关 Standard projection：ASSEMBLY 显式镜像 target，PARSE 从精确绑定的 Final Standard 解析表达式/collection source。
 - 规则包 loader/validator 已作为库实现：只使用 `yaml.safe_load`，校验 UTF-8 no BOM、严格结构、生命周期、唯一性、值域、redaction 和跨文件引用。调用方显式选择 v1 或 v2 后，默认加载接受相应 `RELEASED` 版本；不会自动选择最新版本或迁移已有 Final IR。
 
-P0-T3 与 P0-T4 均为 `Done`，Phase0-PoC 已完成。SchemaIR v2、InterfaceStandardIR、InterfaceTemplateIR、Configuration Workbook、显式 `phase0` workspace/CLI 与双方向 Golden regression 已闭合；provider-neutral runtime、六个受控 b2e0061 responses、四类 Draft CLI 和准确 hash `sha256:31d7fc002ccc2b840f401206f54665e36771f2bb5502d480566defdff9ac7585` 的 reviewed Final DocIR 已冻结。完整受控回归会依次生成六份 Draft，显式装载已审核 Final fixtures 表达 Human Review，执行 ASSEMBLY/PARSE `check --profile phase0` 并生成两个 Workbook；结构化内容均与 Golden 一致，测试和 runtime 都不会自动把 Draft 提升为 Final。详细证据见 [Phase0-PoC 执行计划](docs/planning/00-phase0-poc-plan.md)。
+P0-T3 与 P0-T4 均为 `Done`：SchemaIR v2、InterfaceStandardIR、InterfaceTemplateIR、Configuration Workbook、显式 `phase0` workspace/CLI 与双方向 Golden regression 已闭合；provider-neutral runtime、六个受控 b2e0061 responses、四类 Draft CLI 和准确 hash `sha256:31d7fc002ccc2b840f401206f54665e36771f2bb5502d480566defdff9ac7585` 的 reviewed Final DocIR 已冻结。完整受控回归会依次生成六份 fixture Draft，显式装载已审核 Final fixtures 表达 Human Review，执行 ASSEMBLY/PARSE `check --profile phase0` 并生成两个 Workbook；结构化内容均与 Golden 一致，测试和 runtime 都不会自动把 Draft 提升为 Final。P0-T5 的真实 LLM 全链路验证尚未实现，故 Phase0-PoC 当前为 `In Progress`。详细状态见 [Phase0-PoC 执行计划](docs/planning/00-phase0-poc-plan.md)。
 
 ## 快速开始
 
@@ -35,13 +36,13 @@ P0-T3 与 P0-T4 均为 `Done`，Phase0-PoC 已完成。SchemaIR v2、InterfaceSt
 uv run --group dev pytest
 ```
 
-导入原始输入到 workspace：
+为运行下面的受控 b2e0061 fixture，导入其精确绑定的 raw doc 到 workspace：
 
 ```powershell
-uv run bank-config-compiler ingest --input docs/reference/samples/b2eboc/b2e0061.md --workspace workspace/phase0-smoke --overwrite
+uv run bank-config-compiler ingest --input samples/golden/b2eboc-b2e0061/raw-doc.md --workspace workspace/phase0-smoke --overwrite
 ```
 
-`ingest` 只把外部 `.md` / `.txt` 输入保存为 workspace 内的 `raw-doc.md`，不生成 DocIR、SchemaIR 或 Validator 结果。
+`ingest` 只把外部 `.md` / `.txt` 输入保存为 workspace 内的 `raw-doc.md`，不生成 DocIR、SchemaIR 或 Validator 结果。fixture 按 `raw-doc.md` 的准确 UTF-8 bytes hash 匹配；若改用其他文档，后续 fixture 命令会 fail closed。
 
 使用受控 b2e0061 fixture 生成 DocIR Draft：
 
@@ -95,7 +96,7 @@ uv run bank-config-compiler generate-workbook `
 等价模块入口：
 
 ```powershell
-uv run python -m bank_config_compiler ingest --input docs/reference/samples/b2eboc/b2e0061.md --workspace workspace/phase0-smoke --overwrite
+uv run python -m bank_config_compiler ingest --input samples/golden/b2eboc-b2e0061/raw-doc.md --workspace workspace/phase0-smoke --overwrite
 ```
 
 ## Workspace Artifacts

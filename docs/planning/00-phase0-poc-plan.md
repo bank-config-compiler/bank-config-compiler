@@ -2,7 +2,7 @@
 
 ## Status
 
-Done. P0-T3 trusted chain 与 P0-T4 Draft-to-Workbook closure 均已完成；Phase0-PoC 最终门禁已通过，下一阶段可进入 Phase1 planning。
+In Progress. P0-T3 trusted chain 与 P0-T4 deterministic Draft-to-Workbook closure 均已完成；P0-T5 真实 LLM 全链路验证为新增完成门槛，尚未开始，Phase0-PoC 最终门禁未通过。
 
 ## 1. 目标与边界
 
@@ -33,6 +33,7 @@ Phase0 不实现 UI、JSON 银行报文、目标系统 Import JSON/API、Excel �
 | P0-T2：Review Golden sample boundary | Done | P0-T1 | 无 | Expected DocIR、修订前 expected SchemaIR、expected review notes 和 v1 validation result 已冻结为审查前 Golden。 |
 | P0-T3：Trusted chain | Done | P0-T2、`configuration-rules/v1` 与 v2 RELEASED | 无 | 两个配置 IR/Validator、Workbook 和完整 trusted-chain regression 已完成。 |
 | P0-T4：Draft generators | Done | P0-T3、reviewed Final DocIR | 无 | Provider-neutral generator interface 与四类确定性 stub 可运行，显式 Human Review gate 和双方向 Workbook Golden closure 已通过。 |
+| P0-T5：真实 LLM Draft-to-Workbook 验证 | Next | P0-T4、用户批准的 OpenAI-compatible Chat API provider 与测试样例 | 当前仅有 fixture provider；真实 provider、运行时配置、逐层 Review/Final evidence 和双方向 Workbook evidence 均不存在 | 真实调用六份 Draft；每层分别 Review/Final validation；ASSEMBLY/PARSE 均从该 Final chain 通过 `phase0` check 并生成 Workbook。 |
 
 状态定义：
 
@@ -61,7 +62,7 @@ Phase0 不实现 UI、JSON 银行报文、目标系统 Import JSON/API、Excel �
 - 提交的 ASSEMBLY/PARSE CREATE Golden Workbook 与结构化回读 regression；行数分别为 Standard 36/19、Template 26/8、Expression 30/13、Warning 38/15
 - PR #12 / merge commit `2de9f69`：最新 requirements、design、ADR amendment、reference 边界和规则事实收束
 
-这些证据与完整受控 Draft-to-Workbook regression 共同证明 P0-T3、P0-T4 和 Phase0-PoC 最终门禁均已完成。
+这些证据与完整受控 Draft-to-Workbook regression 共同证明 P0-T3、P0-T4 已完成；它们不能替代 P0-T5 的真实 LLM 调用证据，因此不能证明 Phase0-PoC 最终门禁已完成。
 
 ### 2.3 存量代码差距
 
@@ -70,14 +71,14 @@ Phase0 不实现 UI、JSON 银行报文、目标系统 Import JSON/API、Excel �
 | `schemair_validator.py` | `schemair/v2` 与 result v2；XML-only、encoding evidence、Condition、层级/type/occurs、lifecycle 和 hash 已实现 | 无；b2e0061 Final facts 与 Review metadata 已冻结 | 已完成 |
 | SchemaIR validation result | 保存 identity/version/contract/hash、`finalEligible`、summary、coverage 和 blocking issues | 无；已存在与 Final hash 匹配且 `finalEligible=true` 的结果 | 已完成 |
 | `workspace.py` | `raw` profile、受边界保护的嵌套严格 JSON I/O、不可变 `Phase0Selection`、固定链路路径和加载 | 无；`phase0` 显式选择固定六份输入 artifact 与 Workbook 输出路径 | 已完成 |
-| `cli.py` | `ingest`、`check --profile raw|phase0`、`generate-workbook` 与 `generate-draft docir|schemair|standard|template`；`phase0a` 已移除 | 无；Draft provider/fixture root 与适用 selector 必须显式提供 | P0-T4 Commit 7B |
+| `cli.py` | `ingest`、`check --profile raw|phase0`、`generate-workbook` 与 `generate-draft docir|schemair|standard|template`；`phase0a` 已移除 | 仅允许 `fixture` provider；缺少 OpenAI-compatible Chat API provider 的显式选择、运行时配置与安全错误上下文 | P0-T5 Commit 8A |
 | 规则资产 | v1 已于 2026-08-06 发布并冻结；v2 继承 catalog 并修订方向性 Standard projection，已于 2026-08-09 发布并冻结 | 无；Template 必须显式绑定适用的 RELEASED 规则版本 | 已完成 |
 | Standard | `interface-standard/v1`、result v1、Validator、双方向 Final/results 和 APPROVED Review 已实现 | 无；两份 Final identity/version/hash 已冻结 | 已完成 |
 | Template | `interface-template/v1`、result v1、Validator、双方向 Final/results 和 APPROVED Review 已实现并绑定 RELEASED v2 | 无；两份 Final identity/version/hash 与四条 ASSEMBLY omission 已冻结 | 已完成 |
 | Workbook | openpyxl Generator、完整 Final/result/rule gate、七个 sheet 投影、safe text、原子写入、双方向 Golden Workbook、structured/CLI regression 已实现 | 无；P0-T3 完成门禁已覆盖 | 已完成 |
-| Draft generators | provider-neutral runtime、四类 orchestration、六个受控 response、CLI、Draft publication、reviewed Final DocIR 与完整 closure regression 已实现 | 无 | P0-T4 Commit 7D |
+| Draft generators | provider-neutral runtime、四类 orchestration、六个受控 response、CLI、Draft publication、reviewed Final DocIR 与完整 closure regression 已实现 | 缺少真实 Chat API adapter；没有真实 Draft、逐层 Review/Final validation 和双方向 Workbook 验证证据 | P0-T5 Commit 8A / 8B |
 
-当前 regression、三类 Final validation results、v1/v2 发布记录、Standard/Template Final golden、双方向 Configuration Workbook 与显式 Human Review gate 共同证明 Phase0-PoC 已稳定闭合。
+当前 regression、三类 Final validation results、v1/v2 发布记录、Standard/Template Final golden、双方向 Configuration Workbook 与显式 Human Review gate 证明 fixture trusted chain 稳定闭合；P0-T5 完成前，Phase0-PoC 不得标记为 Done。
 
 ## 3. 已确认迁移原则
 
@@ -445,7 +446,7 @@ Phase0 不实现 UI、JSON 银行报文、目标系统 Import JSON/API、Excel �
 - SchemaIR、Standard、Template provider output 必须为 `DRAFT/PENDING`；对应 Validator 必须为 0 ERROR、`finalEligible=false` 并保留 lifecycle blocking issue。任何 `FINAL/APPROVED` 输出在写盘前拒绝。
 - Draft、匹配 validation result 和 review notes 全部先在内存校验，再分别使用同目录临时文件原子替换。文件系统不承诺跨文件事务；任何中断后的缺失或 result hash mismatch 必须阻止下游。
 - Provider 和 stub 不得构造 Final/Human Review、调用 Workbook Generator 或硬编码银行事实到 runtime。日志只记录 task/artifact identifier、provider、contract version、direction 和 outcome，不记录银行原文、Draft、review notes、secret 或安全固定值。
-- 不实现真实 LLM/API、Prompt、网络、认证、重试、模型配置、通用银行推理、Review UI、自动 promotion 或 Phase1 能力。
+- P0-T4 不实现真实 LLM/API、Prompt、网络、认证、重试或模型配置；这些最小真实调用能力属于后续 P0-T5，不扩大为通用银行推理、Review UI、自动 promotion 或 Phase1 能力。
 
 ### 5.2 完成标志
 
@@ -454,14 +455,56 @@ Phase0 不实现 UI、JSON 银行报文、目标系统 Import JSON/API、Excel �
 - LLM/provider 输出无法直接形成 Final；DocIR 先经准确 bytes hash Human Review，三个 JSON Draft 人工修改后必须重新 Validator。
 - Standard/Template generator 在规则版本不存在或非 RELEASED、dependency 非 Final、selector/hash 不匹配时拒绝运行。
 - 完整 Phase0 回归从受控 Draft 输入开始，显式装载已审核 Final fixtures 表达 Human Review，再生成双方向 Workbook；测试和 runtime 都不得自动提升 Draft。
-- P0-T4 改为 `Done` 后，Phase0-PoC 才满足通过条件。
+- P0-T4 改为 `Done` 后，P0-T5 可以开始；Phase0-PoC 还需满足 P0-T5 才能通过。
 
 ### 5.3 验证
 
 - 六类 stub golden、provider error translation、严格 response/case、DocIR 结构、JSON lifecycle/Validator、dependency/hash/rules、overwrite/失败清理和敏感日志测试。
 - 完整 pytest、双方向 Draft-to-Workbook regression、build、docs-sync、BOM/diff/secret 检查和用户命令 smoke test。
 
-## 6. 逻辑 Commit Plan
+## 6. P0-T5：真实 LLM Draft-to-Workbook 验证
+
+### 6.1 已确认边界
+
+- 真实 provider 使用 OpenAI-compatible Chat API；实际模型由运行时显式选择，可以是 DeepSeek、Qwen 或其他兼容服务。
+- 一次验收必须真实调用 DocIR、SchemaIR、ASSEMBLY/PARSE Standard 和 ASSEMBLY/PARSE Template 共六次 Draft 生成；fixture 不得充当其中任一调用。
+- API key、base URL、model 和可选网络参数只存在于运行时安全配置；不得落入 artifact、日志、测试 fixture 或版本库。
+- 输入可发送给用户批准的 provider，但该授权不自动授权把 raw-doc、真实 Draft、Final 或 Workbook 提交到仓库。默认只提交不含敏感业务内容的代码、测试与证据摘要。
+
+### 6.2 实施与验证顺序
+
+1. 新增真实 `DraftProvider` adapter 和 CLI/runtime 配置入口，将 Chat API 响应转换为严格 `draft-provider-response/v1`；保留现有 Draft/Validator/workspace publication 边界。
+2. 以 mock/recorded transport 覆盖请求构造、认证缺失、超时、非 2xx、无效 JSON、response envelope 错误和日志脱敏；自动化测试不得需要真实 API key 或网络。
+3. 在独立、未跟踪 workspace 中执行真实 DocIR Draft；Human 对准确 hash 单独确认后形成 Final DocIR。
+4. 用该 Final DocIR 执行真实 SchemaIR Draft、Draft validation、Human Review、Final candidate 和 Final validation；然后分别执行两方向 Standard 和 Template，遵守每个上游 Final gate。
+5. 对由真实 Draft 经 Review 形成的两条 Final trusted chain 执行 `check --profile phase0`，再各生成一份 Configuration Workbook；保存不含 secret 的运行证据、artifact hash、reviewer、时间、provider/model 标识和验证结果。
+
+### 6.3 完成标志
+
+- 六次真实 Chat API 调用均由 adapter 发起，并在同一 Draft contract 下发布 `DRAFT/PENDING` artifact；DocIR 通过最小结构检查，三个 JSON Draft 均为 0 ERROR 且 `finalEligible=false`。
+- DocIR、SchemaIR、双方向 Standard 和双方向 Template 均具有独立具名 Human Review、准确内容 hash 和匹配的 Final validation result；未发生自动 promotion。
+- 两个方向的真实 Final trusted chain 都通过 `check --profile phase0`，并各自生成可打开、通过结构化检查的 Workbook。
+- fixture regression、完整 pytest、build、docs-sync、BOM/diff/secret 检查继续通过；真实调用失败不影响离线回归。
+
+### 6.4 Commit Plan
+
+#### Commit 8A：真实 OpenAI-compatible Draft provider
+
+- Scope：新增 provider adapter、显式 CLI/runtime 配置、脱敏错误/日志、mock transport 测试和 README/设计/配置说明。
+- Files：`bank_config_compiler/draft_generation.py`、`bank_config_compiler/cli.py`、新增 provider 模块与对应 tests；按实际接口更新 README、design、planning。
+- Completion signal：不设置真实凭证时 fail closed；mock provider 能覆盖四类 Draft request/response contract，fixture 路径保持不变。
+- Verification：专项 pytest、完整 pytest、build、静态 secret 检查和 docs-sync。
+- Next starts when：用户在独立 workspace 提供已批准的 endpoint/model/credential 与可处理的验证样例。
+
+#### Commit 8B：真实 LLM 验收证据
+
+- Scope：执行六次真实 Draft，逐层 Human Review/Final validation，生成双方向 Workbook，并保存经过数据保留审查的最小证据摘要；不把敏感 artifact 自动加入 Git。
+- Files：用户批准且可提交的 review/evidence 记录；其余真实 artifact 留在受控 workspace。
+- Completion signal：满足 6.3 的全部完成标志。
+- Verification：双方向 `check --profile phase0`、Workbook 结构化检查、完整 pytest、build、docs-sync、BOM/diff/secret 检查和人工 Review readback。
+- Next starts when：P0-T5 状态改为 Done，Phase0-PoC 最终门禁可重新判定。
+
+## 7. 逻辑 Commit Plan
 
 以下 commit 同时记录已完成边界与后续实施边界。Commit 1/2 位于同一隔离分支；后续批次开始时再按当时基线建立所需开发分支，并通过 PR 合入。
 
@@ -608,11 +651,11 @@ Phase0 不实现 UI、JSON 银行报文、目标系统 Import JSON/API、Excel �
 - Scope/Files：完整受控回归、双方向 CLI smoke、structured Workbook comparison、README/phase/plan/sample 状态；测试中显式装载已审核 Final fixtures，不实现自动 promotion。
 - Completion signal：四类 generator 不能绕过可信边界，相同 fixture 可重复生成 Draft，双方向 Workbook 与 Golden 一致，P0-T4/Phase0 改为 Done。
 - Verification：完整 pytest/build/docs-sync、BOM/diff/secret 和 Workbook 公式/宏/外链检查。
-- Next starts when：Phase0-PoC 满足全部通过条件，可进入 Phase1 planning。
+- Next starts when：P0-T4 fixture boundary 完成；P0-T5 真实 LLM 验证可开始。
 
-## 7. 整体验收与验证要求
+## 8. 整体验收与验证要求
 
-### 7.1 每个实现批次
+### 8.1 每个实现批次
 
 - 对应模块的字段级/引用级正反向 UT。
 - `uv --cache-dir .uv-cache run --group dev pytest -q -p no:cacheprovider --basetemp .pytest-p0`
@@ -623,7 +666,7 @@ Phase0 不实现 UI、JSON 银行报文、目标系统 Import JSON/API、Excel �
 - code、tests 和已知文档同步在同一逻辑 commit；完成后运行 docs-sync。
 - 用户可见命令、artifact、配置、验证方式或阶段状态变化时强制检查根 `README.md`。
 
-### 7.2 P0-T3 完成门禁
+### 8.2 P0-T3 完成门禁
 
 **状态：PASS。以下门禁均由运行时、fixture 和自动化 regression 覆盖。**
 
@@ -637,10 +680,11 @@ Phase0 不实现 UI、JSON 银行报文、目标系统 Import JSON/API、Excel �
 - 相同 Final chain、results、规则版本、Standard Action 和固定任务上下文可重复生成相同结构化内容。
 - 完整 P0-T3 链路不依赖未确认业务默认值、历史导出 ID 或模型常识；该门禁已满足，P0-T3 为 Done，P0-T4 已解锁。
 
-### 7.3 Phase0-PoC 最终门禁
+### 8.3 Phase0-PoC 最终门禁
 
-**状态：PASS。P0-T3 与 P0-T4 的完成标志均由实现和自动化 regression 覆盖。**
+**状态：IN PROGRESS。P0-T3 与 P0-T4 的完成标志已由实现和自动化 regression 覆盖；P0-T5 尚未实现和验证。**
 
 - P0-T3 完成门禁全部通过。
 - 四类 deterministic Draft generator 可运行，通过同一 provider contract 产生合法 Draft，且不能生成 Final 或绕过 Human Review/Validator。
-- Draft-to-Workbook 完整回归可重复运行，显式装载 reviewed Final fixtures 后生成的双方向 Workbook 与 Golden 结构化一致；Phase0-PoC 已改为 Done，可进入 Phase1 planning。
+- Draft-to-Workbook 完整回归可重复运行，显式装载 reviewed Final fixtures 后生成的双方向 Workbook 与 Golden 结构化一致。
+- P0-T5 必须完成六次真实 OpenAI-compatible Chat API Draft、逐层独立 Human Review/Final validation 与双方向 Workbook 验证；完成前 Phase0-PoC 不得改为 Done 或进入 Phase1 planning。

@@ -87,7 +87,7 @@ Configuration Workbook 是派生交付物，不是事实源，也不是可导入
 
 职责：
 
-- 接收 `.md`、`.txt` 或粘贴文本。
+- 接收 UTF-8 no BOM 的 `.md` 与 `.txt` 文件。
 - 保存 raw doc 和任务上下文。
 - 为 Draft、Final、Validator result 和 workbook 提供可追溯 artifact 边界。
 
@@ -102,7 +102,7 @@ Configuration Workbook 是派生交付物，不是事实源，也不是可导入
 - 从 Final SchemaIR 与指定规则版本生成 InterfaceStandardIR Draft。
 - 从 Final InterfaceStandardIR、方向性 FIELD catalog 与指定规则版本生成 InterfaceTemplateIR Draft。
 
-Phase0 中四类 generator 通过同一个 `DraftProvider` contract 调用。provider 返回严格 UTF-8 的 `draft-provider-response/v1` JSON envelope，包含 artifact kind、Draft 内容和 review notes；编排层负责严格解析、dependency/hash/rule 校验、Validator 调用和 workspace 发布。deterministic fixture provider 只加载调用者显式指定的 `draft-stub-case/v1`，不扫描 workspace 或自动选择版本。
+Phase0 中四类 generator 通过同一个 `DraftProvider` contract 调用。provider 返回严格 UTF-8 的 `draft-provider-response/v1` JSON envelope，包含 artifact kind、Draft 内容和 review notes；编排层负责严格解析、dependency/hash/rule 校验、Validator 调用和 workspace 发布。deterministic fixture provider 只加载调用者显式指定的 `draft-stub-case/v1`，不扫描 workspace 或自动选择版本。P0-T5 还要求一个真实、运行时显式选择的 OpenAI-compatible Chat API provider；它只能把外部响应转换为同一 envelope，不能改变核心 trusted-chain 语义或自动产生 Final。
 
 约束：
 
@@ -198,7 +198,7 @@ Phase0 可以用受控 fixture 或命令流程表达人工确认；Phase1 才提
 
 规则版本一旦发布不可原地覆盖。InterfaceStandardIR、InterfaceTemplateIR、Validator result 和 Configuration Workbook 必须记录实际使用的精确规则版本及 Rule ID。标准和后续模板可以使用不同规则版本，但模板对标准 artifact 的绑定不因此改变。
 
-`configuration-rules/v1` 与只修订方向相关 Standard projection 的 v2 均已发布并冻结。SchemaIR v2、InterfaceStandardIR、InterfaceTemplateIR、Configuration Workbook、双方向 Golden 与匹配 validation results 均已实现并冻结；P0-T3 已完成。P0-T4 的 provider-neutral runtime、六个受控 response、四类 CLI 和准确 hash 的 reviewed Final DocIR 已冻结；完整受控回归显式装载已审核 Final fixtures，双方向 Workbook 结构化内容均与 Golden 一致，因此 P0-T4 与 Phase0-PoC 已完成。Final IR 必须精确引用适用的 `RELEASED` 规则版本。
+`configuration-rules/v1` 与只修订方向相关 Standard projection 的 v2 均已发布并冻结。SchemaIR v2、InterfaceStandardIR、InterfaceTemplateIR、Configuration Workbook、双方向 Golden 与匹配 validation results 均已实现并冻结；P0-T3 已完成。P0-T4 的 provider-neutral runtime、六个受控 response、四类 CLI 和准确 hash 的 reviewed Final DocIR 已冻结；完整受控回归显式装载已审核 Final fixtures，双方向 Workbook 结构化内容均与 Golden 一致。P0-T5 的真实 OpenAI-compatible Chat API 调用、逐层独立 Human Review/Final validation 与双方向 Workbook 验证尚未实现，因此 Phase0-PoC 为 In Progress。Final IR 必须精确引用适用的 `RELEASED` 规则版本。
 
 ## 4. 候选任务状态
 
@@ -254,7 +254,7 @@ workspace/{taskId}/
 
 ## 6. 分阶段交付
 
-- Phase0-PoC：文件 workspace、受控 fixture、三个 Validator、确定性 Workbook Generator 和结构化 golden regression。
+- Phase0-PoC：文件 workspace、受控 fixture、真实 OpenAI-compatible Chat API Draft 验证、三个 Validator、逐层 Human Review、确定性 Workbook Generator 和结构化 golden regression。
 - Phase1-MVP：增加四类 IR Review、omission Review 与工作簿预览/下载。
 - Phase2-Pilot：验证标准复用、模板接受率、omission 质量、规则版本影响和人工返工量。
 - Phase3-Production：暂不定义。

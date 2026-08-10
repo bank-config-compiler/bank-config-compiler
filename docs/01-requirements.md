@@ -19,6 +19,8 @@ Draft.
 | Phase2-Pilot | 在受控真实场景中试点，验证实施提效、配置质量和运维边界。 | `docs/phases/02-phase2-pilot.md` |
 | Phase3-Production | 暂不定义目标和需求。 | `docs/phases/03-phase3-production.md` |
 
+Phase0-PoC 的完成门槛包括一条真实 LLM 证据链：调用用户批准、采用 OpenAI-compatible Chat API 的 provider，依次生成四类 Draft；每层 Draft 必须经过适用 Validator 和独立 Human Review 后形成 Final，再基于双方向 Final trusted chain 生成并验证 Configuration Workbook。deterministic fixture 仅是回归基线，不能替代该真实调用。
+
 ## 2. 核心产物与术语
 
 IR 是 Intermediate Representation（中间表示）。它把来源不同、结构不同的信息转换为项目内部可持续处理的模型。
@@ -56,6 +58,7 @@ Configuration Workbook 不是事实源，不反向更新任何 IR。人工填写
 ## 4. 核心设计原则
 
 - Human-in-the-loop 是必需能力。LLM 只能产生四类 IR Draft。
+- Phase0 的真实 LLM 验证必须保持 provider-neutral 核心边界；provider/model 由运行时显式选择，API secret 不得写入 artifact、日志或版本库。
 - Draft 未经对应 Validator（适用时）和人工 Review，不得成为 Final 产物。
 - 三类 IR 使用显式 stable ID、不可变 artifact version、`DRAFT | FINAL` 状态和 `PENDING | APPROVED` Review。任何 `uncertain=true`、`UNKNOWN`、未决差异、未决 omission 或 blocking Warning 都阻止 Final eligibility。
 - Human 先完成完整 Final candidate 和 Review metadata，再运行 Validator。Validation result 使用 canonical UTF-8 JSON SHA-256 绑定包括 Review 在内的全部语义内容；空白和属性顺序不影响 hash，任何语义值变化都使旧结果失效。
