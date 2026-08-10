@@ -2,7 +2,11 @@
 
 ## Status
 
-Accepted.
+Accepted. “粘贴文本”输入范围由 ADR-0011 supersede；`.md` / `.txt` 文件输入和富文档排除范围仍然有效。
+
+## Superseded Scope
+
+ADR-0011 将 Phase0-PoC 的 raw-doc 输入收束为 UTF-8 no BOM 的 `.md` / `.txt` 文件。本文保留当时包含“粘贴文本”的原始决策和理由，避免改写历史。
 
 ## Context
 

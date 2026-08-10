@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted. Delivery model retained; target configuration IR and Configuration Workbook boundaries are updated by ADR-0006 and ADR-0007.
+Accepted. Delivery model retained; target configuration IR and Configuration Workbook boundaries are updated by ADR-0006 and ADR-0007. The Phase0 real LLM validation boundary is defined by ADR-0012.
 
 ## Context
 
