@@ -2,7 +2,7 @@
 
 ## Status
 
-Active. P0-T3 is Done. P0-T4 is In Progress：provider-neutral runtime、六个 deterministic b2e0061 responses 与四类 CLI 已完成，当前停在 Final DocIR Human Review Gate；未获准确 bytes hash 确认前不冻结 `docir-final.md`，也不进入完整 Draft-to-Workbook closure。
+Active. P0-T3 is Done. P0-T4 is In Progress：provider-neutral runtime、六个 deterministic b2e0061 responses、四类 CLI 与 reviewed Final DocIR 已完成；当前进入 Commit 7D 完整 Draft-to-Workbook closure，尚未把 P0-T4/Phase0 标记为 Done。
 
 ## 1. 目标与边界
 
@@ -32,7 +32,7 @@ Phase0 不实现 UI、JSON 银行报文、目标系统 Import JSON/API、Excel �
 | P0-T1：`b2e0061` IR candidate / Review | Done | P0-T0 | 无 | Candidate DocIR / SchemaIR 经 Human Review 更新，正式 IR 设计和 reference 边界清晰。 |
 | P0-T2：Review Golden sample boundary | Done | P0-T1 | 无 | Expected DocIR、修订前 expected SchemaIR、expected review notes 和 v1 validation result 已冻结为审查前 Golden。 |
 | P0-T3：Trusted chain | Done | P0-T2、`configuration-rules/v1` 与 v2 RELEASED | 无 | 两个配置 IR/Validator、Workbook 和完整 trusted-chain regression 已完成。 |
-| P0-T4：Draft generators | In Progress | P0-T3 | Final DocIR candidate 等待准确 bytes hash Human Review | Provider-neutral generator interface 与四类确定性 stub 可运行，且无法绕过 Validator/Human Review 写入 Final。 |
+| P0-T4：Draft generators | In Progress | P0-T3、reviewed Final DocIR | 完整 Draft-to-Workbook closure 尚未完成 | Provider-neutral generator interface 与四类确定性 stub 可运行，且无法绕过 Validator/Human Review 写入 Final。 |
 
 状态定义：
 
@@ -57,10 +57,11 @@ Phase0 不实现 UI、JSON 银行报文、目标系统 Import JSON/API、Excel �
 - Configuration Workbook 运行时、三份 result 完整相等门禁、Standard/Template 双规则版本门禁、固定七个 sheet、安全文本、脱敏日志与同目录原子发布
 - 显式 `Phase0Selection`、固定六 artifact 路径、只读 `check --profile phase0` 和固定目标 `generate-workbook` CLI；不扫描、不推断最新版
 - provider-neutral Draft runtime、严格 `draft-provider-response/v1` / `draft-stub-case/v1`、固定 Draft publication、`generate-draft` CLI 和六个 b2e0061 deterministic responses
+- `deng` 批准的 byte-identical Final DocIR、APPROVED Review 记录和准确 bytes hash regression；hash 为 `sha256:31d7fc002ccc2b840f401206f54665e36771f2bb5502d480566defdff9ac7585`
 - 提交的 ASSEMBLY/PARSE CREATE Golden Workbook 与结构化回读 regression；行数分别为 Standard 36/19、Template 26/8、Expression 30/13、Warning 38/15
 - PR #12 / merge commit `2de9f69`：最新 requirements、design、ADR amendment、reference 边界和规则事实收束
 
-这些证据证明 P0-T3 完整可信链路以及 P0-T4 Draft runtime/受控 fixture 已形成；不证明 Final DocIR 已获批、完整 Draft-to-Workbook closure 已完成或 Phase0-PoC 最终门禁已满足。
+这些证据证明 P0-T3 完整可信链路、P0-T4 Draft runtime/受控 fixture 与 reviewed Final DocIR 已形成；不证明完整 Draft-to-Workbook closure 已完成或 Phase0-PoC 最终门禁已满足。
 
 ### 2.3 存量代码差距
 
@@ -74,9 +75,9 @@ Phase0 不实现 UI、JSON 银行报文、目标系统 Import JSON/API、Excel �
 | Standard | `interface-standard/v1`、result v1、Validator、双方向 Final/results 和 APPROVED Review 已实现 | 无；两份 Final identity/version/hash 已冻结 | 已完成 |
 | Template | `interface-template/v1`、result v1、Validator、双方向 Final/results 和 APPROVED Review 已实现并绑定 RELEASED v2 | 无；两份 Final identity/version/hash 与四条 ASSEMBLY omission 已冻结 | 已完成 |
 | Workbook | openpyxl Generator、完整 Final/result/rule gate、七个 sheet 投影、safe text、原子写入、双方向 Golden Workbook、structured/CLI regression 已实现 | 无；P0-T3 完成门禁已覆盖 | 已完成 |
-| Draft generators | provider-neutral runtime、四类 orchestration、六个受控 response、CLI 与 Draft publication 已实现 | Final DocIR Review/freeze 和完整 closure regression 未完成 | P0-T4 Commit 7C/7D |
+| Draft generators | provider-neutral runtime、四类 orchestration、六个受控 response、CLI、Draft publication 与 reviewed Final DocIR 已实现 | 完整 closure regression 未完成 | P0-T4 Commit 7D |
 
-当前 regression、三类 Final validation results、v1/v2 发布记录、Standard/Template Final golden 与双方向 Configuration Workbook 共同证明 P0-T3 trusted chain 已稳定闭合；P0-T4 runtime 已完成，但 Final DocIR gate 与完整 closure 仍未完成。
+当前 regression、三类 Final validation results、v1/v2 发布记录、Standard/Template Final golden 与双方向 Configuration Workbook 共同证明 P0-T3 trusted chain 已稳定闭合；P0-T4 runtime 与 Final DocIR gate 已完成，但完整 closure 仍未完成。
 
 ## 3. 已确认迁移原则
 
@@ -587,12 +588,13 @@ Phase0 不实现 UI、JSON 银行报文、目标系统 Import JSON/API、Excel �
 - Verification：targeted/full pytest、CLI smoke、build、docs-sync、BOM/diff/secret 检查。
 - Next starts when：向 Human 展示 DocIR candidate 准确 bytes hash、Review Golden diff、结构结果和 review notes。
 
-### Human Review Gate：Final DocIR
+### 已完成 Human Review Gate：Final DocIR
 
 - Human 只确认准确 DocIR candidate；它可以保留忠实反映 raw doc 的冲突和不确定项，但不得把后续 SchemaIR/Standard 事实倒灌到 DocIR。
 - 未获具名 reviewer 对准确 bytes hash 的明确确认前，不写入 `docir-final.md`，不启用完整 Draft-to-Workbook regression，也不把 P0-T4 标为 Done。
+- Evidence：`deng` 于 `2026-08-10T10:35:51+08:00` 明确批准 `sha256:31d7fc002ccc2b840f401206f54665e36771f2bb5502d480566defdff9ac7585`；同意冲突和不确定项显式保留且不视为已确认业务事实。
 
-### Commit 7C：冻结 reviewed Final DocIR
+### 已完成 Commit 7C：冻结 reviewed Final DocIR
 
 - Suggested message：`chore: freeze reviewed Final DocIR fixture`
 - Scope/Files：获批 `docir-final.md`、具名 reviewer/time/hash 记录、byte/hash regression 和最小状态同步；不改变 generator runtime。
