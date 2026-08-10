@@ -13,3 +13,5 @@
 - `artifacts/docir-draft.md` 始终是 provider output；只有当前获批 hash 的 byte-identical `docir-final.md` 是该 case 的 Final DocIR，runtime 不会自动执行 promotion。
 - 下游 fixture 已绑定当前受审 Final artifacts，不能用于绕过真实 workspace 的 Final 输入检查。
 - `.gitattributes` 保留既有 Golden/Draft Markdown 的 CRLF bytes baseline，并将本目录 JSON 固定为 LF，确保 hash 不随 checkout 平台改变。
+
+完整受控回归会生成本 case 的六份 Draft，再显式装载已审核 Final fixtures，分别完成 ASSEMBLY/PARSE `phase0` check、Workbook 生成和结构化 Golden 对比。缺少任一所需 Final 时下游调用 fail closed；测试不通过复制本次 Draft 来模拟 Human Review。
