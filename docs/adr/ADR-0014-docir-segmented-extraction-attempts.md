@@ -51,3 +51,9 @@ ADR-0013 将 DocIR 从模型直出 Markdown 改为严格结构化提取与确定
 - 更小批次可降低单个字段详情响应的输出压力，但增加调用数、总输入 token 与延迟；操作者在新 attempt 开始前显式选择该取舍。
 - 成功仍只发布一个 DocIR Markdown Draft、Human Review Notes 和 attempt v2 摘要；失败不发布部分 Draft。
 - ADR-0012/0013 中关于 v1 attempt evidence 和单响应 extraction 的描述保留为历史记录，以本 ADR 为当前约束。
+
+### Implementation amendment (2026-08-11)
+
+- 首次真实分段 attempt `docir-012` 的 `interface-envelope` subcall 正常结束并返回四个顶层属性，但 `sourceContext` 是 object，而 Validator 要求非空字符串数组。attempt v2 evidence 正确记录唯一失败 subcall，后续 outline/detail 未执行，也未发布部分 Draft。
+- 根因是 segment prompt 只列出 `sourceContext` 属性名，未声明其 JSON shape；这是 prompt/Validator contract mismatch，不是需要放宽机械门禁的银行语义差异。
+- `draft-prompt/v8` 的 Interface/Envelope response shape 现明确要求 `sourceContext` 为非空字符串数组且不得返回 object。该修正不改变 segment contract、公开 provider response、batch、merge 或 Human Review 语义；后续真实验证必须使用新 attempt ID 从第一段开始。

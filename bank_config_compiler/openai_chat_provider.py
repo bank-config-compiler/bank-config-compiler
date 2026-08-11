@@ -864,6 +864,7 @@ def _docir_segment_system_message(prompt: _DocIRSegmentPrompt) -> str:
         response_shape = f"""
 Return exactly one `{INTERFACE_ENVELOPE_SEGMENT_CONTRACT}` JSON object with these properties:
 `contractVersion`, `interface`, `sourceContext`, `envelope`.
+`sourceContext` is a non-empty JSON array of non-empty strings; never return an object.
 `interface` has only `metadata`. `envelope` has only `metadata` and complete `fields`.
 """.strip()
     elif prompt.segment == "messages-outline":

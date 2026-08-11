@@ -522,6 +522,7 @@ def test_docir_prompt_requests_structured_extraction_and_preserves_source_scope(
     assert "Segment: interface-envelope" in user_prompt
     assert "docir-interface-envelope-segment/v1" in system_prompt
     assert "`contractVersion`, `interface`, `sourceContext`, `envelope`" in system_prompt
+    assert "`sourceContext` is a non-empty JSON array of non-empty strings" in system_prompt
     assert "complete `fields`" in system_prompt
     assert "validated outline selector" in system_prompt
     assert "outer provider" in system_prompt
