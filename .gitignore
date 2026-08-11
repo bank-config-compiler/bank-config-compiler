@@ -20,7 +20,8 @@ target/
 __pycache__/
 *.py[cod]
 .pytest_cache/
-.pytest-p0
+/.pytest-*/
+/.uv-cache*/
 .ruff_cache/
 .mypy_cache/
 .venv/
