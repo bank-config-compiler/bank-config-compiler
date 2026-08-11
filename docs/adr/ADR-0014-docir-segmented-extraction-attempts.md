@@ -57,3 +57,5 @@ ADR-0013 将 DocIR 从模型直出 Markdown 改为严格结构化提取与确定
 - 首次真实分段 attempt `docir-012` 的 `interface-envelope` subcall 正常结束并返回四个顶层属性，但 `sourceContext` 是 object，而 Validator 要求非空字符串数组。attempt v2 evidence 正确记录唯一失败 subcall，后续 outline/detail 未执行，也未发布部分 Draft。
 - 根因是 segment prompt 只列出 `sourceContext` 属性名，未声明其 JSON shape；这是 prompt/Validator contract mismatch，不是需要放宽机械门禁的银行语义差异。
 - `draft-prompt/v8` 的 Interface/Envelope response shape 现明确要求 `sourceContext` 为非空字符串数组且不得返回 object。该修正不改变 segment contract、公开 provider response、batch、merge 或 Human Review 语义；后续真实验证必须使用新 attempt ID 从第一段开始。
+- 新 attempt `docir-013` 的首段正常结束，但严格 JSON 因重复属性而被拒绝；按普通 JSON 诊断时还能看到 Envelope 越过 `trans`，包含 ASSEMBLY/PARSE 根及其字段详情。该结果不是有效 Envelope，也不是有效紧凑 outline，而是一次分段职责混淆。
+- `draft-prompt/v9` 将公共内容收缩为信任与输出安全边界，并为 Interface/Envelope、联合 messages outline、field details 分别定义完整且互斥的响应合同。Envelope 明确在共享 `trans` 容器截止且 `sourceContext` 不得枚举交易字段；outline 只允许 `{index,item}`；detail 骨架写入当前方向和批次并只覆盖已校验 selector。机械 Validator、公开 contract、attempt 原子性和 Human Review 边界不变。

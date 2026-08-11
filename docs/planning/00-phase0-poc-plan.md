@@ -2,7 +2,7 @@
 
 ## Status
 
-In Progress. P0-T3 trusted chain 与 P0-T4 deterministic Draft-to-Workbook closure 均已完成；P0-T5 adapter、严格流式传输、内部结构化 DocIR extraction、确定性 renderer/review notes，以及 ADR-0014 的有界分段与 attempt v2 evidence 均已完成离线实现。`docir-012` 在首个 `interface-envelope` 因 `sourceContext` prompt/Validator shape mismatch 被机械门禁拒绝并停止；prompt 已对齐，尚待新 attempt 从头验证。当前没有通过 Human Review 的真实 DocIR candidate，Phase0-PoC 最终门禁未通过。
+In Progress. P0-T3 trusted chain 与 P0-T4 deterministic Draft-to-Workbook closure 均已完成；P0-T5 adapter、严格流式传输、内部结构化 DocIR extraction、确定性 renderer/review notes，以及 ADR-0014 的有界分段与 attempt v2 evidence 均已完成离线实现。`docir-012` 暴露 `sourceContext` shape mismatch；`docir-013` 暴露 v8 公共字段指令使 Interface/Envelope 越过 `trans` 并提前生成两个消息方向的完整字段详情。v9 已改为职责互斥的三类 segment prompt，尚待新 attempt 从头验证。当前没有通过 Human Review 的真实 DocIR candidate，Phase0-PoC 最终门禁未通过。
 
 ## 1. 目标与边界
 
@@ -33,7 +33,7 @@ Phase0 不实现 UI、JSON 银行报文、目标系统 Import JSON/API、Excel �
 | P0-T2：Review Golden sample boundary | Done | P0-T1 | 无 | Expected DocIR、修订前 expected SchemaIR、expected review notes 和 v1 validation result 已冻结为审查前 Golden。 |
 | P0-T3：Trusted chain | Done | P0-T2、`configuration-rules/v1` 与 v2 RELEASED | 无 | 两个配置 IR/Validator、Workbook 和完整 trusted-chain regression 已完成。 |
 | P0-T4：Draft generators | Done | P0-T3、reviewed Final DocIR | 无 | Provider-neutral generator interface 与四类确定性 stub 可运行，显式 Human Review gate 和双方向 Workbook Golden closure 已通过。 |
-| P0-T5：真实 LLM Draft-to-Workbook 验证 | In Progress | P0-T4、用户批准的 OpenAI-compatible Chat API provider 与测试样例 | adapter、分段 DocIR、attempt v2 evidence 和离线回归已实现；`docir-012` 在第一段暴露 `sourceContext` prompt shape 缺口并 fail-fast，prompt 已修正；尚无通过 Human Review 的真实 DocIR candidate | 提交修复后，以新 attempt ID 从第一段验证；不得 resume `docir-012`。 |
+| P0-T5：真实 LLM Draft-to-Workbook 验证 | In Progress | P0-T4、用户批准的 OpenAI-compatible Chat API provider 与测试样例 | adapter、分段 DocIR、attempt v2 evidence 和离线回归已实现；`docir-012` 暴露 shape mismatch，`docir-013` 暴露分段职责混淆；v9 prompt 已隔离职责，尚无通过 Human Review 的真实 DocIR candidate | 提交 v9 后，以新 attempt ID 从第一段验证；不得 resume `docir-012` 或 `docir-013`。 |
 
 状态定义：
 
@@ -479,7 +479,7 @@ Phase0 不实现 UI、JSON 银行报文、目标系统 Import JSON/API、Excel �
 
 1. **实现候选已完成，待 Commit 8A 验证/提交。** 新增真实 `DraftProvider` adapter、显式 context 和 CLI/runtime 配置入口，将 Chat API 响应转换为严格 `draft-provider-response/v1`；保留现有 Draft/Validator/workspace publication 边界。
 2. **实现候选已完成，待 Commit 8A 验证/提交。** 以注入 fake client 覆盖 SDK 构造、请求构造、认证缺失、不安全配置、截断/无效响应、response envelope 错误和日志脱敏；自动化测试不需要真实 API key 或网络。
-3. **v7 单响应完整性问题已形成 v8 有界分段实现，首次真实分段验证暴露并修正 prompt/schema mismatch。** `docir-001` 至 `docir-011` 已验证最小门禁、Human Review、长流式 transport、结构化 shape、诊断和单响应完整性边界。`docir-012` 的 `interface-envelope` 正常返回完整 JSON，但把 prompt 未声明 shape 的 `sourceContext` 生成为 object；既有字符串数组门禁拒绝并停止后续调用，v2 evidence 正常。prompt 已明确数组 shape，下一 attempt 必须从第一段重新执行。
+3. **v7 单响应完整性问题已形成有界分段实现，两次真实首段验证继续收紧 prompt 职责。** `docir-001` 至 `docir-011` 已验证最小门禁、Human Review、长流式 transport、结构化 shape、诊断和单响应完整性边界。`docir-012` 因 `sourceContext` object 被字符串数组门禁拒绝；修正 shape 后，`docir-013` 又因重复属性被严格 JSON 拒绝，诊断内容同时表明 Envelope 越过 `trans` 并混入 ASSEMBLY/PARSE 字段详情。v9 已为 Interface/Envelope、联合 outline 和有界 details 分别定义互斥响应合同，下一 attempt 必须从第一段重新执行。
 4. 用该 Final DocIR 执行真实 SchemaIR Draft、Draft validation、Human Review、Final candidate 和 Final validation；然后分别执行两方向 Standard 和 Template，遵守每个上游 Final gate。
 5. 对由真实 Draft 经 Review 形成的两条 Final trusted chain 执行 `check --profile phase0`，再各生成一份 Configuration Workbook；保存不含 secret 的运行证据、artifact hash、reviewer、时间、provider/model 标识和验证结果。
 
@@ -508,9 +508,9 @@ Phase0 不实现 UI、JSON 银行报文、目标系统 Import JSON/API、Excel �
 - Verification：DocIR schema/renderer/provider 专项 pytest、完整 pytest、build、BOM/diff/secret 检查、docs-sync 和真实 candidate 人工 rubric。
 - Next starts when：单响应完整性方案已经 ADR-0014 确认，进入 Commit 8A3。
 
-#### 待提交 Commit 8A3：DocIR 有界分段与 attempt evidence v2
+#### 已完成 Commit 8A3：DocIR 有界分段与 attempt evidence v2
 
-- Scope：在一个原子 attempt 内实现完整 Interface/Envelope、联合 messages outline、按 ASSEMBLY/PARSE 和有界批次的字段详情、顺序 fail-fast 与确定性 merge；成功/失败摘要升级为有序 subcall v2。保持公开 `DraftProvider`、`draft-provider-response/v1`、fixture、Human Review 与 Golden 边界不变，不发起真实调用。
+- Scope：在一个原子 attempt 内实现完整 Interface/Envelope、联合 messages outline、按 ASSEMBLY/PARSE 和有界批次的字段详情、顺序 fail-fast 与确定性 merge；成功/失败摘要升级为有序 subcall v2。保持公开 `DraftProvider`、`draft-provider-response/v1`、fixture、Human Review 与 Golden 边界不变。
 - Files：`bank_config_compiler/docir_draft.py`、`openai_chat_provider.py`、`draft_generation.py`、`cli.py`，对应 tests，ADR-0012/0013/0014、README、DocIR/system/Phase0 设计与计划。
 - Completion signal：默认 batch size 16 和显式正整数覆盖均闭合；联合 outline exact coverage、失败停止、全量重跑语义、成功/失败有序 evidence、其他 artifact 单调用兼容均有自动化证据；没有真实 artifact 或旧 workspace 变更。
 - Verification：DocIR/provider/evidence/CLI 专项 pytest、完整 pytest、build、diff/BOM/secret 检查和 docs-sync。
@@ -702,7 +702,7 @@ Phase0 不实现 UI、JSON 银行报文、目标系统 Import JSON/API、Excel �
 
 ### 8.3 Phase0-PoC 最终门禁
 
-**状态：IN PROGRESS。P0-T3 与 P0-T4 的完成标志已由实现和自动化 regression 覆盖；P0-T5 adapter、严格流式调用、direct extraction、确定性 renderer/review notes、DocIR 有界分段与 attempt v2 evidence 已完成离线实现。`docir-012` 在第一段因 `sourceContext` prompt/Validator shape mismatch 被机械门禁拒绝，失败 evidence 已保留且未发布部分 Draft；prompt 已对齐。当前没有可冻结真实 DocIR，Human Review-to-Workbook 验收仍未完成；下一步以全新 attempt 从第一段验证。**
+**状态：IN PROGRESS。P0-T3 与 P0-T4 的完成标志已由实现和自动化 regression 覆盖；P0-T5 adapter、严格流式调用、direct extraction、确定性 renderer/review notes、DocIR 有界分段与 attempt v2 evidence 已完成离线实现。`docir-012` 的 shape mismatch 和 `docir-013` 的分段职责混淆均在第一段被机械门禁拒绝，失败 evidence 已保留且未发布部分 Draft；v9 已隔离三类 prompt 职责。当前没有可冻结真实 DocIR，Human Review-to-Workbook 验收仍未完成；下一步以全新 attempt 从第一段验证。**
 
 - P0-T3 完成门禁全部通过。
 - 四类 deterministic Draft generator 可运行，通过同一 provider contract 产生合法 Draft，且不能生成 Final 或绕过 Human Review/Validator。

@@ -7,6 +7,7 @@ from types import SimpleNamespace
 
 import pytest
 
+import bank_config_compiler.openai_chat_provider as openai_chat_provider
 from bank_config_compiler.docir_draft import DocIRDraftError
 from bank_config_compiler.draft_generation import (
     DraftProviderDiagnosticError,
@@ -289,7 +290,7 @@ def test_openai_chat_provider_segments_docir_with_default_bounded_batches() -> N
     assert result.metadata.total_tokens == 150
     for call in client.completions.calls:
         assert "# Raw bank document" in call["messages"][1]["content"]
-        assert "Prompt contract: draft-prompt/v8" in call["messages"][1]["content"]
+        assert "Prompt contract: draft-prompt/v9" in call["messages"][1]["content"]
     envelope = json.loads(result.response_text)
     assert envelope["contractVersion"] == "draft-provider-response/v1"
     assert "| 2.26 |" in envelope["artifactContent"]
@@ -518,13 +519,13 @@ def test_docir_prompt_requests_structured_extraction_and_preserves_source_scope(
     system_prompt = messages[0]["content"]
     user_prompt = messages[1]["content"]
     normalized_system_prompt = " ".join(system_prompt.split())
-    assert "Prompt contract: draft-prompt/v8" in user_prompt
+    assert "Prompt contract: draft-prompt/v9" in user_prompt
     assert "Segment: interface-envelope" in user_prompt
     assert "docir-interface-envelope-segment/v1" in system_prompt
     assert "`contractVersion`, `interface`, `sourceContext`, `envelope`" in system_prompt
     assert "`sourceContext` is a non-empty JSON array of non-empty strings" in system_prompt
-    assert "complete `fields`" in system_prompt
-    assert "validated outline selector" in system_prompt
+    assert "complete shared Envelope structure" in system_prompt
+    assert "validated outline selector" not in system_prompt
     assert "outer provider" in system_prompt
     assert "separate review-notes" in system_prompt
     assert "Do not emit Markdown" in system_prompt
@@ -537,16 +538,82 @@ def test_docir_prompt_requests_structured_extraction_and_preserves_source_scope(
     for required_value in ("`Y`", "`N`", "`C`"):
         assert required_value in system_prompt
     assert "maximum without a minimum" in normalized_system_prompt
-    assert "response fields without explicit requiredness" in normalized_system_prompt
     assert "leave it empty" in normalized_system_prompt
     assert "Generic XML examples" in normalized_system_prompt
     assert "other transaction codes" in normalized_system_prompt
-    assert "example-only message fields" in normalized_system_prompt
+    assert "out-of-scope transaction fields" in normalized_system_prompt
     assert "Simplified Chinese" in system_prompt
     assert "b2e0061" not in system_prompt
     assert "serverdt" not in system_prompt
     assert "golden" not in user_prompt.lower()
     assert "workspace" not in user_prompt.lower()
+
+
+def test_docir_segment_prompts_keep_stage_responsibilities_separate() -> None:
+    request = DraftGenerationRequest(
+        task_id="phase0-test",
+        artifact_kind="docir",
+        source_hash="sha256:" + "1" * 64,
+    )
+    context = DraftGenerationContext(
+        source_content="# Raw bank document\n",
+        source_content_type="text/markdown",
+    )
+    outline_prompt = openai_chat_provider._DocIRSegmentPrompt(
+        segment="messages-outline",
+        contract_version="docir-messages-outline-segment/v1",
+    )
+    detail_prompt = openai_chat_provider._DocIRSegmentPrompt(
+        segment="assembly-fields-001",
+        contract_version="docir-field-details-segment/v1",
+        direction="ASSEMBLY",
+        batch_index=1,
+        target_outline=[{"index": "2", "item": "request-root"}],
+    )
+
+    interface_system = " ".join(build_chat_messages(request, context)[0]["content"].split())
+    outline_system = " ".join(build_chat_messages(
+        request,
+        context,
+        docir_segment=outline_prompt,
+    )[0]["content"].split())
+    detail_system = " ".join(build_chat_messages(
+        request,
+        context,
+        docir_segment=detail_prompt,
+    )[0]["content"].split())
+
+    for system_prompt in (interface_system, outline_system, detail_system):
+        assert "Every JSON object property must appear exactly once" in system_prompt
+
+    assert "Envelope scope ends at the `trans` container" in interface_system
+    assert "Do not include transaction-specific request or response roots" in interface_system
+    assert (
+        "must not name or enumerate transaction-specific request or response fields"
+        in interface_system
+    )
+    assert "Envelope field indexes are rooted at `1`" in interface_system
+    assert "Do not return `assembly`, `parse`, message metadata or conditions" in interface_system
+    assert "Full field rows have exactly" in interface_system
+    assert "assembly/parse: Message Name" not in interface_system
+    assert "Conditions contain only" not in interface_system
+
+    assert "Return one combined outline for both directions" in outline_system
+    assert "Each outline field has exactly `index` and `item`" in outline_system
+    assert "Do not return full field detail properties" in outline_system
+    assert "Do not include shared Envelope nodes" in outline_system
+    assert "Full field rows have exactly" not in outline_system
+    assert "interface: Interface Code" not in outline_system
+
+    assert "The validated outline selector" in detail_system
+    assert '\"direction\": \"ASSEMBLY\"' in detail_system
+    assert '\"batchIndex\": 1' in detail_system
+    assert "REQUESTED_DIRECTION" not in detail_system
+    assert "REQUESTED_BATCH_INDEX" not in detail_system
+    assert "Full field rows have exactly" in detail_system
+    assert "Do not return metadata or conditions" in detail_system
+    assert "Metadata rows have exactly" not in detail_system
+    assert "Conditions contain only" not in detail_system
 
 
 def test_openai_chat_provider_rejects_old_docir_model_envelope_with_complete_evidence() -> None:
