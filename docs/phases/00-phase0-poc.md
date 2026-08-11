@@ -2,7 +2,7 @@
 
 ## Status
 
-In Progress. P0-T3 trusted chain 与 P0-T4 deterministic Draft-to-Workbook closure 均已完成；P0-T5 的 DocIR 有界分段与 attempt v2 evidence 已完成离线实现。`docir-012` 暴露 `sourceContext` shape mismatch；`docir-013` 暴露 Interface/Envelope prompt 越过 `trans` 并提前生成两个消息方向字段详情。v9 已隔离三类 segment 职责，尚待新 attempt 从头验证；真实 LLM 全链路验证仍未完成，Phase0-PoC 最终门禁未通过。
+In Progress. P0-T3 trusted chain 与 P0-T4 deterministic Draft-to-Workbook closure 均已完成；P0-T5 的 DocIR 有界分段与 attempt v2 evidence 已完成离线实现。`docir-012/013` 分别暴露 shape mismatch 与分段职责混淆；v9 的 `docir-014` 已使 Interface/Envelope 和联合 outline 通过，但首个 detail 因空 wire 值缺少 Review 标记而 fail-fast。v10 已显式对齐该 Validator invariant，尚待新 attempt 从头验证；真实 LLM 全链路验证仍未完成，Phase0-PoC 最终门禁未通过。
 
 ## 1. 阶段目标
 
@@ -42,7 +42,7 @@ LLM、Agent 或 workflow 可以生成 Draft，但不能替代 Validator、人工
 
 尚未完成：
 
-- P0-T5 真实 provider adapter、OpenAI-compatible Chat API 显式运行时配置、成功/失败调用证据与离线自动化候选已经实现。`docir-001` 至 `docir-011` 验证了最小门禁、Human Review、长流式 transport、结构化 response shape、诊断和单响应完整性边界。ADR-0014 的 v8 有界分段在 `docir-012` 暴露 `sourceContext` shape mismatch，又在 `docir-013` 暴露公共字段指令造成的职责混淆：第一段越过 `trans`，提前返回 ASSEMBLY/PARSE 字段详情并含重复属性。`draft-prompt/v9` 已为三类 segment 使用独立响应合同，尚待新 attempt 从头验证。仍没有真实 Final DocIR、下游真实 Draft/Final/Review 记录或双方向 Workbook。
+- P0-T5 真实 provider adapter、OpenAI-compatible Chat API 显式运行时配置、成功/失败调用证据与离线自动化候选已经实现。`docir-001` 至 `docir-011` 验证了最小门禁、Human Review、长流式 transport、结构化 response shape、诊断和单响应完整性边界。ADR-0014 的 v8 有界分段在 `docir-012/013` 暴露 shape 与职责问题；`draft-prompt/v9` 的 `docir-014` 已验证职责隔离有效，12-node Envelope 在 `trans` 截止，27/10-field 联合 outline 只有字段身份。首个 detail 因空 `multiplicity`/`type`/`required` 缺少 Review 标记而停止；v10 已把该条件改为逐行强制检查。仍没有真实 Final DocIR、下游真实 Draft/Final/Review 记录或双方向 Workbook。
 
 `configuration-rules/v1` 与 v2 均已发布并冻结；v2 不改变其 27/207/14/5/6 catalog、Function String、Mapping/Replacement、字符长度默认 `STANDARD_1` 或业务 Condition 边界，只修订 Template Standard projection。现有 Final Standard 继续绑定 v1；Final InterfaceTemplateIR 精确绑定 v2。详细任务状态见 `docs/planning/00-phase0-poc-plan.md`。
 

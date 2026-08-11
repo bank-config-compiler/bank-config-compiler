@@ -38,7 +38,7 @@ from .draft_generation import (
 
 
 PROMPT_CONTRACT_VERSION = "draft-prompt/v7"
-DOCIR_PROMPT_CONTRACT_VERSION = "draft-prompt/v9"
+DOCIR_PROMPT_CONTRACT_VERSION = "draft-prompt/v10"
 DEFAULT_DOCIR_FIELD_BATCH_SIZE = 16
 JSON_IR_MODEL_RESPONSE_PROPERTIES = {"artifact", "reviewNotes"}
 ATTEMPT_ID_PATTERN = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$")
@@ -963,9 +963,13 @@ Full field rows have exactly `index`, `or`, `item`, `multiplicity`, `type`, `req
 `description`, `preValidation`, `platformValidation`, `review`, all as strings. `multiplicity` is
 empty or bracketed such as `[1..1]`, `[0..1]` or `[0..1000]`. `type` is empty or exactly `String`,
 `Boolean`, `Date`, `Decimal` or `Object`. `required` is empty or exactly `Y`, `N` or `C`.
-When any wire value is not explicit in SOURCE_DATA, leave it empty and include the exact text
-`原文未说明，待人工确认` in `review`. A maximum without a minimum does not support inventing the
-minimum; response fields without explicit requiredness stay empty.
+Every field row must contain all ten properties, including properties whose value is an empty string.
+Before returning JSON, inspect every field row independently and check `multiplicity`, `type` and
+`required` after filling the row. If any of those three values is empty, `review` must contain the
+exact text `原文未说明，待人工确认`; do not leave `review` empty and do not omit it. This rule also
+applies to structural container rows and to values that are legitimately not explicit in SOURCE_DATA.
+A maximum without a minimum does not support inventing the minimum; response fields without explicit
+requiredness stay empty and therefore require the marker in `review`.
 """.strip()
     return f"""
 You extract exactly one requested segment of a Bank Config Compiler DocIR candidate for Human Review.
