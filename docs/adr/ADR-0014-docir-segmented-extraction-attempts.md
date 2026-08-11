@@ -63,3 +63,5 @@ ADR-0013 将 DocIR 从模型直出 Markdown 改为严格结构化提取与确定
 - 根因是 detail prompt 的 “wire value” 没有被模型执行成逐行后置条件。`draft-prompt/v10` 只加强 detail 合同：每行十个属性均必须存在；逐行检查 `multiplicity`、`type`、`required`，任一为空时 `review` 必须包含 `原文未说明，待人工确认`。不修改已经通过的 Envelope/outline 合同或 Validator。
 - `docir-015` 没有进入 detail：其 13-node Envelope 仍正确在 `trans` 截止，但同一空值 Review invariant 在 Envelope 字段中随机复现并于第一段 fail-fast。这证明一次通过不足以把笼统规则视为抗模型方差。
 - `draft-prompt/v11` 将同一十属性完整性和逐行空值后置检查加入 Interface/Envelope full-field 合同；outline 仍不包含任何字段详情指令。该修订统一两个 full-field 阶段与既有 Validator，不放宽门禁或改变分段职责。
+- `docir-016` 证明 v11 的 Review 修订生效：空 wire 值均带固定标记，12-node Envelope 也仍在 `trans` 截止；但三个属性 index 被写成 `1.@version` 等 XML 名路径，而非纯数字层级，因此第一段仍被既有 index 门禁拒绝。
+- `draft-prompt/v12` 在 Envelope 与两个方向 outline 中给出准确纯数字层级 regex，并明确 index 只编码位置、XML item/attribute 名只进入 `item`；有效 `1.1`/`@version` 与无效 `1.@version` 示例直接对应真实失败。detail 继续逐字复制已校验 outline selector，不重新生成 index。

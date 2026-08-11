@@ -38,7 +38,7 @@ from .draft_generation import (
 
 
 PROMPT_CONTRACT_VERSION = "draft-prompt/v7"
-DOCIR_PROMPT_CONTRACT_VERSION = "draft-prompt/v11"
+DOCIR_PROMPT_CONTRACT_VERSION = "draft-prompt/v12"
 DEFAULT_DOCIR_FIELD_BATCH_SIZE = 16
 JSON_IR_MODEL_RESPONSE_PROPERTIES = {"artifact", "reviewNotes"}
 ATTEMPT_ID_PATTERN = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$")
@@ -887,6 +887,9 @@ Full field rows have exactly `index`, `or`, `item`, `multiplicity`, `type`, `req
 XML item name; use `@name` for an attribute. Envelope field indexes are rooted at `1`: the root is
 exactly `1`; each child appends a dot-separated positive integer; every parent appears before its
 children; indexes are unique and ordered.
+Every Envelope index must match `^1(?:\\.[1-9][0-9]*)*$`. Indexes contain digits and dots only and
+encode hierarchy position, never an XML item or attribute name. For example, an attribute may have
+`"index": "1.1", "item": "@version"`; `"index": "1.@version"` is forbidden.
 
 Envelope means only the reusable shared XML wrapper that applies to both message directions.
 Return the complete shared Envelope structure within this scope; do not omit shared nodes.
@@ -937,6 +940,9 @@ container and scalar field below the shared Envelope boundary, in parent-first o
 indexes are rooted at `2`; PARSE indexes are rooted at `3`. Each child appends a dot-separated
 positive integer; indexes are unique and ordered. `item` is a plain XML item name; use `@name` for
 an attribute.
+Every ASSEMBLY index must match `^2(?:\\.[1-9][0-9]*)*$`; every PARSE index must match
+`^3(?:\\.[1-9][0-9]*)*$`. Indexes contain digits and dots only and encode hierarchy position, never
+an XML item or attribute name. Put names such as `request` or `@version` only in `item`.
 
 Do not include shared Envelope nodes such as the XML root, root attributes, `head`, shared head
 fields or `trans`. Do not return full field detail properties: `or`, `multiplicity`, `type`,

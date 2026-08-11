@@ -290,7 +290,7 @@ def test_openai_chat_provider_segments_docir_with_default_bounded_batches() -> N
     assert result.metadata.total_tokens == 150
     for call in client.completions.calls:
         assert "# Raw bank document" in call["messages"][1]["content"]
-        assert "Prompt contract: draft-prompt/v11" in call["messages"][1]["content"]
+        assert "Prompt contract: draft-prompt/v12" in call["messages"][1]["content"]
     envelope = json.loads(result.response_text)
     assert envelope["contractVersion"] == "draft-provider-response/v1"
     assert "| 2.26 |" in envelope["artifactContent"]
@@ -519,7 +519,7 @@ def test_docir_prompt_requests_structured_extraction_and_preserves_source_scope(
     system_prompt = messages[0]["content"]
     user_prompt = messages[1]["content"]
     normalized_system_prompt = " ".join(system_prompt.split())
-    assert "Prompt contract: draft-prompt/v11" in user_prompt
+    assert "Prompt contract: draft-prompt/v12" in user_prompt
     assert "Segment: interface-envelope" in user_prompt
     assert "docir-interface-envelope-segment/v1" in system_prompt
     assert "`contractVersion`, `interface`, `sourceContext`, `envelope`" in system_prompt
@@ -593,6 +593,9 @@ def test_docir_segment_prompts_keep_stage_responsibilities_separate() -> None:
         in interface_system
     )
     assert "Envelope field indexes are rooted at `1`" in interface_system
+    assert r"^1(?:\.[1-9][0-9]*)*$" in interface_system
+    assert "Indexes contain digits and dots only" in interface_system
+    assert "never an XML item or attribute name" in interface_system
     assert "Do not return `assembly`, `parse`, message metadata or conditions" in interface_system
     assert "Full field rows have exactly" in interface_system
     assert "Every Envelope field row must contain all ten properties" in interface_system
@@ -604,6 +607,10 @@ def test_docir_segment_prompts_keep_stage_responsibilities_separate() -> None:
 
     assert "Return one combined outline for both directions" in outline_system
     assert "Each outline field has exactly `index` and `item`" in outline_system
+    assert r"^2(?:\.[1-9][0-9]*)*$" in outline_system
+    assert r"^3(?:\.[1-9][0-9]*)*$" in outline_system
+    assert "Indexes contain digits and dots only" in outline_system
+    assert "never an XML item or attribute name" in outline_system
     assert "Do not return full field detail properties" in outline_system
     assert "Do not include shared Envelope nodes" in outline_system
     assert "Full field rows have exactly" not in outline_system
