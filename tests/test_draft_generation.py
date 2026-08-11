@@ -11,9 +11,12 @@ import pytest
 import bank_config_compiler.draft_generation as draft_generation
 from bank_config_compiler.configuration_rules import load_rule_package
 from bank_config_compiler.draft_generation import (
+    DraftGenerationContext,
     DraftGenerationError,
     DraftGenerationRequest,
+    DraftProviderResult,
     FixtureDraftProvider,
+    ProviderCallMetadata,
     generate_docir_draft,
     generate_interface_standard_draft,
     generate_interface_template_draft,
@@ -33,16 +36,23 @@ class StaticProvider:
         self.review_notes = review_notes
         self.requests: list[DraftGenerationRequest] = []
 
-    def generate(self, request: DraftGenerationRequest) -> str:
+    def generate(
+        self,
+        request: DraftGenerationRequest,
+        context: DraftGenerationContext,
+    ) -> DraftProviderResult:
         self.requests.append(request)
-        return json.dumps(
-            {
-                "contractVersion": "draft-provider-response/v1",
-                "artifactKind": request.artifact_kind,
-                "artifactContent": self.artifact_content,
-                "reviewNotes": self.review_notes,
-            },
-            ensure_ascii=False,
+        return DraftProviderResult(
+            response_text=json.dumps(
+                {
+                    "contractVersion": "draft-provider-response/v1",
+                    "artifactKind": request.artifact_kind,
+                    "artifactContent": self.artifact_content,
+                    "reviewNotes": self.review_notes,
+                },
+                ensure_ascii=False,
+            ),
+            metadata=ProviderCallMetadata(provider_name=self.name),
         )
 
 
@@ -52,21 +62,36 @@ class RawProvider:
     def __init__(self, response: str) -> None:
         self.response = response
 
-    def generate(self, request: DraftGenerationRequest) -> str:
-        return self.response
+    def generate(
+        self,
+        request: DraftGenerationRequest,
+        context: DraftGenerationContext,
+    ) -> DraftProviderResult:
+        return DraftProviderResult(
+            response_text=self.response,
+            metadata=ProviderCallMetadata(provider_name=self.name),
+        )
 
 
 class FailingProvider:
     name = "failing-test"
 
-    def generate(self, request: DraftGenerationRequest) -> str:
+    def generate(
+        self,
+        request: DraftGenerationRequest,
+        context: DraftGenerationContext,
+    ) -> DraftProviderResult:
         raise RuntimeError("SECRET-BANK-PAYLOAD")
 
 
 class DraftErrorProvider:
     name = "draft-error-test"
 
-    def generate(self, request: DraftGenerationRequest) -> str:
+    def generate(
+        self,
+        request: DraftGenerationRequest,
+        context: DraftGenerationContext,
+    ) -> DraftProviderResult:
         raise DraftGenerationError("SECRET-BANK-PAYLOAD")
 
 
@@ -286,8 +311,13 @@ def test_fixture_provider_requires_exact_request_fingerprint(tmp_path: Path) -> 
         encoding="utf-8",
     )
     provider = FixtureDraftProvider(tmp_path)
+    context = DraftGenerationContext(
+        source_content="# Raw bank document\n",
+        source_content_type="text/markdown",
+    )
 
-    assert json.loads(provider.generate(request))["artifactContent"] == "# Interface\n"
+    response = provider.generate(request, context)
+    assert json.loads(response.response_text)["artifactContent"] == "# Interface\n"
 
     mismatch = DraftGenerationRequest(
         task_id="phase0-test",
@@ -295,7 +325,7 @@ def test_fixture_provider_requires_exact_request_fingerprint(tmp_path: Path) -> 
         source_hash="sha256:" + "2" * 64,
     )
     with pytest.raises(DraftGenerationError, match="no exact response"):
-        provider.generate(mismatch)
+        provider.generate(mismatch, context)
 
 
 @pytest.mark.parametrize(

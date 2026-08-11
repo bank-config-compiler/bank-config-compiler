@@ -5,7 +5,9 @@ description = "Phase0 PoC runtime for validated bank configuration compiler arti
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
+    "openai>=2.0,<3",
     "openpyxl>=3.1.5,<4",
+    "python-dotenv>=1.1,<2",
     "pyyaml>=6.0.3,<7",
 ]
 

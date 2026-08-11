@@ -24,3 +24,4 @@ ADR 只记录已经形成工程约束或需要被反复解释的选择。尚未�
 - `ADR-0010-directional-standard-projection-resolution.md`：ASSEMBLY 显式保存 target projection；PARSE 在表达式/collection source 保存 `standardFieldRef` 并从精确绑定的 Final Standard 确定性解析 projection，不选择顶层主 source。
 - `ADR-0011-phase0-file-input-only.md`：Phase0-PoC 的 raw-doc 仅接受 UTF-8 no BOM 的 `.md` / `.txt` 文件；不承诺粘贴、stdin 或 API 输入。
 - `ADR-0012-phase0-real-llm-validation.md`：Phase0-PoC 必须通过 OpenAI-compatible Chat API 完成真实 LLM Draft、逐层 Human Review/Final validation 和双方向 Workbook 验证。
+- `ADR-0013-structured-docir-extraction-and-rendering.md`：真实 provider 的 DocIR 改为内部严格结构化提取，再由代码确定性渲染现有 Markdown wire；不新增公开 IR 或 trusted-chain artifact。

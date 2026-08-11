@@ -1,0 +1,232 @@
+from __future__ import annotations
+
+from copy import deepcopy
+
+import pytest
+
+from bank_config_compiler.docir_draft import (
+    DocIRDraftError,
+    render_docir_extraction,
+    render_docir_review_notes,
+    validate_docir_markdown_wire,
+)
+
+
+def metadata(key: str, value: str, review_note: str = "") -> dict[str, str]:
+    return {"key": key, "value": value, "reviewNote": review_note}
+
+
+def field(
+    index: str,
+    item: str,
+    *,
+    multiplicity: str,
+    field_type: str,
+    required: str,
+) -> dict[str, str]:
+    return {
+        "index": index,
+        "or": "",
+        "item": item,
+        "multiplicity": multiplicity,
+        "type": field_type,
+        "required": required,
+        "description": f"{item} description",
+        "preValidation": "source format",
+        "platformValidation": "platform check",
+        "review": "",
+    }
+
+
+def docir_extraction() -> dict:
+    return {
+        "contractVersion": "docir-extraction/v1",
+        "interface": {
+            "metadata": [
+                metadata("Source Document", "raw-doc.md", "logical source"),
+                metadata("Version", "120", "source version"),
+                metadata("Message Format", "XML", "source format"),
+                metadata("Interface Name", "测试接口", "source title"),
+                metadata("Interface Code", "b2e9999", "source title"),
+            ]
+        },
+        "sourceContext": ["仅使用显式来源。", "通用示例不投影交易字段。"],
+        "envelope": {
+            "metadata": [
+                metadata("Evidence Scope", "通用结构章节", "explicit source"),
+                metadata("Applies To", "ASSEMBLY, PARSE"),
+                metadata("Root Path", "bocb2e", "derived path"),
+                metadata("Envelope Name", "bocb2e"),
+            ],
+            "fields": [
+                field("1", "bocb2e", multiplicity="[1..1]", field_type="Object", required="Y"),
+                field(
+                    "1.1",
+                    "@version",
+                    multiplicity="[0..1]",
+                    field_type="String",
+                    required="N",
+                ),
+            ],
+        },
+        "assembly": {
+            "metadata": [
+                metadata("Description", "请求报文"),
+                metadata("Root Path", "bocb2e/trans/trn-test-rq", "derived path"),
+                metadata("Function Type", "ASSEMBLY"),
+                metadata("Message Name", "test-rq"),
+            ],
+            "fields": [
+                field("2", "trn-test-rq", multiplicity="[1..1]", field_type="Object", required="Y"),
+                field("2.1", "request", multiplicity="[1..1]", field_type="String", required="Y"),
+            ],
+            "conditions": ["仅保留来源明确的请求条件。"],
+        },
+        "parse": {
+            "metadata": [
+                metadata("Description", "响应报文"),
+                metadata("Root Path", "bocb2e/trans/trn-test-rs", "derived path"),
+                metadata("Function Type", "PARSE"),
+                metadata("Message Name", "test-rs"),
+            ],
+            "fields": [
+                field("3", "trn-test-rs", multiplicity="[1..1]", field_type="Object", required="Y"),
+                field("3.1", "status", multiplicity="[1..1]", field_type="Object", required="Y"),
+                field("3.1.1", "code", multiplicity="[1..1]", field_type="String", required="Y"),
+            ],
+            "conditions": ["响应状态码来自来源文档。"],
+        },
+    }
+
+
+def test_render_docir_extraction_produces_deterministic_frozen_markdown_wire() -> None:
+    rendered = render_docir_extraction(docir_extraction())
+
+    assert [line for line in rendered.splitlines() if line.startswith("# ")] == [
+        "# Interface",
+        "# Source Context / 来源上下文",
+        "# Envelope",
+        "# Message: ASSEMBLY",
+        "# Message: PARSE",
+    ]
+    assert rendered.count("| Key | Value | Review Note |") == 4
+    assert (
+        rendered.count(
+            "| Index | Or | Message Item | Mult. | Type | Required | 说明 | "
+            "前置机校验点/格式 | 接口平台校验点 | Review |"
+        )
+        == 3
+    )
+    assert "| Interface Code | b2e9999 | source title |" in rendered
+    assert "| 1.1 |  | 　`@version` | [0..1] | String | N |" in rendered
+    assert "| 3.1.1 |  | 　　`code` | [1..1] | String | Y |" in rendered
+    assert "## Conditions\n\n- 仅保留来源明确的请求条件。" in rendered
+    assert "Path | Tag" not in rendered
+    assert rendered.endswith("\n")
+    validate_docir_markdown_wire(rendered)
+
+
+@pytest.mark.parametrize(
+    ("property_name", "invalid_value", "message"),
+    [
+        ("multiplicity", "0..1", "multiplicity"),
+        ("type", "container", "type"),
+        ("required", "是", "required"),
+        ("item", "<request>", "item"),
+    ],
+)
+def test_render_docir_extraction_rejects_invalid_field_wire_values(
+    property_name: str,
+    invalid_value: str,
+    message: str,
+) -> None:
+    extraction = docir_extraction()
+    extraction["assembly"]["fields"][1][property_name] = invalid_value
+
+    with pytest.raises(DocIRDraftError, match=message):
+        render_docir_extraction(extraction)
+
+
+def test_render_docir_extraction_rejects_unknown_properties() -> None:
+    extraction = docir_extraction()
+    extraction["goldenPath"] = "samples/golden/docir.expected.md"
+
+    with pytest.raises(DocIRDraftError, match="unknown properties"):
+        render_docir_extraction(extraction)
+
+
+def test_render_docir_extraction_requires_review_when_wire_value_is_unknown() -> None:
+    extraction = docir_extraction()
+    response_field = extraction["parse"]["fields"][2]
+    response_field["required"] = ""
+    response_field["review"] = ""
+
+    with pytest.raises(DocIRDraftError, match="原文未说明，待人工确认"):
+        render_docir_extraction(extraction)
+
+
+def test_render_docir_extraction_rejects_missing_parent_index() -> None:
+    extraction = docir_extraction()
+    extraction["assembly"]["fields"][1]["index"] = "2.1.1"
+
+    with pytest.raises(DocIRDraftError, match="parent index"):
+        render_docir_extraction(extraction)
+
+
+def test_render_docir_extraction_rejects_out_of_order_sibling_indexes() -> None:
+    extraction = docir_extraction()
+    extraction["assembly"]["fields"].extend(
+        [
+            field("2.2", "second", multiplicity="[1..1]", field_type="String", required="Y"),
+        ]
+    )
+    extraction["assembly"]["fields"][1:] = reversed(
+        extraction["assembly"]["fields"][1:]
+    )
+
+    with pytest.raises(DocIRDraftError, match="index order"):
+        render_docir_extraction(extraction)
+
+
+def test_markdown_wire_validator_rejects_missing_ideographic_indentation() -> None:
+    rendered = render_docir_extraction(docir_extraction())
+    invalid = rendered.replace("　`@version`", "`@version`")
+
+    with pytest.raises(DocIRDraftError, match="indentation"):
+        validate_docir_markdown_wire(invalid)
+
+
+def test_render_docir_review_notes_is_deterministic_and_preserves_locations() -> None:
+    extraction = docir_extraction()
+    extraction["interface"]["metadata"][0]["reviewNote"] = "核对来源。"
+    extraction["envelope"]["metadata"][0]["reviewNote"] = "核对来源。"
+    extraction["assembly"]["fields"][1]["review"] = "核对来源。"
+
+    notes = render_docir_review_notes(extraction)
+
+    assert notes == (
+        "# 待人工确认\n\n"
+        "## 固定检查清单\n\n"
+        "- 核对 Interface、Envelope、ASSEMBLY、PARSE 的字段和父子层级是否完整忠实于 raw-doc。\n"
+        "- 核对 Source Context 的适用范围，确认通用 XML 示例或其他交易代码未污染目标交易字段。\n"
+        "- 核对所有冲突、空值和“原文未说明”项均已显式保留，未被模型静默推断。\n"
+        "- 核对 ASSEMBLY 与 PARSE Conditions 是否完整且仅包含 raw-doc 支持的条件。\n\n"
+        "## 提取项\n\n"
+        "- Interface.Metadata[Interface Code]: source title\n"
+        "- Interface.Metadata[Interface Name]: source title\n"
+        "- Interface.Metadata[Message Format]: source format\n"
+        "- Interface.Metadata[Version]: source version\n"
+        "- Interface.Metadata[Source Document]: 核对来源。\n"
+        "- Envelope.Metadata[Root Path]: derived path\n"
+        "- Envelope.Metadata[Evidence Scope]: 核对来源。\n"
+        "- ASSEMBLY.Metadata[Root Path]: derived path\n"
+        "- PARSE.Metadata[Root Path]: derived path\n"
+        "- ASSEMBLY[2.1 request]: 核对来源。\n"
+    )
+    assert notes.count("核对来源。") == 3
+    assert render_docir_review_notes(extraction) == notes
+
+
+def test_render_docir_review_notes_rejects_invalid_extraction() -> None:
+    with pytest.raises(DocIRDraftError, match="must be an object"):
+        render_docir_review_notes("确认版本。")

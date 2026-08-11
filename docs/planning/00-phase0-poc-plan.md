@@ -2,7 +2,7 @@
 
 ## Status
 
-In Progress. P0-T3 trusted chain 与 P0-T4 deterministic Draft-to-Workbook closure 均已完成；P0-T5 真实 LLM 全链路验证为新增完成门槛，尚未开始，Phase0-PoC 最终门禁未通过。
+In Progress. P0-T3 trusted chain 与 P0-T4 deterministic Draft-to-Workbook closure 均已完成；P0-T5 adapter、配置、严格流式传输、失败响应留存、内部结构化 DocIR extraction 与确定性 renderer/review notes 已通过离线回归。`draft-prompt/v7` 已改为直接 extraction 根；`docir-011` 的完整流返回可解析 JSON，但只包含到不完整的 `assembly` 且缺少 `parse`，已被机械门禁拒绝并停止。尚无通过 Human Review 的真实 DocIR candidate，Phase0-PoC 最终门禁未通过。
 
 ## 1. 目标与边界
 
@@ -33,7 +33,7 @@ Phase0 不实现 UI、JSON 银行报文、目标系统 Import JSON/API、Excel �
 | P0-T2：Review Golden sample boundary | Done | P0-T1 | 无 | Expected DocIR、修订前 expected SchemaIR、expected review notes 和 v1 validation result 已冻结为审查前 Golden。 |
 | P0-T3：Trusted chain | Done | P0-T2、`configuration-rules/v1` 与 v2 RELEASED | 无 | 两个配置 IR/Validator、Workbook 和完整 trusted-chain regression 已完成。 |
 | P0-T4：Draft generators | Done | P0-T3、reviewed Final DocIR | 无 | Provider-neutral generator interface 与四类确定性 stub 可运行，显式 Human Review gate 和双方向 Workbook Golden closure 已通过。 |
-| P0-T5：真实 LLM Draft-to-Workbook 验证 | Next | P0-T4、用户批准的 OpenAI-compatible Chat API provider 与测试样例 | 当前仅有 fixture provider；真实 provider、运行时配置、逐层 Review/Final evidence 和双方向 Workbook evidence 均不存在 | 真实调用六份 Draft；每层分别 Review/Final validation；ASSEMBLY/PARSE 均从该 Final chain 通过 `phase0` check 并生成 Workbook。 |
+| P0-T5：真实 LLM Draft-to-Workbook 验证 | In Progress | P0-T4、用户批准的 OpenAI-compatible Chat API provider 与测试样例 | adapter、`.env`/CLI 配置、严格流式传输、失败响应留存、direct extraction、确定性 renderer/review notes、调用摘要和离线回归已实现；`docir-011` 因 extraction 缺少 `parse` 被机械门禁拒绝；尚无通过 Human Review 的真实 DocIR candidate | 暂停自动修复和付费重试；先评审单响应 extraction 未完整覆盖 ASSEMBLY/PARSE 的原因与下一方案。 |
 
 状态定义：
 
@@ -438,15 +438,15 @@ Phase0 不实现 UI、JSON 银行报文、目标系统 Import JSON/API、Excel �
 
 ### 5.1 技术边界
 
-- `DraftProvider.generate(DraftGenerationRequest) -> str` 是统一 provider contract。Request 保存 task/artifact kind、上游 `sourceHash` 和适用的 direction/version/rule selector；CLI task ID 使用 workspace 目录名。
+- `DraftProvider.generate(DraftGenerationRequest, DraftGenerationContext) -> DraftProviderResult` 是统一 provider contract。Request 保存 task/artifact kind、上游 `sourceHash` 和适用的 direction/version/rule selector；显式 context 只包含当前上游内容、media type 与适用 RELEASED 规则包；result 包含 response envelope 和非敏感 provider metadata。CLI task ID 使用 workspace 目录名。
 - Provider 返回严格 UTF-8 `draft-provider-response/v1` JSON envelope，只包含 `contractVersion`、`artifactKind`、`artifactContent` 和 `reviewNotes`。未知/缺失/额外属性、BOM、非 UTF-8、重复 JSON property 或 kind mismatch 均拒绝。
-- Phase0 只实现调用者显式选择的 fixture provider。`draft-stub-case/v1` 使用准确 request fingerprint 匹配 DocIR、SchemaIR、双向 Standard 和双向 Template 六个响应；不扫描、不选择最新版，也不进入 `phase0` trusted-chain selector。
+- P0-T4 冻结的 baseline 只实现调用者显式选择的 fixture provider。`draft-stub-case/v1` 使用准确 request fingerprint 匹配 DocIR、SchemaIR、双向 Standard 和双向 Template 六个响应；不扫描、不选择最新版，也不进入 `phase0` trusted-chain selector。P0-T5 在该 contract 上追加真实 provider，不改变此回归基线。
 - 文本上游使用 UTF-8 bytes SHA-256，JSON Final dependency 使用 canonical semantic SHA-256。`.gitattributes` 显式保留既有 Golden/Draft Markdown 的 CRLF bytes baseline，并固定 fixture JSON 的 LF；fixture root、input hash、selector 或规则版本不匹配时 fail closed。
 - DocIR 只执行章节、Metadata/Fields 表和 ASSEMBLY/PARSE XML 方向的最小结构检查，不新增第四个 trusted-chain Validator。Human 必须先确认准确 DocIR bytes hash，才可冻结 `docir-final.md`。
 - SchemaIR、Standard、Template provider output 必须为 `DRAFT/PENDING`；对应 Validator 必须为 0 ERROR、`finalEligible=false` 并保留 lifecycle blocking issue。任何 `FINAL/APPROVED` 输出在写盘前拒绝。
 - Draft、匹配 validation result 和 review notes 全部先在内存校验，再分别使用同目录临时文件原子替换。文件系统不承诺跨文件事务；任何中断后的缺失或 result hash mismatch 必须阻止下游。
 - Provider 和 stub 不得构造 Final/Human Review、调用 Workbook Generator 或硬编码银行事实到 runtime。日志只记录 task/artifact identifier、provider、contract version、direction 和 outcome，不记录银行原文、Draft、review notes、secret 或安全固定值。
-- P0-T4 不实现真实 LLM/API、Prompt、网络、认证、重试或模型配置；这些最小真实调用能力属于后续 P0-T5，不扩大为通用银行推理、Review UI、自动 promotion 或 Phase1 能力。
+- P0-T4 的 fixture-only 交付不实现真实 LLM/API、Prompt、网络、认证、重试或模型配置；P0-T5 在同一 contract 上新增这些最小真实调用能力，不扩大为通用银行推理、Review UI、自动 promotion 或 Phase1 能力。
 
 ### 5.2 完成标志
 
@@ -468,33 +468,45 @@ Phase0 不实现 UI、JSON 银行报文、目标系统 Import JSON/API、Excel �
 
 - 真实 provider 使用 OpenAI-compatible Chat API；实际模型由运行时显式选择，可以是 DeepSeek、Qwen 或其他兼容服务。
 - 一次验收必须真实调用 DocIR、SchemaIR、ASSEMBLY/PARSE Standard 和 ASSEMBLY/PARSE Template 共六次 Draft 生成；fixture 不得充当其中任一调用。
-- API key、base URL、model 和可选网络参数只存在于运行时安全配置；不得落入 artifact、日志、测试 fixture 或版本库。
+- API key、HTTPS base URL、精确 model ID 和 timeout 可来自启动目录中被 Git 忽略的 `.env` 或进程环境；只读取四个 `BANK_CONFIG_COMPILER_LLM_*` 白名单变量，进程环境优先，非敏感项可由 CLI 覆盖。API key 不提供 CLI 参数，attempt ID 始终显式传入。secret 和 endpoint 原文不得落入 artifact、日志、测试 fixture 或版本库。
+- 使用官方 OpenAI Python SDK 的最小流式 Chat Completions 子集与 JSON object response mode，并请求最终 usage 分块；仅在 `finish_reason=stop`、usage 和完整 JSON 均通过边界校验后返回，流中断或截断不得发布部分 Draft。SDK 自动重试固定关闭，失败后由操作者以新的 attempt ID 显式重跑。
+- DocIR 模型直接返回内部 `docir-extraction/v1` JSON object 根；严格 schema 校验后由代码确定性生成既有 Markdown wire，并从 metadata `reviewNote`、field `review` 与固定 checklist 生成 Review Notes。extraction 不落盘、不成为公开 IR 或 trusted-chain artifact，语义与证据仍由 Human Review 判断。
+- Golden 只保留为开发 fixture、历史批准样例和确定性 trusted-chain regression；不新增 Golden evaluator，不对真实 DocIR candidate 自动给出语义通过结论。
+- DocIR 请求、流、JSON 或 extraction 失败默认保存 `draft-provider-failure-result/v1`，存在响应内容时同时保存完整/部分响应；失败证据不是 Draft、Review、Final 或 trusted-chain artifact。
 - 输入可发送给用户批准的 provider，但该授权不自动授权把 raw-doc、真实 Draft、Final 或 Workbook 提交到仓库。默认只提交不含敏感业务内容的代码、测试与证据摘要。
 
 ### 6.2 实施与验证顺序
 
-1. 新增真实 `DraftProvider` adapter 和 CLI/runtime 配置入口，将 Chat API 响应转换为严格 `draft-provider-response/v1`；保留现有 Draft/Validator/workspace publication 边界。
-2. 以 mock/recorded transport 覆盖请求构造、认证缺失、超时、非 2xx、无效 JSON、response envelope 错误和日志脱敏；自动化测试不得需要真实 API key 或网络。
-3. 在独立、未跟踪 workspace 中执行真实 DocIR Draft；Human 对准确 hash 单独确认后形成 Final DocIR。
+1. **实现候选已完成，待 Commit 8A 验证/提交。** 新增真实 `DraftProvider` adapter、显式 context 和 CLI/runtime 配置入口，将 Chat API 响应转换为严格 `draft-provider-response/v1`；保留现有 Draft/Validator/workspace publication 边界。
+2. **实现候选已完成，待 Commit 8A 验证/提交。** 以注入 fake client 覆盖 SDK 构造、请求构造、认证缺失、不安全配置、截断/无效响应、response envelope 错误和日志脱敏；自动化测试不需要真实 API key 或网络。
+3. **长请求连接问题已解决，v7 的单响应完整性仍未闭环。** `docir-001/002` 验证了最小门禁和 Human Review 边界；`docir-003/004` 暴露非流式长请求问题；`docir-005/006` 证明严格流式聚合可完成长请求，但直出 Markdown 质量仍不足。结构化 `docir-007/008` 暴露 response shape 与诊断缺口；`docir-009` 是 endpoint 随后可达的瞬时连接失败；`docir-010` 在约 210 秒完整返回 `artifact`，却因缺少模型侧 `reviewNotes` 被拒绝。v7 删除该冗余 envelope，由 extraction 内 Review 信息确定性生成 Review Notes，并为失败 attempt 保存可复盘证据。`docir-011` 在 `finish_reason=stop` 下返回了 13,110 completion tokens 和可解析的直接 extraction，但只包含到不完整的 `assembly` 且缺少 `parse`；机械门禁已拒绝并按计划停止，未自动发起下一次付费调用。下一步必须先评审单响应方案，而不是继续局部修改 prompt。
 4. 用该 Final DocIR 执行真实 SchemaIR Draft、Draft validation、Human Review、Final candidate 和 Final validation；然后分别执行两方向 Standard 和 Template，遵守每个上游 Final gate。
 5. 对由真实 Draft 经 Review 形成的两条 Final trusted chain 执行 `check --profile phase0`，再各生成一份 Configuration Workbook；保存不含 secret 的运行证据、artifact hash、reviewer、时间、provider/model 标识和验证结果。
 
 ### 6.3 完成标志
 
-- 六次真实 Chat API 调用均由 adapter 发起，并在同一 Draft contract 下发布 `DRAFT/PENDING` artifact；DocIR 通过最小结构检查，三个 JSON Draft 均为 0 ERROR 且 `finalEligible=false`。
+- 六次真实 Chat API 调用均由 adapter 发起，并在同一 Draft contract 下发布 `DRAFT/PENDING` artifact；DocIR extraction、确定性 Markdown wire、最小结构检查和 Human Review rubric 均通过，三个 JSON Draft 均为 0 ERROR 且 `finalEligible=false`。
 - DocIR、SchemaIR、双方向 Standard 和双方向 Template 均具有独立具名 Human Review、准确内容 hash 和匹配的 Final validation result；未发生自动 promotion。
 - 两个方向的真实 Final trusted chain 都通过 `check --profile phase0`，并各自生成可打开、通过结构化检查的 Workbook。
 - fixture regression、完整 pytest、build、docs-sync、BOM/diff/secret 检查继续通过；真实调用失败不影响离线回归。
 
 ### 6.4 Commit Plan
 
-#### Commit 8A：真实 OpenAI-compatible Draft provider
+#### 待提交 Commit 8A1：真实 OpenAI-compatible provider 与严格流式传输
 
-- Scope：新增 provider adapter、显式 CLI/runtime 配置、脱敏错误/日志、mock transport 测试和 README/设计/配置说明。
-- Files：`bank_config_compiler/draft_generation.py`、`bank_config_compiler/cli.py`、新增 provider 模块与对应 tests；按实际接口更新 README、design、planning。
-- Completion signal：不设置真实凭证时 fail closed；mock provider 能覆盖四类 Draft request/response contract，fixture 路径保持不变。
-- Verification：专项 pytest、完整 pytest、build、静态 secret 检查和 docs-sync。
-- Next starts when：用户在独立 workspace 提供已批准的 endpoint/model/credential 与可处理的验证样例。
+- Scope：新增显式 context、provider adapter、`.env`/进程环境/CLI 分层运行时配置、SSE 聚合、`stop`/usage/中断门禁、无自动重试、错误/日志、成功调用摘要、DocIR 失败响应留存和 mock transport 测试；不以 DocIR 内容 rubric 作为 transport 完成条件。
+- Files：`bank_config_compiler/draft_generation.py`、`bank_config_compiler/cli.py`、`bank_config_compiler/openai_chat_provider.py` 的 transport/runtime 边界、对应 context/CLI/provider tests、`.env.example`、依赖锁文件及 README/ADR-0012/运行说明。
+- Completion signal：不设置真实凭证时 fail closed；fake client 覆盖流式 SDK contract；四类生成器只获得显式上游内容与规则；`docir-005/006` 已证明真实长流可完成并留下脱敏调用摘要；fixture 路径保持不变。
+- Verification：stream/provider 专项 pytest、受影响与完整 pytest、build、静态 secret 检查和 docs-sync。
+- Next starts when：transport 离线验证和一次真实长调用均成功；当前已满足。
+
+#### 待提交 Commit 8A2：结构化 DocIR extraction 与确定性 renderer
+
+- Scope：将 DocIR 模型响应升级为 `draft-prompt/v7` + 直接内部 `docir-extraction/v1` 根，新增严格 schema、确定性 Markdown/Review Notes、机械 wire 校验与 Human Review rubric；不改变 `DraftProvider`、`draft-provider-response/v1`，不新增 Golden evaluator。
+- Files：`bank_config_compiler/docir_draft.py`、`bank_config_compiler/openai_chat_provider.py` 的 DocIR prompt/integration、对应 tests、ADR-0013、DocIR design/reference、README/Phase0 状态与计划。
+- Completion signal：结构化非法输入 fail closed；固定章节/表头/Index/U+3000/值域和 Review Notes 顺序由离线测试确定性保证；fixture regression 不变；新的真实 candidate 满足 Human Review rubric 并输出调用摘要。`docir-011` 未满足此信号，因此 Commit 8A2 尚不可提交。
+- Verification：DocIR schema/renderer/provider 专项 pytest、完整 pytest、build、BOM/diff/secret 检查、docs-sync 和真实 candidate 人工 rubric。
+- Next starts when：用户先确认针对单响应 extraction 不完整问题的解决方案，并显式授权新的 attempt；后续 candidate 的准确内容 hash 获得用户批准后，才能冻结 Final DocIR 并进入 Commit 8B 下游链路。
 
 #### Commit 8B：真实 LLM 验收证据
 
@@ -682,7 +694,7 @@ Phase0 不实现 UI、JSON 银行报文、目标系统 Import JSON/API、Excel �
 
 ### 8.3 Phase0-PoC 最终门禁
 
-**状态：IN PROGRESS。P0-T3 与 P0-T4 的完成标志已由实现和自动化 regression 覆盖；P0-T5 尚未实现和验证。**
+**状态：IN PROGRESS。P0-T3 与 P0-T4 的完成标志已由实现和自动化 regression 覆盖；P0-T5 adapter/配置/严格流式调用、失败响应留存、direct extraction、确定性 renderer/review notes 与离线回归已实现。`docir-011` 已按计划单次调用，但因 extraction 只到不完整的 `assembly` 且缺少 `parse` 被机械门禁拒绝；失败摘要与完整响应已保留，未发布部分 Draft，也未自动重试。当前没有可冻结真实 DocIR，Human Review-to-Workbook 验收仍未完成；下一步需先确认单响应完整性方案。**
 
 - P0-T3 完成门禁全部通过。
 - 四类 deterministic Draft generator 可运行，通过同一 provider contract 产生合法 Draft，且不能生成 Final 或绕过 Human Review/Validator。
