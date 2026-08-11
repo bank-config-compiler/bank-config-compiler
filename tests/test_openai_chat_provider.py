@@ -290,7 +290,7 @@ def test_openai_chat_provider_segments_docir_with_default_bounded_batches() -> N
     assert result.metadata.total_tokens == 150
     for call in client.completions.calls:
         assert "# Raw bank document" in call["messages"][1]["content"]
-        assert "Prompt contract: draft-prompt/v10" in call["messages"][1]["content"]
+        assert "Prompt contract: draft-prompt/v11" in call["messages"][1]["content"]
     envelope = json.loads(result.response_text)
     assert envelope["contractVersion"] == "draft-provider-response/v1"
     assert "| 2.26 |" in envelope["artifactContent"]
@@ -519,7 +519,7 @@ def test_docir_prompt_requests_structured_extraction_and_preserves_source_scope(
     system_prompt = messages[0]["content"]
     user_prompt = messages[1]["content"]
     normalized_system_prompt = " ".join(system_prompt.split())
-    assert "Prompt contract: draft-prompt/v10" in user_prompt
+    assert "Prompt contract: draft-prompt/v11" in user_prompt
     assert "Segment: interface-envelope" in user_prompt
     assert "docir-interface-envelope-segment/v1" in system_prompt
     assert "`contractVersion`, `interface`, `sourceContext`, `envelope`" in system_prompt
@@ -595,6 +595,10 @@ def test_docir_segment_prompts_keep_stage_responsibilities_separate() -> None:
     assert "Envelope field indexes are rooted at `1`" in interface_system
     assert "Do not return `assembly`, `parse`, message metadata or conditions" in interface_system
     assert "Full field rows have exactly" in interface_system
+    assert "Every Envelope field row must contain all ten properties" in interface_system
+    assert "check `multiplicity`, `type` and `required`" in interface_system
+    assert "If any of those three values is empty" in interface_system
+    assert "do not leave `review` empty" in interface_system
     assert "assembly/parse: Message Name" not in interface_system
     assert "Conditions contain only" not in interface_system
 

@@ -38,7 +38,7 @@ from .draft_generation import (
 
 
 PROMPT_CONTRACT_VERSION = "draft-prompt/v7"
-DOCIR_PROMPT_CONTRACT_VERSION = "draft-prompt/v10"
+DOCIR_PROMPT_CONTRACT_VERSION = "draft-prompt/v11"
 DEFAULT_DOCIR_FIELD_BATCH_SIZE = 16
 JSON_IR_MODEL_RESPONSE_PROPERTIES = {"artifact", "reviewNotes"}
 ATTEMPT_ID_PATTERN = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$")
@@ -898,9 +898,13 @@ Do not return `assembly`, `parse`, message metadata or conditions.
 
 `multiplicity` is empty or bracketed such as `[1..1]`, `[0..1]` or `[0..1000]`. `type` is empty
 or exactly `String`, `Boolean`, `Date`, `Decimal` or `Object`. `required` is empty or exactly `Y`,
-`N` or `C`. When any wire value or metadata value is not explicit, leave it empty and include the
-exact text `原文未说明，待人工确认` in the corresponding `review` or `reviewNote`. A maximum without
-a minimum does not support inventing the minimum.
+`N` or `C`. Every Envelope field row must contain all ten properties, including properties whose
+value is an empty string. Before returning JSON, inspect every Envelope field row independently and
+check `multiplicity`, `type` and `required` after filling the row. If any of those three values is
+empty, `review` must contain the exact text `原文未说明，待人工确认`; do not leave `review` empty and
+do not omit it. This also applies to structural container rows and values legitimately not explicit
+in SOURCE_DATA. When a metadata value is not explicit, leave it empty and include that exact text in
+its `reviewNote`. A maximum without a minimum does not support inventing the minimum.
 """.strip()
     elif prompt.segment == "messages-outline":
         segment_contract = f"""

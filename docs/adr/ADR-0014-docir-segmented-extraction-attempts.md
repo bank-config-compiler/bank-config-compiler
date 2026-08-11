@@ -61,3 +61,5 @@ ADR-0013 将 DocIR 从模型直出 Markdown 改为严格结构化提取与确定
 - `draft-prompt/v9` 将公共内容收缩为信任与输出安全边界，并为 Interface/Envelope、联合 messages outline、field details 分别定义完整且互斥的响应合同。Envelope 明确在共享 `trans` 容器截止且 `sourceContext` 不得枚举交易字段；outline 只允许 `{index,item}`；detail 骨架写入当前方向和批次并只覆盖已校验 selector。机械 Validator、公开 contract、attempt 原子性和 Human Review 边界不变。
 - `docir-014` 证明 v9 的职责隔离有效：12-node Envelope 在 `trans` 截止，ASSEMBLY/PARSE outline 分别为 27/10 行且只有 `{index,item}`。首个 16-field ASSEMBLY detail 随后因空 `multiplicity`/`type`/`required` 没有对应 Review 标记而被既有 Validator 拒绝；后续批次未执行。
 - 根因是 detail prompt 的 “wire value” 没有被模型执行成逐行后置条件。`draft-prompt/v10` 只加强 detail 合同：每行十个属性均必须存在；逐行检查 `multiplicity`、`type`、`required`，任一为空时 `review` 必须包含 `原文未说明，待人工确认`。不修改已经通过的 Envelope/outline 合同或 Validator。
+- `docir-015` 没有进入 detail：其 13-node Envelope 仍正确在 `trans` 截止，但同一空值 Review invariant 在 Envelope 字段中随机复现并于第一段 fail-fast。这证明一次通过不足以把笼统规则视为抗模型方差。
+- `draft-prompt/v11` 将同一十属性完整性和逐行空值后置检查加入 Interface/Envelope full-field 合同；outline 仍不包含任何字段详情指令。该修订统一两个 full-field 阶段与既有 Validator，不放宽门禁或改变分段职责。
