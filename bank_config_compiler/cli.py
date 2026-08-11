@@ -1,21 +1,29 @@
 from __future__ import annotations
 
 import argparse
+import io
+import os
 import sys
 from datetime import datetime
 from pathlib import Path
+
+from dotenv import dotenv_values
 
 from .configuration_rules import RulePackageValidationError, load_rule_package
 from .configuration_workbook import WorkbookGenerationError, generate_configuration_workbook
 from .draft_generation import (
     DraftGenerationError,
+    DraftProvider,
+    DraftProviderDiagnosticError,
     FixtureDraftProvider,
     generate_docir_draft,
     generate_interface_standard_draft,
     generate_interface_template_draft,
     generate_schemair_draft,
     publish_generated_draft,
+    publish_provider_failure,
 )
+from .openai_chat_provider import OpenAIChatDraftProvider
 from .workspace import (
     Phase0Selection,
     WorkspaceError,
@@ -25,6 +33,14 @@ from .workspace import (
     phase0_workbook_path,
     read_json_artifact,
     read_text_artifact,
+)
+
+
+LLM_ENVIRONMENT_NAMES = (
+    "BANK_CONFIG_COMPILER_LLM_API_KEY",
+    "BANK_CONFIG_COMPILER_LLM_BASE_URL",
+    "BANK_CONFIG_COMPILER_LLM_MODEL",
+    "BANK_CONFIG_COMPILER_LLM_TIMEOUT_SECONDS",
 )
 
 
@@ -119,19 +135,43 @@ def _add_draft_provider_arguments(parser: argparse.ArgumentParser) -> None:
     parser.add_argument(
         "--provider",
         required=True,
-        choices=["fixture"],
+        choices=["fixture", "openai-chat"],
         help="Explicit Draft provider implementation.",
     )
     parser.add_argument(
         "--fixture-root",
-        required=True,
         type=Path,
         help="Directory containing one explicit draft-stub-case.json.",
     )
     parser.add_argument(
+        "--chat-base-url",
+        help=(
+            "OpenAI-compatible HTTPS base URL; overrides "
+            "BANK_CONFIG_COMPILER_LLM_BASE_URL."
+        ),
+    )
+    parser.add_argument(
+        "--chat-model",
+        help="Runtime-selected model ID; overrides BANK_CONFIG_COMPILER_LLM_MODEL.",
+    )
+    parser.add_argument(
+        "--chat-timeout-seconds",
+        type=float,
+        help=(
+            "Request timeout in seconds; overrides "
+            "BANK_CONFIG_COMPILER_LLM_TIMEOUT_SECONDS and defaults to 600."
+        ),
+    )
+    parser.add_argument(
+        "--attempt-id",
+        help="Auditable call attempt ID; required for the openai-chat provider.",
+    )
+    parser.add_argument(
         "--overwrite",
         action="store_true",
-        help="Replace existing Draft, review notes and matching validation result.",
+        help=(
+            "Replace the existing Draft output set or DocIR provider failure evidence."
+        ),
     )
 
 
@@ -207,6 +247,8 @@ def main(argv: list[str] | None = None) -> int:
             print(f"saved configuration workbook: {output}")
             return 0
         if args.command == "generate-draft":
+            if args.provider == "openai-chat":
+                args.llm_environment = _load_runtime_environment()
             output = _generate_draft(args)
             print(f"saved {args.draft_kind} Draft: {output}")
             return 0
@@ -220,45 +262,155 @@ def main(argv: list[str] | None = None) -> int:
 
 def _generate_draft(args: argparse.Namespace) -> Path:
     workspace = args.workspace.resolve()
-    provider = FixtureDraftProvider(args.fixture_root)
+    provider = _draft_provider(args)
     task_id = workspace.name
-    if args.draft_kind == "docir":
-        generated = generate_docir_draft(
-            raw_doc=read_text_artifact(workspace, "raw-doc.md"),
-            provider=provider,
-            task_id=task_id,
-        )
-    elif args.draft_kind == "schemair":
-        generated = generate_schemair_draft(
-            docir_final=read_text_artifact(workspace, "docir-final.md"),
-            provider=provider,
-            task_id=task_id,
-        )
-    elif args.draft_kind == "standard":
-        generated = generate_interface_standard_draft(
-            schemair_final=read_json_artifact(workspace, "schemair-final.json"),
-            rule_package=load_rule_package(args.rule_package),
-            direction=args.direction.upper(),
-            standard_version=args.standard_version,
-            provider=provider,
-            task_id=task_id,
-        )
-    elif args.draft_kind == "template":
-        standard_path = f"standards/{args.direction}/{args.standard_version}/standard-final.json"
-        generated = generate_interface_template_draft(
-            standard_final=read_json_artifact(workspace, standard_path),
-            rule_package=load_rule_package(args.rule_package),
-            direction=args.direction.upper(),
-            standard_version=args.standard_version,
-            template_id=args.template_id,
-            template_version=args.template_version,
-            provider=provider,
-            task_id=task_id,
-        )
-    else:
-        raise DraftGenerationError(f"unsupported Draft kind: {args.draft_kind}")
+    try:
+        if args.draft_kind == "docir":
+            generated = generate_docir_draft(
+                raw_doc=read_text_artifact(workspace, "raw-doc.md"),
+                provider=provider,
+                task_id=task_id,
+            )
+        elif args.draft_kind == "schemair":
+            generated = generate_schemair_draft(
+                docir_final=read_text_artifact(workspace, "docir-final.md"),
+                provider=provider,
+                task_id=task_id,
+            )
+        elif args.draft_kind == "standard":
+            generated = generate_interface_standard_draft(
+                schemair_final=read_json_artifact(workspace, "schemair-final.json"),
+                rule_package=load_rule_package(args.rule_package),
+                direction=args.direction.upper(),
+                standard_version=args.standard_version,
+                provider=provider,
+                task_id=task_id,
+            )
+        elif args.draft_kind == "template":
+            standard_path = (
+                f"standards/{args.direction}/{args.standard_version}/standard-final.json"
+            )
+            generated = generate_interface_template_draft(
+                standard_final=read_json_artifact(workspace, standard_path),
+                rule_package=load_rule_package(args.rule_package),
+                direction=args.direction.upper(),
+                standard_version=args.standard_version,
+                template_id=args.template_id,
+                template_version=args.template_version,
+                provider=provider,
+                task_id=task_id,
+            )
+        else:
+            raise DraftGenerationError(f"unsupported Draft kind: {args.draft_kind}")
+    except DraftProviderDiagnosticError as exc:
+        # 失败证据属于显式 DocIR attempt 的开发诊断，不改变其他 IR 或 fixture 的输出协议。
+        if (
+            args.draft_kind == "docir"
+            and args.provider == "openai-chat"
+            and exc.evidence is not None
+        ):
+            publish_provider_failure(workspace, exc, overwrite=args.overwrite)
+        raise
     outputs = publish_generated_draft(workspace, generated, overwrite=args.overwrite)
     return outputs["artifact"]
+
+
+def _draft_provider(args: argparse.Namespace) -> DraftProvider:
+    if args.provider == "fixture":
+        if args.fixture_root is None:
+            raise DraftGenerationError("fixture provider requires --fixture-root")
+        if any(
+            value is not None
+            for value in (
+                args.chat_base_url,
+                args.chat_model,
+                args.chat_timeout_seconds,
+                args.attempt_id,
+            )
+        ):
+            raise DraftGenerationError("fixture provider does not accept chat configuration")
+        return FixtureDraftProvider(args.fixture_root)
+
+    if args.fixture_root is not None:
+        raise DraftGenerationError("openai-chat provider does not accept --fixture-root")
+    runtime_environment = getattr(args, "llm_environment", os.environ)
+    base_url = (
+        args.chat_base_url
+        if args.chat_base_url is not None
+        else runtime_environment.get("BANK_CONFIG_COMPILER_LLM_BASE_URL")
+    )
+    model = (
+        args.chat_model
+        if args.chat_model is not None
+        else runtime_environment.get("BANK_CONFIG_COMPILER_LLM_MODEL")
+    )
+    required = {
+        "--chat-base-url or BANK_CONFIG_COMPILER_LLM_BASE_URL": base_url,
+        "--chat-model or BANK_CONFIG_COMPILER_LLM_MODEL": model,
+        "--attempt-id": args.attempt_id,
+    }
+    missing = [name for name, value in required.items() if value is None]
+    if missing:
+        raise DraftGenerationError(
+            f"openai-chat provider requires explicit arguments: {', '.join(missing)}"
+        )
+    api_key = runtime_environment.get("BANK_CONFIG_COMPILER_LLM_API_KEY")
+    if not api_key:
+        raise DraftGenerationError(
+            "openai-chat provider requires BANK_CONFIG_COMPILER_LLM_API_KEY"
+        )
+    timeout_seconds = args.chat_timeout_seconds
+    if timeout_seconds is None:
+        timeout_value = runtime_environment.get("BANK_CONFIG_COMPILER_LLM_TIMEOUT_SECONDS")
+        if timeout_value is None:
+            timeout_seconds = 600.0
+        else:
+            try:
+                timeout_seconds = float(timeout_value)
+            except ValueError as exc:
+                raise DraftGenerationError(
+                    "BANK_CONFIG_COMPILER_LLM_TIMEOUT_SECONDS must be a number"
+                ) from exc
+    return OpenAIChatDraftProvider(
+        api_key=api_key,
+        base_url=base_url,
+        model=model,
+        attempt_id=args.attempt_id,
+        timeout_seconds=timeout_seconds,
+    )
+
+
+def _load_runtime_environment(dotenv_path: Path | None = None) -> dict[str, str]:
+    path = dotenv_path if dotenv_path is not None else Path.cwd() / ".env"
+    if not path.exists():
+        return {
+            name: value
+            for name in LLM_ENVIRONMENT_NAMES
+            if (value := os.environ.get(name)) is not None
+        }
+    if not path.is_file():
+        raise DraftGenerationError(".env path must be a regular file")
+    try:
+        raw = path.read_bytes()
+    except OSError as exc:
+        raise DraftGenerationError(f"failed to read .env: {type(exc).__name__}") from exc
+    if raw.startswith(b"\xef\xbb\xbf"):
+        raise DraftGenerationError(".env must be UTF-8 without BOM")
+    try:
+        text = raw.decode("utf-8")
+    except UnicodeDecodeError as exc:
+        raise DraftGenerationError(".env must be valid UTF-8") from exc
+    values = dotenv_values(stream=io.StringIO(text), interpolate=False)
+    # 只加载 P0-T5 明确支持的配置，避免仓库内 dotenv 意外改变其他进程行为。
+    runtime_environment: dict[str, str] = {}
+    for name in LLM_ENVIRONMENT_NAMES:
+        dotenv_value = values.get(name)
+        if dotenv_value is not None:
+            runtime_environment[name] = dotenv_value
+        process_value = os.environ.get(name)
+        if process_value is not None:
+            runtime_environment[name] = process_value
+    return runtime_environment
 
 
 def _phase0_selection(args: argparse.Namespace) -> Phase0Selection:
@@ -282,6 +434,13 @@ def _phase0_selection(args: argparse.Namespace) -> Phase0Selection:
 
 
 def _safe_error(exc: Exception) -> str:
+    failure_paths = getattr(exc, "failure_evidence_paths", ())
+    if failure_paths:
+        rendered_paths = ", ".join(str(path) for path in failure_paths)
+        evidence = getattr(exc, "evidence", None)
+        response_hash = getattr(evidence, "response_content_hash", None)
+        hash_detail = f"; response hash: {response_hash}" if response_hash else ""
+        return f"{exc}; failure evidence: {rendered_paths}{hash_detail}"
     issues = getattr(exc, "issues", None)
     if not issues:
         return str(exc)

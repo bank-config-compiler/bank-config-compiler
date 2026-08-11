@@ -102,7 +102,9 @@ Configuration Workbook 是派生交付物，不是事实源，也不是可导入
 - 从 Final SchemaIR 与指定规则版本生成 InterfaceStandardIR Draft。
 - 从 Final InterfaceStandardIR、方向性 FIELD catalog 与指定规则版本生成 InterfaceTemplateIR Draft。
 
-Phase0 中四类 generator 通过同一个 `DraftProvider` contract 调用。provider 返回严格 UTF-8 的 `draft-provider-response/v1` JSON envelope，包含 artifact kind、Draft 内容和 review notes；编排层负责严格解析、dependency/hash/rule 校验、Validator 调用和 workspace 发布。deterministic fixture provider 只加载调用者显式指定的 `draft-stub-case/v1`，不扫描 workspace 或自动选择版本。P0-T5 还要求一个真实、运行时显式选择的 OpenAI-compatible Chat API provider；它只能把外部响应转换为同一 envelope，不能改变核心 trusted-chain 语义或自动产生 Final。
+Phase0 中四类 generator 通过同一个 `DraftProvider` contract 调用。编排层显式传入 request 与只包含当前上游内容、media type 和适用 RELEASED 规则包的 `DraftGenerationContext`；provider 不读取 workspace、不扫描 Final/Golden，也不选择规则版本。provider 返回严格 UTF-8 的 `draft-provider-response/v1` JSON envelope和非敏感调用 metadata；编排层负责 input hash/rule version 一致性、严格解析、dependency 校验、Validator 调用和 workspace 发布。deterministic fixture provider 只加载调用者显式指定的 `draft-stub-case/v1`。真实 `openai-chat` provider 使用运行时显式选择的 OpenAI-compatible Chat API，只把外部响应转换为同一 envelope，不能改变核心 trusted-chain 语义或自动产生 Final。DocIR 模型直接返回内部 `docir-extraction/v1` 根对象，再由确定性 renderer 生成现有 Markdown 和 Human Review Notes；该 extraction 不持久化、不成为公开 IR 或下游事实源。
+
+真实 provider 只读取四个白名单配置：`BANK_CONFIG_COMPILER_LLM_API_KEY`、`BANK_CONFIG_COMPILER_LLM_BASE_URL`、`BANK_CONFIG_COMPILER_LLM_MODEL` 和 `BANK_CONFIG_COMPILER_LLM_TIMEOUT_SECONDS`。它们可来自启动目录中被 Git 忽略的 `.env` 或进程环境，进程环境优先；base URL、model、timeout 可再由 CLI 覆盖。API key 不提供 CLI 参数，attempt ID 始终按调用显式传入。Chat API 固定使用流式响应并在内存中聚合；只有收到 `finish_reason=stop`、最终 usage 且完整 JSON 通过校验才向编排层返回，流中断不发布部分 Draft。DocIR extraction 还必须通过固定属性、Metadata key、字段值域、父子 Index、未知值 Review 与条件数组校验；renderer 产物再次检查章节、表头、列数和 U+3000 缩进。开发验证期间，本项目 provider 门禁的具体校验原因会进入 CLI 和结构化日志，SDK/第三方异常仍只记录类型。SDK 自动重试固定为 0，所有重跑都必须由操作者以新 attempt ID 发起。成功调用增加 `draft-provider-call-result/v1`；DocIR 失败则由编排层保存 `draft-provider-failure-result/v1` 和存在时的完整/部分响应。摘要记录 provider/model/response ID、token usage、时间、Prompt contract 与 endpoint fingerprint，不记录 secret、endpoint 原文或 source；失败文件不是 trusted-chain artifact。
 
 约束：
 
@@ -198,7 +200,7 @@ Phase0 可以用受控 fixture 或命令流程表达人工确认；Phase1 才提
 
 规则版本一旦发布不可原地覆盖。InterfaceStandardIR、InterfaceTemplateIR、Validator result 和 Configuration Workbook 必须记录实际使用的精确规则版本及 Rule ID。标准和后续模板可以使用不同规则版本，但模板对标准 artifact 的绑定不因此改变。
 
-`configuration-rules/v1` 与只修订方向相关 Standard projection 的 v2 均已发布并冻结。SchemaIR v2、InterfaceStandardIR、InterfaceTemplateIR、Configuration Workbook、双方向 Golden 与匹配 validation results 均已实现并冻结；P0-T3 已完成。P0-T4 的 provider-neutral runtime、六个受控 response、四类 CLI 和准确 hash 的 reviewed Final DocIR 已冻结；完整受控回归显式装载已审核 Final fixtures，双方向 Workbook 结构化内容均与 Golden 一致。P0-T5 的真实 OpenAI-compatible Chat API 调用、逐层独立 Human Review/Final validation 与双方向 Workbook 验证尚未实现，因此 Phase0-PoC 为 In Progress。Final IR 必须精确引用适用的 `RELEASED` 规则版本。
+`configuration-rules/v1` 与只修订方向相关 Standard projection 的 v2 均已发布并冻结。SchemaIR v2、InterfaceStandardIR、InterfaceTemplateIR、Configuration Workbook、双方向 Golden 与匹配 validation results 均已实现并冻结；P0-T3 已完成。P0-T4 的 provider-neutral runtime、六个受控 response、四类 CLI 和准确 hash 的 reviewed Final DocIR 已冻结；完整受控回归显式装载已审核 Final fixtures，双方向 Workbook 结构化内容均与 Golden 一致。P0-T5 的真实 provider adapter、显式配置、Prompt/context 边界与离线测试候选已经实现。`docir-001/002` 验证了最小门禁与 Human Review 边界，`docir-003/004` 暴露非流式长请求问题，`docir-005/006` 证明严格流式聚合可完成长请求但直出 Markdown 质量仍不足。`docir-007/008` 暴露结构化 response shape 与诊断缺口；`docir-009` 是 endpoint 随后可达的瞬时连接失败；`docir-010` 完整返回 `artifact` 但缺少 `reviewNotes`。`draft-prompt/v7` 已改为直接 extraction 根并确定性生成 Review Notes，离线回归通过；`docir-011` 的完整流返回可解析 JSON，但只包含到不完整的 `assembly` 且缺少 `parse`，被通用机械门禁拒绝。Golden 不参与真实候选自动语义判定。其余真实 Draft、逐层 Final validation 与双方向 Workbook 证据仍未完成，Phase0-PoC 为 In Progress。Final IR 必须精确引用适用的 `RELEASED` 规则版本。
 
 ## 4. 候选任务状态
 

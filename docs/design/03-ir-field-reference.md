@@ -16,6 +16,8 @@ Draft. P0-T2 expected DocIR / SchemaIR remains a historical Review baseline; the
 
 `Interface`、`Envelope` 和 `Message` 必须包含 `## Metadata` 表格。
 
+`# Source Context / 来源上下文` 必须明确区分目标接口字段表、共享 envelope 说明和其他交易代码的通用 XML 示例。通用示例可保留为 evidence 摘要，但不能把示例专属交易字段投影到目标接口 Message。
+
 | 列 | 含义 |
 |---|---|
 | `Key` | 元数据名称，例如 `Interface Code`、`Function Type`、`Root Path`。 |
@@ -38,6 +40,10 @@ Draft. P0-T2 expected DocIR / SchemaIR remains a historical Review baseline; the
 | `Review` | 不确定、冲突、推导说明和人工 review 提醒。 |
 
 DocIR 主表不展示完整 `Path`，避免人工 review 时被长路径淹没。完整 path 由 SchemaIR 表达；DocIR 必须通过 `Index`、`Message Item` 缩进和 review 信息保留足够层级线索。`Index` 不是展示行号，不能用连续行号跨越层级；例如 `2.3.4` 的子节点应编号为 `2.3.4.1`，而不是后续行号 `2.17`。DocIR 不负责把复杂条件转换为 DSL。
+
+真实 provider 的模型响应不直接承载本表 Markdown。内部 `docir-extraction/v1` 保存未排版的 `index` 与 plain XML `item`，renderer 按 Index 层级确定性添加 U+3000、代码标记和固定列；代码再按稳定 section/index 位置聚合非空 `reviewNote` 与 `review`。extraction 本身不持久化，也不改变本页定义的 DocIR wire。
+
+Draft 无法从原文直接确认 `Mult.`、`Type` 或 `Required` 时，对应单元格留空，并在 `Review` 标记“原文未说明，待人工确认”。空值表示待 Review，不是默认 `N`、`String` 或 `[0..1]`。
 
 ## 3. SchemaIR 顶层字段
 

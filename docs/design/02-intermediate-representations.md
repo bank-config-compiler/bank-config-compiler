@@ -22,7 +22,7 @@ Raw doc 仍表示受控输入源。本次 `b2e0061` 样例以人工修正后的 
 
 ### 2.1 职责
 
-- 保留原始文档中的字段表、章节结构、XML 示例和条件说明。
+- 保留原始文档中的字段表、章节结构、XML 示例证据和条件说明。
 - 清洗 Markdown 格式噪声，使字段表稳定可读。
 - 在 `Interface`、`Envelope`、`Message: ASSEMBLY`、`Message: PARSE` 中用 metadata 表格表达关键上下文。
 - 标记无法确认、由规则推导或需要人工检查的位置。
@@ -34,7 +34,9 @@ Raw doc 仍表示受控输入源。本次 `b2e0061` 样例以人工修正后的 
 - 不表达目标系统导入 JSON、历史 ID、父子 ID 或配置状态。
 - 不把复杂条件转换为正式 DSL。
 
-### 2.3 Metadata 结构
+### 2.3 Source Context 与 Metadata 结构
+
+`# Source Context / 来源上下文` 位于 `Interface` 与 `Envelope` 之间，用于标明来源范围并汇总 XML 示例提供的 evidence、冲突和观察；不要求复制完整 XML block。交易代码与目标接口不同的通用或其他接口示例只能支持共享 envelope 事实，不能把示例专属交易字段投影到目标接口的 `ASSEMBLY` / `PARSE` 字段表。
 
 `Interface`、`Envelope` 和每个 `Message` 必须使用 `## Metadata` 表格，而不是把多个 key/value 写成连续散行。
 
@@ -94,6 +96,8 @@ Raw doc 仍表示受控输入源。本次 `b2e0061` 样例以人工修正后的 
 
 `Message Item` 存 XML item name，不带尖括号；XML attribute 使用 `@version` 形式。DocIR 字段主表不展示完整 `path`，避免人工 review 表过宽；完整 path 属于 SchemaIR 字段对象。`Index` 是结构编号而不是行号：同级递增最后一段，子节点追加一段，例如 `2.3` 的子节点从 `2.3.1` 开始；`Message Item` 前的缩进必须与 `Index` 层级一致。
 
+Draft 中的 `Mult.`、`Type` 或 `Required` 如果无法从原文结构或明确措辞直接得到，对应单元格必须留空，并在 `Review` 标记“原文未说明，待人工确认”；不能为了填满表格静默推断。Human Review 可以基于明确证据补全候选，但必须保留推导说明。
+
 ### 2.5 Review 要点
 
 - 字段表是否完整，列是否错位，字段是否遗漏。
@@ -101,6 +105,12 @@ Raw doc 仍表示受控输入源。本次 `b2e0061` 样例以人工修正后的 
 - 请求组装和响应处理是否正确区分为 `ASSEMBLY` / `PARSE`。
 - 可复用 envelope/head 字段是否被保留。
 - 条件说明、枚举、长度冲突和平台/前置机约束是否保留。
+
+### 2.6 真实 provider 的内部结构化提取
+
+真实 `openai-chat` provider 不再要求模型直接排版上述 Markdown。模型直接返回内部 `docir-extraction/v1` JSON object 根：固定 Metadata key、字段属性、1/2/3 根 Index、父子顺序、`Mult./Type/Required` 值域与 Conditions。代码严格校验后，确定性生成章节、表头、列顺序、U+3000 层级缩进、Markdown escaping，并按固定 checklist 与稳定字段位置生成 Human Review Notes。
+
+该 extraction 只存在于 provider 信任边界内，不保存到 workspace，不是新的 IR，也不进入 SchemaIR 或 Final trusted chain。renderer 只保证机械 wire，不判断银行事实是否完整或有充分证据；Golden 也不参与真实候选的自动语义判定。语义正确性仍由 DocIR Human Review 对准确 Markdown hash 确认。详见 ADR-0013。
 
 ## 3. SchemaIR
 

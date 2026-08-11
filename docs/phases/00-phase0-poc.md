@@ -42,7 +42,7 @@ LLM、Agent 或 workflow 可以生成 Draft，但不能替代 Validator、人工
 
 尚未完成：
 
-- P0-T5 真实 LLM provider、OpenAI-compatible Chat API 运行时配置和一次完整的真实调用证据链。当前没有真实 LLM 调用、对应 Draft/Final/Review 记录或由其生成的双方向 Workbook。
+- P0-T5 真实 provider adapter、OpenAI-compatible Chat API 显式运行时配置、成功/失败调用证据与离线自动化候选已经实现。`docir-001/002` 验证了最小门禁与 Human Review 边界；`docir-003/004` 暴露非流式长请求问题；严格流式聚合后的 `docir-005/006` 证明长请求可以完成，但 v4 直出 Markdown 仍未通过 Human Review。内部 `docir-extraction/v1`、确定性 renderer 与机械 wire 校验随后落地；`docir-007/008` 暴露结构化 response shape 与诊断缺口；`docir-009` 是 endpoint 随后可达的瞬时连接失败；`docir-010` 完整返回 `artifact` 但缺少模型侧 `reviewNotes`。`draft-prompt/v7` 已删除冗余 DocIR envelope，直接校验 extraction 根，并由代码确定性生成 Human Review Notes；离线回归已通过。`docir-011` 正常完成流式响应并返回可解析的直接 extraction，但响应只到不完整的 `assembly` 且缺少 `parse`，已被机械门禁拒绝并按设计停止。仍没有真实 Final DocIR、下游真实 Draft/Final/Review 记录或双方向 Workbook。
 
 `configuration-rules/v1` 与 v2 均已发布并冻结；v2 不改变其 27/207/14/5/6 catalog、Function String、Mapping/Replacement、字符长度默认 `STANDARD_1` 或业务 Condition 边界，只修订 Template Standard projection。现有 Final Standard 继续绑定 v1；Final InterfaceTemplateIR 精确绑定 v2。详细任务状态见 `docs/planning/00-phase0-poc-plan.md`。
 
@@ -85,7 +85,7 @@ LLM、Agent 或 workflow 可以生成 Draft，但不能替代 Validator、人工
 
 ### 5.1 DocIR 与 SchemaIR
 
-DocIR Draft 至少保留接口编码、XML 格式、ASSEMBLY/PARSE、字段表、章节、XML 示例、条件、来源证据、冲突和不确定项。人工确认后形成 Final DocIR。
+DocIR Draft 至少保留接口编码、XML 格式、ASSEMBLY/PARSE、字段表、章节、XML 示例 evidence、条件、来源范围、冲突和不确定项。XML 示例可以保留为明确标注范围的 evidence 摘要，不要求复制完整 XML block；其他交易代码的示例不得成为目标接口交易字段来源。人工确认后形成 Final DocIR。
 
 SchemaIR Draft 保存银行 XML element、attribute、完整 path、父子层级、类型、required、length、occurs、condition、方向级 `xmlEncoding` 和 evidence。SchemaIR Validator 必须提供字段级错误。Human 先完成包括 Final lifecycle/Review metadata 在内的完整 candidate，再重新运行 Validator；只有 identity/version/contract/canonical hash 匹配且 `finalEligible=true` 的结果可以进入下游。b2e0061 两个方向已由 Human 与银行线下确认为 `UTF-8`；显式文档 evidence 冲突产生 blocking Warning，直到 Human Review 处置。Final encoding 不生成 Standard 字段。
 
@@ -93,13 +93,13 @@ SchemaIR Draft 保存银行 XML element、attribute、完整 path、父子层级
 
 四类 Draft generator 通过同一个 provider-neutral contract 调用。P0-T4 的 deterministic fixture provider 保留为可重复回归基线；P0-T5 必须新增一个真实 provider，通过 OpenAI-compatible Chat API 调用用户批准的模型（例如 DeepSeek 或 Qwen）。核心编排、Validator、Human Review 和 Workbook Generator 不绑定具体厂商；provider/model 由运行时显式选择，secret 不得写入 artifact、日志或版本库。
 
-Provider 接收 artifact kind、上游内容 hash 和适用的 direction/version/rule selector，返回严格 UTF-8 JSON envelope；envelope 只包含 `draft-provider-response/v1`、artifact kind、Draft 内容和 review notes。调用方必须在写入 workspace 前完成严格 envelope/JSON 解析、DocIR 最小结构检查或对应 JSON Validator 校验，并拒绝任何 `FINAL`、已批准 Review、未知 catalog、错误依赖或不匹配 hash。
+Provider 接收 request 和由编排层显式构造的上下文；request 包含 artifact kind、上游内容 hash 和适用的 direction/version/rule selector，上下文只包含当前上游内容、media type 和适用的 RELEASED 规则包。provider 不得读取 workspace、Final/Golden 或自动选择规则。返回的严格 UTF-8 JSON envelope 只包含 `draft-provider-response/v1`、artifact kind、Draft 内容和 review notes；非敏感调用 metadata 独立返回。调用方必须在写入 workspace 前校验上下文 hash/规则版本、严格解析 envelope/JSON、执行 DocIR 最小结构检查或对应 JSON Validator，并拒绝任何 `FINAL`、已批准 Review、未知 catalog、错误依赖或不匹配 hash。
 
 deterministic stub 只接受显式 `fixture-root` 中 `draft-stub-case/v1` 声明的精确 `b2e0061` 输入指纹。它不扫描目录、不选择最新版本，也不参与 Final trusted chain 的 `phase0` selector。文本输入使用 UTF-8 bytes SHA-256，JSON dependency 使用 canonical semantic SHA-256；`.gitattributes` 显式保留既有 Golden/Draft Markdown 的 CRLF bytes baseline，并固定 fixture JSON 的 LF，避免 checkout 平台改变 hash。任何不匹配都 fail closed。
 
-真实 provider 必须把 Chat API 响应转换为相同的 `draft-provider-response/v1` envelope，再由现有边界严格解析和校验。真实调用按依赖顺序进行：DocIR → Human Review/Final DocIR → SchemaIR → Human Review/Final SchemaIR → 双方向 Standard → 各自 Human Review/Final Standard → 双方向 Template → 各自 Human Review/Final Template → `check --profile phase0` 与 `generate-workbook`。不得在最后一次集中确认来绕过上游 Final 依赖，也不得自动 promotion。
+真实 provider 必须把 Chat API 的 SSE 分块在内存中聚合为相同的 `draft-provider-response/v1` envelope，再由现有边界严格解析和校验。只有 `finish_reason=stop`、最终 usage 和完整 JSON 均有效才可发布；流中断或截断不得发布部分 Draft。DocIR 模型直接返回不落盘的内部 `docir-extraction/v1` 根：严格校验固定属性、Metadata key、字段值域、父子 Index、未知值 Review 与条件数组，再由代码确定性渲染现有 Markdown、Human Review Notes 并执行机械 wire 校验。该内部结构不是新的 IR，也不能替代 Human Review。API key、base URL、精确 model ID 和 timeout 可来自启动目录中被 Git 忽略的 `.env` 或进程环境；进程环境优先，非敏感项可由 CLI 覆盖，attempt ID 始终显式传入；SDK 自动重试关闭。成功调用发布 `draft-provider-call-result/v1`；DocIR 失败默认发布 `draft-provider-failure-result/v1`，并在已收到内容时保存完整/部分模型响应。失败证据不是 Draft 或 trusted-chain artifact。Golden 只服务 fixture、历史样例和确定性回归，不参与真实候选自动语义判定。真实调用按依赖顺序进行：DocIR → Human Review/Final DocIR → SchemaIR → Human Review/Final SchemaIR → 双方向 Standard → 各自 Human Review/Final Standard → 双方向 Template → 各自 Human Review/Final Template → `check --profile phase0` 与 `generate-workbook`。不得在最后一次集中确认来绕过上游 Final 依赖，也不得自动 promotion。
 
-DocIR 没有独立可信链 Validator。DocIR Draft 只执行章节、Metadata/Fields 表和 XML 方向的最小结构检查；Human Review 对准确内容 hash 确认后，才可冻结为 `docir-final.md` 并成为 SchemaIR generator 输入。三个 JSON generator 只保存 `DRAFT/PENDING` artifact、匹配 validation result 和 review notes，且结果必须无 ERROR、`finalEligible=false`。
+DocIR 没有独立可信链 Validator。真实 provider 内部的 extraction/schema/renderer 校验只保证模型响应与 Markdown wire 的机械完整性，不判断银行业务事实；provider-neutral 编排层继续执行既有最小结构检查。Human Review 对准确内容 hash 确认后，才可冻结为 `docir-final.md` 并成为 SchemaIR generator 输入。三个 JSON generator 只保存 `DRAFT/PENDING` artifact、匹配 validation result 和 review notes，且结果必须无 ERROR、`finalEligible=false`。
 
 ### 5.3 规则包
 
