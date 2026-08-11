@@ -21,8 +21,8 @@ from .workspace import artifact_path, ensure_workspace_dir
 LOGGER = logging.getLogger(__name__)
 
 PROVIDER_RESPONSE_CONTRACT = "draft-provider-response/v1"
-PROVIDER_CALL_RESULT_CONTRACT = "draft-provider-call-result/v1"
-PROVIDER_FAILURE_RESULT_CONTRACT = "draft-provider-failure-result/v1"
+PROVIDER_CALL_RESULT_CONTRACT = "draft-provider-call-result/v2"
+PROVIDER_FAILURE_RESULT_CONTRACT = "draft-provider-failure-result/v2"
 STUB_CASE_CONTRACT = "draft-stub-case/v1"
 ARTIFACT_KINDS = {"docir", "schemair", "standard", "template"}
 DIRECTIONS = {"ASSEMBLY", "PARSE"}
@@ -47,7 +47,8 @@ ProviderFailureStage = Literal[
     "request",
     "stream",
     "model-response",
-    "docir-extraction",
+    "segment-validation",
+    "merge-validation",
     "provider-response",
 ]
 
@@ -208,6 +209,81 @@ class DraftGenerationContext:
 
 
 @dataclass(frozen=True, slots=True)
+class ProviderSubcallMetadata:
+    segment: str
+    outcome: Literal["succeeded", "failed"]
+    response_complete: bool
+    response_content_hash: str | None = None
+    requested_model: str | None = None
+    response_model: str | None = None
+    response_id: str | None = None
+    prompt_tokens: int | None = None
+    completion_tokens: int | None = None
+    total_tokens: int | None = None
+    started_at: str | None = None
+    completed_at: str | None = None
+    finish_reason: str | None = None
+    prompt_contract_version: str | None = None
+    segment_contract_version: str | None = None
+
+    def __post_init__(self) -> None:
+        if not isinstance(self.segment, str) or not STABLE_ID_PATTERN.fullmatch(
+            self.segment
+        ):
+            raise DraftGenerationError(
+                "provider subcall segment must be a lowercase kebab-case identifier"
+            )
+        if self.outcome not in {"succeeded", "failed"}:
+            raise DraftGenerationError("provider subcall outcome is invalid")
+        if not isinstance(self.response_complete, bool):
+            raise DraftGenerationError("provider subcall responseComplete must be boolean")
+        if self.response_content_hash is not None and not SHA256_PATTERN.fullmatch(
+            self.response_content_hash
+        ):
+            raise DraftGenerationError("provider subcall response hash must be a SHA-256 hash")
+        for label, value in (
+            ("requested_model", self.requested_model),
+            ("response_model", self.response_model),
+            ("response_id", self.response_id),
+            ("started_at", self.started_at),
+            ("completed_at", self.completed_at),
+            ("finish_reason", self.finish_reason),
+            ("prompt_contract_version", self.prompt_contract_version),
+            ("segment_contract_version", self.segment_contract_version),
+        ):
+            if value is not None and (not isinstance(value, str) or not value.strip()):
+                raise DraftGenerationError(f"provider subcall {label} must be non-empty")
+        for label, value in (
+            ("prompt_tokens", self.prompt_tokens),
+            ("completion_tokens", self.completion_tokens),
+            ("total_tokens", self.total_tokens),
+        ):
+            if value is not None and (
+                isinstance(value, bool) or not isinstance(value, int) or value < 0
+            ):
+                raise DraftGenerationError(
+                    f"provider subcall {label} must be a non-negative integer"
+                )
+
+
+@dataclass(frozen=True, slots=True)
+class ProviderFailureCallEvidence:
+    metadata: ProviderSubcallMetadata
+    response_text: str | None = None
+
+    def __post_init__(self) -> None:
+        if self.response_text is not None and (
+            not isinstance(self.response_text, str) or not self.response_text
+        ):
+            raise DraftGenerationError("provider failure subcall response must be non-empty")
+        expected_hash = _text_hash(self.response_text) if self.response_text is not None else None
+        if self.metadata.response_content_hash != expected_hash:
+            raise DraftGenerationError(
+                "provider failure subcall response hash does not match its content"
+            )
+
+
+@dataclass(frozen=True, slots=True)
 class ProviderCallMetadata:
     provider_name: str
     attempt_id: str | None = None
@@ -221,6 +297,8 @@ class ProviderCallMetadata:
     completed_at: str | None = None
     endpoint_fingerprint: str | None = None
     prompt_contract_version: str | None = None
+    calls: tuple[ProviderSubcallMetadata, ...] = ()
+    docir_field_batch_size: int | None = None
 
     def __post_init__(self) -> None:
         if not isinstance(self.provider_name, str) or not self.provider_name.strip():
@@ -251,6 +329,14 @@ class ProviderCallMetadata:
             self.endpoint_fingerprint
         ):
             raise DraftGenerationError("provider endpoint fingerprint must be a SHA-256 hash")
+        if not isinstance(self.calls, tuple):
+            raise DraftGenerationError("provider metadata calls must be a tuple")
+        if self.docir_field_batch_size is not None and (
+            isinstance(self.docir_field_batch_size, bool)
+            or not isinstance(self.docir_field_batch_size, int)
+            or self.docir_field_batch_size <= 0
+        ):
+            raise DraftGenerationError("provider DocIR field batch size must be a positive integer")
 
 
 @dataclass(frozen=True, slots=True)
@@ -265,6 +351,8 @@ class ProviderFailureEvidence:
     response_complete: bool
     response_text: str | None
     finish_reason: str | None
+    calls: tuple[ProviderFailureCallEvidence, ...] = ()
+    failed_segment: str | None = None
 
     @property
     def response_content_hash(self) -> str | None:
@@ -277,7 +365,8 @@ class ProviderFailureEvidence:
             "request",
             "stream",
             "model-response",
-            "docir-extraction",
+            "segment-validation",
+            "merge-validation",
             "provider-response",
         }:
             raise DraftGenerationError("provider failure stage is invalid")
@@ -297,6 +386,31 @@ class ProviderFailureEvidence:
             not isinstance(self.finish_reason, str) or not self.finish_reason.strip()
         ):
             raise DraftGenerationError("provider finish reason must be non-empty")
+        if not isinstance(self.calls, tuple):
+            raise DraftGenerationError("provider failure calls must be a tuple")
+        if self.failed_segment is not None and (
+            not isinstance(self.failed_segment, str)
+            or not STABLE_ID_PATTERN.fullmatch(self.failed_segment)
+        ):
+            raise DraftGenerationError(
+                "provider failed segment must be a lowercase kebab-case identifier"
+            )
+        failed_calls = [call for call in self.calls if call.metadata.outcome == "failed"]
+        if self.calls and self.failed_segment is None and failed_calls:
+            raise DraftGenerationError(
+                "provider failed segment is required when a subcall failed"
+            )
+        if self.failed_segment is not None and (
+            len(failed_calls) != 1
+            or failed_calls[0].metadata.segment != self.failed_segment
+        ):
+            raise DraftGenerationError(
+                "provider failed segment must identify the single failed subcall"
+            )
+        if self.failed_segment is not None and (
+            not isinstance(self.failed_segment, str) or not self.failed_segment.strip()
+        ):
+            raise DraftGenerationError("provider failed segment must be non-empty")
 
 
 @dataclass(frozen=True, slots=True)
@@ -600,20 +714,26 @@ def publish_provider_failure(
     if evidence.request.artifact_kind != "docir":
         raise DraftGenerationError("only DocIR provider failure evidence is supported")
     ensure_workspace_dir(workspace_path)
-    outputs = {
-        "failure_result": artifact_path(
-            workspace_path, "docir-provider-failure-result.json"
+    outputs: dict[str, Path] = {}
+    payloads: dict[str, bytes] = {}
+    failure_calls = _provider_failure_calls(evidence)
+    current_response_paths: set[Path] = set()
+    for sequence, call in enumerate(failure_calls, start=1):
+        if call.response_text is None:
+            continue
+        response_path = artifact_path(
+            workspace_path,
+            f"docir-provider-failure-response-{sequence:03d}-{call.metadata.segment}.txt",
         )
-    }
-    response_path = artifact_path(
-        workspace_path, "docir-provider-failure-response.txt"
+        key = f"failure_response_{sequence:03d}"
+        outputs[key] = response_path
+        payloads[key] = call.response_text.encode("utf-8")
+        current_response_paths.add(response_path)
+    # result 是该组 evidence 的提交标记；最后替换可避免先暴露指向尚未落盘响应的摘要。
+    outputs["failure_result"] = artifact_path(
+        workspace_path, "docir-provider-failure-result.json"
     )
-    payloads = {
-        "failure_result": _serialize_json(_provider_failure_result(evidence))
-    }
-    if evidence.response_text is not None:
-        outputs["failure_response"] = response_path
-        payloads["failure_response"] = evidence.response_text.encode("utf-8")
+    payloads["failure_result"] = _serialize_json(_provider_failure_result(evidence))
     _atomic_publish_payloads(
         outputs,
         payloads,
@@ -621,15 +741,17 @@ def publish_provider_failure(
         existing_label="provider failure evidence",
         failure_label="provider failure evidence",
     )
-    if evidence.response_text is None and overwrite and response_path.exists():
-        # 新摘要明确表示没有响应内容，不能让上一次 attempt 的响应文件伪装成当前证据。
-        try:
-            response_path.unlink()
-        except OSError as exc:
-            raise DraftGenerationError(
-                "failed to remove stale provider failure response: "
-                f"{type(exc).__name__}"
-            ) from exc
+    if overwrite:
+        for stale_path in workspace_path.glob("docir-provider-failure-response-*.txt"):
+            if stale_path in current_response_paths:
+                continue
+            try:
+                stale_path.unlink()
+            except OSError as exc:
+                raise DraftGenerationError(
+                    "failed to remove stale provider failure response: "
+                    f"{type(exc).__name__}"
+                ) from exc
     paths = tuple(outputs.values())
     error.bind_failure_evidence_paths(paths)
     LOGGER.warning(
@@ -642,6 +764,8 @@ def publish_provider_failure(
             "attempt_id": evidence.metadata.attempt_id,
             "requested_model": evidence.metadata.requested_model,
             "failure_stage": evidence.failure_stage,
+            "failed_segment": evidence.failed_segment,
+            "subcall_count": len(failure_calls),
             "response_complete": evidence.response_complete,
             "response_content_hash": (
                 _text_hash(evidence.response_text)
@@ -765,6 +889,23 @@ def _provider_call_result(generated: GeneratedDraft) -> dict[str, Any]:
     selector = generated.request.case_fingerprint()
     selector.pop("artifactKind")
     selector.pop("sourceHash")
+    calls = metadata.calls or (
+        ProviderSubcallMetadata(
+            segment="complete-artifact",
+            outcome="succeeded",
+            response_complete=True,
+            requested_model=metadata.requested_model,
+            response_model=metadata.response_model,
+            response_id=metadata.response_id,
+            prompt_tokens=metadata.prompt_tokens,
+            completion_tokens=metadata.completion_tokens,
+            total_tokens=metadata.total_tokens,
+            started_at=metadata.started_at,
+            completed_at=metadata.completed_at,
+            finish_reason="stop",
+            prompt_contract_version=metadata.prompt_contract_version,
+        ),
+    )
     return {
         "contractVersion": PROVIDER_CALL_RESULT_CONTRACT,
         "taskId": generated.request.task_id,
@@ -780,17 +921,23 @@ def _provider_call_result(generated: GeneratedDraft) -> dict[str, Any]:
         "endpointFingerprint": metadata.endpoint_fingerprint,
         "startedAt": metadata.started_at,
         "completedAt": metadata.completed_at,
+        "docirFieldBatchSize": metadata.docir_field_batch_size,
         "usage": {
             "promptTokens": metadata.prompt_tokens,
             "completionTokens": metadata.completion_tokens,
             "totalTokens": metadata.total_tokens,
         },
+        "calls": [
+            _provider_subcall_result(sequence, call)
+            for sequence, call in enumerate(calls, start=1)
+        ],
         "artifactContentHash": generated.content_hash,
     }
 
 
 def _provider_failure_result(evidence: ProviderFailureEvidence) -> dict[str, Any]:
     metadata = evidence.metadata
+    calls = _provider_failure_calls(evidence)
     return {
         "contractVersion": PROVIDER_FAILURE_RESULT_CONTRACT,
         "taskId": evidence.request.task_id,
@@ -805,9 +952,11 @@ def _provider_failure_result(evidence: ProviderFailureEvidence) -> dict[str, Any
         "endpointFingerprint": metadata.endpoint_fingerprint,
         "startedAt": metadata.started_at,
         "completedAt": metadata.completed_at,
+        "docirFieldBatchSize": metadata.docir_field_batch_size,
         "failureStage": evidence.failure_stage,
         "failureDetail": evidence.failure_detail,
         "errorType": evidence.error_type,
+        "failedSegment": evidence.failed_segment,
         "finishReason": evidence.finish_reason,
         "responseComplete": evidence.response_complete,
         "responseContentHash": (
@@ -815,6 +964,65 @@ def _provider_failure_result(evidence: ProviderFailureEvidence) -> dict[str, Any
             if evidence.response_text is not None
             else None
         ),
+        "usage": {
+            "promptTokens": metadata.prompt_tokens,
+            "completionTokens": metadata.completion_tokens,
+            "totalTokens": metadata.total_tokens,
+        },
+        "calls": [
+            _provider_subcall_result(sequence, call.metadata)
+            for sequence, call in enumerate(calls, start=1)
+        ],
+    }
+
+
+def _provider_failure_calls(
+    evidence: ProviderFailureEvidence,
+) -> tuple[ProviderFailureCallEvidence, ...]:
+    if evidence.calls:
+        return evidence.calls
+    metadata = evidence.metadata
+    return (
+        ProviderFailureCallEvidence(
+            metadata=ProviderSubcallMetadata(
+                segment=evidence.failed_segment or "complete-artifact",
+                outcome="failed",
+                response_complete=evidence.response_complete,
+                response_content_hash=evidence.response_content_hash,
+                requested_model=metadata.requested_model,
+                response_model=metadata.response_model,
+                response_id=metadata.response_id,
+                prompt_tokens=metadata.prompt_tokens,
+                completion_tokens=metadata.completion_tokens,
+                total_tokens=metadata.total_tokens,
+                started_at=metadata.started_at,
+                completed_at=metadata.completed_at,
+                finish_reason=evidence.finish_reason,
+                prompt_contract_version=metadata.prompt_contract_version,
+            ),
+            response_text=evidence.response_text,
+        ),
+    )
+
+
+def _provider_subcall_result(
+    sequence: int,
+    metadata: ProviderSubcallMetadata,
+) -> dict[str, Any]:
+    return {
+        "sequence": sequence,
+        "segment": metadata.segment,
+        "outcome": metadata.outcome,
+        "requestedModel": metadata.requested_model,
+        "responseModel": metadata.response_model,
+        "responseId": metadata.response_id,
+        "promptContractVersion": metadata.prompt_contract_version,
+        "segmentContractVersion": metadata.segment_contract_version,
+        "startedAt": metadata.started_at,
+        "completedAt": metadata.completed_at,
+        "finishReason": metadata.finish_reason,
+        "responseComplete": metadata.response_complete,
+        "responseContentHash": metadata.response_content_hash,
         "usage": {
             "promptTokens": metadata.prompt_tokens,
             "completionTokens": metadata.completion_tokens,

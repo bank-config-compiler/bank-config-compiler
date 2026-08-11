@@ -6,8 +6,13 @@ import pytest
 
 from bank_config_compiler.docir_draft import (
     DocIRDraftError,
+    build_docir_field_batches,
+    merge_docir_extraction_segments,
     render_docir_extraction,
     render_docir_review_notes,
+    validate_docir_field_details_segment,
+    validate_docir_interface_envelope_segment,
+    validate_docir_messages_outline_segment,
     validate_docir_markdown_wire,
 )
 
@@ -230,3 +235,135 @@ def test_render_docir_review_notes_is_deterministic_and_preserves_locations() ->
 def test_render_docir_review_notes_rejects_invalid_extraction() -> None:
     with pytest.raises(DocIRDraftError, match="must be an object"):
         render_docir_review_notes("确认版本。")
+
+
+def segmented_extraction() -> tuple[dict, dict, list[dict], list[dict]]:
+    extraction = docir_extraction()
+    interface_envelope = {
+        "contractVersion": "docir-interface-envelope-segment/v1",
+        "interface": extraction["interface"],
+        "sourceContext": extraction["sourceContext"],
+        "envelope": extraction["envelope"],
+    }
+    messages_outline = {
+        "contractVersion": "docir-messages-outline-segment/v1",
+        "assembly": {
+            "metadata": extraction["assembly"]["metadata"],
+            "conditions": extraction["assembly"]["conditions"],
+            "fields": [
+                {"index": row["index"], "item": row["item"]}
+                for row in extraction["assembly"]["fields"]
+            ],
+        },
+        "parse": {
+            "metadata": extraction["parse"]["metadata"],
+            "conditions": extraction["parse"]["conditions"],
+            "fields": [
+                {"index": row["index"], "item": row["item"]}
+                for row in extraction["parse"]["fields"]
+            ],
+        },
+    }
+    assembly_details = [
+        {
+            "contractVersion": "docir-field-details-segment/v1",
+            "direction": "ASSEMBLY",
+            "batchIndex": 1,
+            "fields": extraction["assembly"]["fields"],
+        }
+    ]
+    parse_details = [
+        {
+            "contractVersion": "docir-field-details-segment/v1",
+            "direction": "PARSE",
+            "batchIndex": 1,
+            "fields": extraction["parse"]["fields"],
+        }
+    ]
+    return interface_envelope, messages_outline, assembly_details, parse_details
+
+
+def test_segmented_extraction_merges_to_existing_docir_contract() -> None:
+    interface_envelope, messages_outline, assembly_details, parse_details = (
+        segmented_extraction()
+    )
+
+    merged = merge_docir_extraction_segments(
+        interface_envelope=interface_envelope,
+        messages_outline=messages_outline,
+        assembly_details=assembly_details,
+        parse_details=parse_details,
+    )
+
+    assert render_docir_extraction(merged) == render_docir_extraction(docir_extraction())
+    assert merged["interface"]["metadata"][0]["key"] == "Interface Code"
+    assert merged["assembly"]["fields"] == docir_extraction()["assembly"]["fields"]
+
+
+def test_docir_field_batches_are_contiguous_and_bounded() -> None:
+    outline = [
+        {"index": "2", "item": "root"},
+        *[
+            {"index": f"2.{index}", "item": f"field{index}"}
+            for index in range(1, 18)
+        ],
+    ]
+
+    batches = build_docir_field_batches(outline, batch_size=16)
+
+    assert [len(batch) for batch in batches] == [16, 2]
+    assert [row for batch in batches for row in batch] == outline
+
+
+@pytest.mark.parametrize("batch_size", [0, -1, True, 1.5])
+def test_docir_field_batches_reject_invalid_batch_size(batch_size: object) -> None:
+    with pytest.raises(DocIRDraftError, match="positive integer"):
+        build_docir_field_batches([{"index": "2", "item": "root"}], batch_size=batch_size)
+
+
+def test_messages_outline_rejects_missing_parent() -> None:
+    _, messages_outline, _, _ = segmented_extraction()
+    messages_outline["assembly"]["fields"][1]["index"] = "2.1.1"
+
+    with pytest.raises(DocIRDraftError, match="parent index"):
+        validate_docir_messages_outline_segment(messages_outline)
+
+
+@pytest.mark.parametrize(
+    "mutation",
+    [
+        lambda fields: fields.pop(),
+        lambda fields: fields.append(deepcopy(fields[-1])),
+        lambda fields: fields.reverse(),
+        lambda fields: fields[0].update(item="different"),
+    ],
+)
+def test_field_details_must_exactly_match_target_outline(mutation) -> None:
+    _, messages_outline, assembly_details, _ = segmented_extraction()
+    expected = messages_outline["assembly"]["fields"]
+    mutation(assembly_details[0]["fields"])
+
+    with pytest.raises(DocIRDraftError, match="target outline"):
+        validate_docir_field_details_segment(
+            assembly_details[0],
+            direction="ASSEMBLY",
+            batch_index=1,
+            expected_outline=expected,
+        )
+
+
+def test_segment_validators_normalize_complete_sections() -> None:
+    interface_envelope, messages_outline, assembly_details, _ = segmented_extraction()
+
+    normalized_interface = validate_docir_interface_envelope_segment(interface_envelope)
+    normalized_outline = validate_docir_messages_outline_segment(messages_outline)
+    assert normalized_interface["interface"]["metadata"][0]["key"] == "Interface Code"
+    assert normalized_interface["envelope"]["fields"] == interface_envelope["envelope"]["fields"]
+    assert normalized_outline["assembly"]["metadata"][0]["key"] == "Message Name"
+    assert normalized_outline["parse"]["fields"] == messages_outline["parse"]["fields"]
+    assert validate_docir_field_details_segment(
+        assembly_details[0],
+        direction="ASSEMBLY",
+        batch_index=1,
+        expected_outline=messages_outline["assembly"]["fields"],
+    ) == assembly_details[0]

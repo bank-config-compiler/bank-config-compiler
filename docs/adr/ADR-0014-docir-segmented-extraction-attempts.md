@@ -1,0 +1,53 @@
+# ADR-0014: DocIR 使用 attempt 原子化的有界分段提取
+
+## Status
+
+Accepted. Amends ADR-0013's single-response DocIR extraction mechanism and ADR-0012's v1 provider evidence format.
+
+## Date
+
+2026-08-11
+
+## Context
+
+ADR-0013 将 DocIR 从模型直出 Markdown 改为严格结构化提取与确定性渲染，消除了机械排版的不确定性。`docir-011` 进一步证明直接返回 extraction 根能避免外层 envelope 歧义，但模型在正常 `finish_reason=stop` 下仍只返回到不完整的 ASSEMBLY，缺少 PARSE。单次响应同时承担 Interface、Envelope、两个方向的全部字段详情，输出规模和语义跨度仍然过大。
+
+拆分调用不能破坏现有公开 `DraftProvider`、`draft-provider-response/v1`、DocIR Markdown wire、Human Review 或 trusted-chain 边界，也不能把中间候选变成新的 workspace artifact。失败后的局部续跑会让一次 attempt 混入不同上下文或模型状态，并增加证据、恢复和一致性协议。
+
+## Decision
+
+- 一个 DocIR attempt 按固定顺序执行：完整 `interface-envelope` → 一个联合 `messages-outline` → ASSEMBLY 字段详情批次 → PARSE 字段详情批次 → 确定性合并、既有 extraction 校验与 renderer。
+- `interface-envelope` 一次返回 Interface、Source Context 和完整 Envelope；`messages-outline` 一次同时返回 ASSEMBLY/PARSE metadata、conditions 与紧凑的 `{index,item}` 字段大纲。不得把两个方向拆成两个 outline 调用。
+- 字段详情只按方向和大纲中的连续有界批次调用。默认每批最多 16 个字段；`generate-draft docir --provider openai-chat` 可通过正整数 `--docir-field-batch-size` 覆盖。该参数不进入环境变量，不适用于 fixture 或其他 artifact。
+- 每个物理调用都携带同一份准确 raw-doc。字段详情调用额外携带已经校验的目标大纲 selector；selector 只限制返回字段身份与顺序，不是新的业务事实来源。
+- 每个 segment 在进入下一调用前严格校验 contract、方向、batch index 与准确 outline 覆盖；最终合并必须再次通过完整 `docir-extraction/v1` 与 Markdown wire 校验。任一失败立即停止，后续 subcall 不执行。
+- 一个 attempt 原子执行，不自动重试、不 resume、不复用成功前缀。失败后只能由操作者使用新的 attempt ID 从第一段重新开始；需要时可显式选择更小的 batch size。
+- 公开 `DraftProvider.generate()` 与 `draft-provider-response/v1` 保持不变。内部 segment 不写 workspace，不成为公开 IR、Final 输入或 trusted-chain artifact。
+- 成功与失败的 attempt 摘要升级为 `draft-provider-call-result/v2` 和 `draft-provider-failure-result/v2`，按 sequence 记录有序 `calls`：segment、outcome、response hash、model/response ID、usage、时间、Prompt/segment contract 与完成状态。非 DocIR artifact 仍记录一个 `complete-artifact` call。
+- DocIR 失败时，对已收到内容的各 subcall 分别保存 `docir-provider-failure-response-<sequence>-<segment>.txt`，最后写入失败摘要作为该组 evidence 的提交标记。文件仍是被 Git 忽略的开发诊断，不是 Draft 或 trusted-chain artifact。
+- 不新增 Golden evaluator。机械 contract、outline 与 merge 门禁只判断结构完整性；真实候选的字段语义、来源忠实度和完整性仍由 Human Review 判断。
+
+## Alternatives Considered
+
+### 保持单次完整 extraction
+
+优点是调用与证据结构最简单；缺点是 `docir-011` 已表明输出规模可能在 transport 正常结束时仍导致语义截断，因此不再采用。
+
+### 分别生成 ASSEMBLY/PARSE outline
+
+优点是单次更小；缺点是两个方向缺少同一次全局字段盘点，调用数更多，也更容易产生方向间遗漏或不一致，因此采用一个联合 outline。
+
+### 按 raw-doc 字符或 token 切片
+
+优点是输入可控；缺点是会切断表格、示例和跨段来源关系，并需要新的文档解析与拼接语义，因此不采用。
+
+### 自动重试失败 batch 或从成功段 resume
+
+优点是可能减少付费重算；缺点是一次 attempt 会混合不同调用状态，需要持久 checkpoint、兼容协议和更复杂的审计语义。Phase0 没有这一需求，因此保持显式新 attempt 全量重跑。
+
+## Consequences
+
+- DocIR Prompt contract 升级为 `draft-prompt/v8`，物理调用数随两个方向的字段数和 batch size 确定；默认调用数为 `2 + ceil(ASSEMBLY/16) + ceil(PARSE/16)`。
+- 更小批次可降低单个字段详情响应的输出压力，但增加调用数、总输入 token 与延迟；操作者在新 attempt 开始前显式选择该取舍。
+- 成功仍只发布一个 DocIR Markdown Draft、Human Review Notes 和 attempt v2 摘要；失败不发布部分 Draft。
+- ADR-0012/0013 中关于 v1 attempt evidence 和单响应 extraction 的描述保留为历史记录，以本 ADR 为当前约束。

@@ -108,9 +108,9 @@ Draft 中的 `Mult.`、`Type` 或 `Required` 如果无法从原文结构或明�
 
 ### 2.6 真实 provider 的内部结构化提取
 
-真实 `openai-chat` provider 不再要求模型直接排版上述 Markdown。模型直接返回内部 `docir-extraction/v1` JSON object 根：固定 Metadata key、字段属性、1/2/3 根 Index、父子顺序、`Mult./Type/Required` 值域与 Conditions。代码严格校验后，确定性生成章节、表头、列顺序、U+3000 层级缩进、Markdown escaping，并按固定 checklist 与稳定字段位置生成 Human Review Notes。
+真实 `openai-chat` provider 不再要求模型直接排版上述 Markdown。一个 DocIR attempt 先完整提取 Interface/Source Context/Envelope，再用一个联合 messages outline 盘点 ASSEMBLY/PARSE 的 metadata、conditions 和 `{index,item}` 字段身份，最后只把两个方向的字段详情按连续有界批次拆分。默认每个详情批次最多 16 个字段；所有 subcall 都携带同一 raw-doc，详情 selector 只约束字段身份和顺序。各 segment 校验后合并为内部 `docir-extraction/v1` JSON object 根：固定 Metadata key、字段属性、1/2/3 根 Index、父子顺序、`Mult./Type/Required` 值域与 Conditions。代码随后确定性生成章节、表头、列顺序、U+3000 层级缩进、Markdown escaping，并按固定 checklist 与稳定字段位置生成 Human Review Notes。
 
-该 extraction 只存在于 provider 信任边界内，不保存到 workspace，不是新的 IR，也不进入 SchemaIR 或 Final trusted chain。renderer 只保证机械 wire，不判断银行事实是否完整或有充分证据；Golden 也不参与真实候选的自动语义判定。语义正确性仍由 DocIR Human Review 对准确 Markdown hash 确认。详见 ADR-0013。
+segment、outline 和 extraction 只存在于 provider 信任边界内，不保存到 workspace，不是新的 IR，也不进入 SchemaIR 或 Final trusted chain。attempt 顺序 fail-fast，不自动重试或 resume；失败后以新 attempt ID 从第一段重跑。renderer 只保证机械 wire，不判断银行事实是否完整或有充分证据；Golden 也不参与真实候选的自动语义判定。语义正确性仍由 DocIR Human Review 对准确 Markdown hash 确认。详见 ADR-0013、ADR-0014。
 
 ## 3. SchemaIR
 
