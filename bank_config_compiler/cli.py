@@ -23,7 +23,10 @@ from .draft_generation import (
     publish_generated_draft,
     publish_provider_failure,
 )
-from .openai_chat_provider import OpenAIChatDraftProvider
+from .openai_chat_provider import (
+    DEFAULT_DOCIR_FIELD_BATCH_SIZE,
+    OpenAIChatDraftProvider,
+)
 from .workspace import (
     Phase0Selection,
     WorkspaceError,
@@ -93,6 +96,14 @@ def build_parser() -> argparse.ArgumentParser:
 
     docir = draft_kinds.add_parser("docir", help="Generate docir-draft.md from raw-doc.md.")
     _add_draft_provider_arguments(docir)
+    docir.add_argument(
+        "--docir-field-batch-size",
+        type=_positive_integer,
+        help=(
+            "Maximum fields per ASSEMBLY/PARSE detail subcall; "
+            f"defaults to {DEFAULT_DOCIR_FIELD_BATCH_SIZE} for openai-chat."
+        ),
+    )
 
     schemair = draft_kinds.add_parser("schemair", help="Generate SchemaIR Draft from docir-final.md.")
     _add_draft_provider_arguments(schemair)
@@ -158,8 +169,9 @@ def _add_draft_provider_arguments(parser: argparse.ArgumentParser) -> None:
         "--chat-timeout-seconds",
         type=float,
         help=(
-            "Request timeout in seconds; overrides "
-            "BANK_CONFIG_COMPILER_LLM_TIMEOUT_SECONDS and defaults to 600."
+            "Per-subcall absolute deadline in seconds; also configures SDK I/O "
+            "timeouts, overrides BANK_CONFIG_COMPILER_LLM_TIMEOUT_SECONDS, and "
+            "defaults to 600."
         ),
     )
     parser.add_argument(
@@ -182,6 +194,16 @@ def _add_draft_direction(parser: argparse.ArgumentParser) -> None:
         choices=["assembly", "parse"],
         help="Selected message direction.",
     )
+
+
+def _positive_integer(raw_value: str) -> int:
+    try:
+        value = int(raw_value)
+    except ValueError as exc:
+        raise argparse.ArgumentTypeError("must be a positive integer") from exc
+    if value <= 0:
+        raise argparse.ArgumentTypeError("must be a positive integer")
+    return value
 
 
 def _add_phase0_arguments(parser: argparse.ArgumentParser, *, required: bool) -> None:
@@ -326,9 +348,12 @@ def _draft_provider(args: argparse.Namespace) -> DraftProvider:
                 args.chat_model,
                 args.chat_timeout_seconds,
                 args.attempt_id,
+                getattr(args, "docir_field_batch_size", None),
             )
         ):
-            raise DraftGenerationError("fixture provider does not accept chat configuration")
+            raise DraftGenerationError(
+                "fixture provider does not accept chat configuration"
+            )
         return FixtureDraftProvider(args.fixture_root)
 
     if args.fixture_root is not None:
@@ -371,12 +396,20 @@ def _draft_provider(args: argparse.Namespace) -> DraftProvider:
                 raise DraftGenerationError(
                     "BANK_CONFIG_COMPILER_LLM_TIMEOUT_SECONDS must be a number"
                 ) from exc
+    provider_arguments = {
+        "api_key": api_key,
+        "base_url": base_url,
+        "model": model,
+        "attempt_id": args.attempt_id,
+        "timeout_seconds": timeout_seconds,
+    }
+    if getattr(args, "draft_kind", None) == "docir":
+        provider_arguments["docir_field_batch_size"] = (
+            getattr(args, "docir_field_batch_size", None)
+            or DEFAULT_DOCIR_FIELD_BATCH_SIZE
+        )
     return OpenAIChatDraftProvider(
-        api_key=api_key,
-        base_url=base_url,
-        model=model,
-        attempt_id=args.attempt_id,
-        timeout_seconds=timeout_seconds,
+        **provider_arguments,
     )
 
 

@@ -7,6 +7,7 @@ from bank_config_compiler.draft_generation import (
     DraftGenerationContext,
     DraftProviderResult,
     ProviderCallMetadata,
+    ProviderSubcallMetadata,
     generate_docir_draft,
     publish_generated_draft,
 )
@@ -83,7 +84,7 @@ def test_publish_real_provider_draft_writes_non_sensitive_call_result(tmp_path: 
     assert outputs["provider_call_result"] == tmp_path / "docir-provider-call-result.json"
     call_result = json.loads(outputs["provider_call_result"].read_text(encoding="utf-8"))
     assert call_result == {
-        "contractVersion": "draft-provider-call-result/v1",
+        "contractVersion": "draft-provider-call-result/v2",
         "taskId": "phase0-test",
         "artifactKind": "docir",
         "sourceHash": generated.request.source_hash,
@@ -97,13 +98,115 @@ def test_publish_real_provider_draft_writes_non_sensitive_call_result(tmp_path: 
         "endpointFingerprint": "sha256:" + "1" * 64,
         "startedAt": "2026-08-10T10:00:00+08:00",
         "completedAt": "2026-08-10T10:00:05+08:00",
+        "docirFieldBatchSize": None,
         "usage": {
             "promptTokens": 10,
             "completionTokens": 20,
             "totalTokens": 30,
         },
+        "calls": [
+            {
+                "sequence": 1,
+                "segment": "complete-artifact",
+                "outcome": "succeeded",
+                "requestedModel": "qwen-test-snapshot",
+                "responseModel": "qwen-test-snapshot",
+                "responseId": "chatcmpl-test",
+                "promptContractVersion": "draft-prompt/v1",
+                "segmentContractVersion": None,
+                "startedAt": "2026-08-10T10:00:00+08:00",
+                "completedAt": "2026-08-10T10:00:05+08:00",
+                "finishReason": "stop",
+                "responseComplete": True,
+                "responseContentHash": None,
+                "usage": {
+                    "promptTokens": 10,
+                    "completionTokens": 20,
+                    "totalTokens": 30,
+                },
+            }
+        ],
         "artifactContentHash": generated.content_hash,
     }
     serialized = outputs["provider_call_result"].read_text(encoding="utf-8")
     assert "test-key" not in serialized
     assert "https://" not in serialized
+
+
+def test_publish_segmented_docir_records_ordered_subcalls(tmp_path: Path) -> None:
+    docir = (REPO_ROOT / "samples/golden/b2eboc-b2e0061/docir.expected.md").read_text(
+        encoding="utf-8"
+    )
+
+    class SegmentedProvider(CapturingProvider):
+        def generate(self, request, context: DraftGenerationContext) -> DraftProviderResult:
+            result = super().generate(request, context)
+            calls = tuple(
+                ProviderSubcallMetadata(
+                    segment=segment,
+                    outcome="succeeded",
+                    response_complete=True,
+                    response_content_hash="sha256:" + digit * 64,
+                    requested_model="qwen-test-snapshot",
+                    response_model="qwen-test-snapshot",
+                    response_id=f"chatcmpl-{sequence}",
+                    prompt_tokens=10,
+                    completion_tokens=20,
+                    total_tokens=30,
+                    started_at=f"2026-08-11T10:00:0{sequence}+08:00",
+                    completed_at=f"2026-08-11T10:00:0{sequence + 1}+08:00",
+                    finish_reason="stop",
+                    prompt_contract_version="draft-prompt/v8",
+                    segment_contract_version=contract,
+                )
+                for sequence, (segment, contract, digit) in enumerate(
+                    (
+                        (
+                            "interface-envelope",
+                            "docir-interface-envelope-segment/v1",
+                            "1",
+                        ),
+                        (
+                            "messages-outline",
+                            "docir-messages-outline-segment/v1",
+                            "2",
+                        ),
+                    ),
+                    start=1,
+                )
+            )
+            return DraftProviderResult(
+                response_text=result.response_text,
+                metadata=ProviderCallMetadata(
+                    provider_name=self.name,
+                    attempt_id="docir-012",
+                    requested_model="qwen-test-snapshot",
+                    response_model="qwen-test-snapshot",
+                    prompt_tokens=20,
+                    completion_tokens=40,
+                    total_tokens=60,
+                    started_at=calls[0].started_at,
+                    completed_at=calls[-1].completed_at,
+                    endpoint_fingerprint="sha256:" + "3" * 64,
+                    prompt_contract_version="draft-prompt/v8",
+                    calls=calls,
+                    docir_field_batch_size=16,
+                ),
+            )
+
+    generated = generate_docir_draft(
+        raw_doc="# Raw bank document\n",
+        provider=SegmentedProvider(docir),
+        task_id="phase0-test",
+    )
+
+    outputs = publish_generated_draft(tmp_path, generated)
+    call_result = json.loads(outputs["provider_call_result"].read_text(encoding="utf-8"))
+
+    assert call_result["contractVersion"] == "draft-provider-call-result/v2"
+    assert call_result["docirFieldBatchSize"] == 16
+    assert [call["sequence"] for call in call_result["calls"]] == [1, 2]
+    assert [call["segment"] for call in call_result["calls"]] == [
+        "interface-envelope",
+        "messages-outline",
+    ]

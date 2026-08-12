@@ -5,6 +5,9 @@ from typing import Any
 
 
 DOCIR_EXTRACTION_CONTRACT = "docir-extraction/v1"
+INTERFACE_ENVELOPE_SEGMENT_CONTRACT = "docir-interface-envelope-segment/v1"
+MESSAGES_OUTLINE_SEGMENT_CONTRACT = "docir-messages-outline-segment/v1"
+FIELD_DETAILS_SEGMENT_CONTRACT = "docir-field-details-segment/v1"
 METADATA_HEADER = "| Key | Value | Review Note |"
 FIELDS_HEADER = (
     "| Index | Or | Message Item | Mult. | Type | Required | 说明 | "
@@ -66,6 +69,174 @@ _MULTIPLICITY_PATTERN = re.compile(r"^\[(0|[1-9]\d*)\.\.(0|[1-9]\d*|\*)\]$")
 
 class DocIRDraftError(ValueError):
     """Raised when structured DocIR extraction or its rendered wire is invalid."""
+
+
+def validate_docir_interface_envelope_segment(value: Any) -> dict[str, Any]:
+    segment = _require_object(value, label="DocIR interface-envelope segment")
+    _require_exact_properties(
+        segment,
+        {"contractVersion", "interface", "sourceContext", "envelope"},
+        label="DocIR interface-envelope segment",
+    )
+    if segment.get("contractVersion") != INTERFACE_ENVELOPE_SEGMENT_CONTRACT:
+        raise DocIRDraftError(
+            "DocIR interface-envelope segment contractVersion must be "
+            f"{INTERFACE_ENVELOPE_SEGMENT_CONTRACT}"
+        )
+    return {
+        "contractVersion": INTERFACE_ENVELOPE_SEGMENT_CONTRACT,
+        "interface": _validated_section(segment, "interface"),
+        "sourceContext": _require_string_array(
+            segment.get("sourceContext"),
+            label="DocIR interface-envelope segment sourceContext",
+        ),
+        "envelope": _validated_section(segment, "envelope", root_index="1"),
+    }
+
+
+def validate_docir_messages_outline_segment(value: Any) -> dict[str, Any]:
+    segment = _require_object(value, label="DocIR messages-outline segment")
+    _require_exact_properties(
+        segment,
+        {"contractVersion", "assembly", "parse"},
+        label="DocIR messages-outline segment",
+    )
+    if segment.get("contractVersion") != MESSAGES_OUTLINE_SEGMENT_CONTRACT:
+        raise DocIRDraftError(
+            "DocIR messages-outline segment contractVersion must be "
+            f"{MESSAGES_OUTLINE_SEGMENT_CONTRACT}"
+        )
+    return {
+        "contractVersion": MESSAGES_OUTLINE_SEGMENT_CONTRACT,
+        "assembly": _validated_outline_section(segment, "assembly", root_index="2"),
+        "parse": _validated_outline_section(segment, "parse", root_index="3"),
+    }
+
+
+def build_docir_field_batches(
+    outline: Any,
+    *,
+    batch_size: int,
+) -> list[list[dict[str, str]]]:
+    if isinstance(batch_size, bool) or not isinstance(batch_size, int) or batch_size <= 0:
+        raise DocIRDraftError("DocIR field batch size must be a positive integer")
+    if not isinstance(outline, list) or not outline:
+        raise DocIRDraftError("DocIR field outline must be a non-empty array")
+    return [outline[index : index + batch_size] for index in range(0, len(outline), batch_size)]
+
+
+def validate_docir_field_details_segment(
+    value: Any,
+    *,
+    direction: str,
+    batch_index: int,
+    expected_outline: list[dict[str, str]],
+) -> dict[str, Any]:
+    segment = _require_object(value, label="DocIR field-details segment")
+    _require_exact_properties(
+        segment,
+        {"contractVersion", "direction", "batchIndex", "fields"},
+        label="DocIR field-details segment",
+    )
+    if segment.get("contractVersion") != FIELD_DETAILS_SEGMENT_CONTRACT:
+        raise DocIRDraftError(
+            "DocIR field-details segment contractVersion must be "
+            f"{FIELD_DETAILS_SEGMENT_CONTRACT}"
+        )
+    if direction not in {"ASSEMBLY", "PARSE"}:
+        raise DocIRDraftError("DocIR field-details direction must be ASSEMBLY or PARSE")
+    if segment.get("direction") != direction:
+        raise DocIRDraftError("DocIR field-details direction does not match the request")
+    if isinstance(batch_index, bool) or not isinstance(batch_index, int) or batch_index <= 0:
+        raise DocIRDraftError("DocIR field-details batch index must be a positive integer")
+    if segment.get("batchIndex") != batch_index:
+        raise DocIRDraftError("DocIR field-details batch index does not match the request")
+    fields_value = segment.get("fields")
+    if not isinstance(fields_value, list) or not fields_value:
+        raise DocIRDraftError("DocIR field-details fields must be a non-empty array")
+    root_index = "2" if direction == "ASSEMBLY" else "3"
+    fields = [
+        _validated_field(
+            item,
+            root_index=root_index,
+            label=f"DocIR field-details fields[{position}]",
+        )
+        for position, item in enumerate(fields_value)
+    ]
+    actual_outline = [
+        {"index": field["index"], "item": field["item"]}
+        for field in fields
+    ]
+    if actual_outline != expected_outline:
+        raise DocIRDraftError("DocIR field-details fields do not match the target outline")
+    return {
+        "contractVersion": FIELD_DETAILS_SEGMENT_CONTRACT,
+        "direction": direction,
+        "batchIndex": batch_index,
+        "fields": fields,
+    }
+
+
+def merge_docir_extraction_segments(
+    *,
+    interface_envelope: Any,
+    messages_outline: Any,
+    assembly_details: list[Any],
+    parse_details: list[Any],
+    batch_size: int = 16,
+) -> dict[str, Any]:
+    interface_envelope_segment = validate_docir_interface_envelope_segment(
+        interface_envelope
+    )
+    outline_segment = validate_docir_messages_outline_segment(messages_outline)
+    details_by_direction = {
+        "ASSEMBLY": assembly_details,
+        "PARSE": parse_details,
+    }
+    merged_fields: dict[str, list[dict[str, str]]] = {}
+    for direction, section_name in (("ASSEMBLY", "assembly"), ("PARSE", "parse")):
+        expected_batches = build_docir_field_batches(
+            outline_segment[section_name]["fields"],
+            batch_size=batch_size,
+        )
+        detail_segments = details_by_direction[direction]
+        if len(detail_segments) != len(expected_batches):
+            raise DocIRDraftError(
+                f"DocIR {direction} detail batches do not exactly cover the outline"
+            )
+        validated_batches = [
+            validate_docir_field_details_segment(
+                detail_segment,
+                direction=direction,
+                batch_index=index,
+                expected_outline=expected_outline,
+            )["fields"]
+            for index, (detail_segment, expected_outline) in enumerate(
+                zip(detail_segments, expected_batches, strict=True),
+                start=1,
+            )
+        ]
+        merged_fields[section_name] = [
+            field for batch in validated_batches for field in batch
+        ]
+
+    merged = {
+        "contractVersion": DOCIR_EXTRACTION_CONTRACT,
+        "interface": interface_envelope_segment["interface"],
+        "sourceContext": interface_envelope_segment["sourceContext"],
+        "envelope": interface_envelope_segment["envelope"],
+        "assembly": {
+            "metadata": outline_segment["assembly"]["metadata"],
+            "fields": merged_fields["assembly"],
+            "conditions": outline_segment["assembly"]["conditions"],
+        },
+        "parse": {
+            "metadata": outline_segment["parse"]["metadata"],
+            "fields": merged_fields["parse"],
+            "conditions": outline_segment["parse"]["conditions"],
+        },
+    }
+    return _validated_extraction(merged)
 
 
 def render_docir_extraction(value: Any) -> str:
@@ -340,14 +511,8 @@ def _validated_fields(
     previous_index_key: tuple[int, ...] | None = None
     for position, item in enumerate(value):
         field_label = f"{label}[{position}]"
-        row = _require_object(item, label=field_label)
-        _require_exact_properties(row, _FIELD_PROPERTIES, label=field_label)
-        field = {
-            name: _require_string(row.get(name), label=f"{field_label}.{name}")
-            for name in _FIELD_PROPERTIES
-        }
+        field = _validated_field(item, root_index=root_index, label=field_label)
         index = field["index"]
-        _validate_index(index, root_index=root_index, label=f"{field_label}.index")
         index_key = _index_key(index)
         if previous_index_key is not None and index_key <= previous_index_key:
             raise DocIRDraftError(f"{field_label}.index order is invalid: {index}")
@@ -362,21 +527,100 @@ def _validated_fields(
                 raise DocIRDraftError(f"{field_label} parent index must appear before {index}")
         seen_indexes.add(index)
 
-        if not _ITEM_PATTERN.fullmatch(field["item"]):
-            raise DocIRDraftError(f"{field_label}.item must be a plain XML item name")
-        _validate_multiplicity(field["multiplicity"], label=f"{field_label}.multiplicity")
-        if field["type"] not in _FIELD_TYPES:
-            raise DocIRDraftError(f"{field_label}.type uses an unsupported DocIR wire value")
-        if field["required"] not in _REQUIRED_VALUES:
-            raise DocIRDraftError(f"{field_label}.required uses an unsupported DocIR wire value")
-        if (
-            not field["multiplicity"] or not field["type"] or not field["required"]
-        ) and UNKNOWN_REVIEW_MARKER not in field["review"]:
-            raise DocIRDraftError(
-                f"{field_label}.review must contain {UNKNOWN_REVIEW_MARKER} when a wire value is empty"
-            )
         fields.append(field)
     return fields
+
+
+def _validated_field(item: Any, *, root_index: str, label: str) -> dict[str, str]:
+    row = _require_object(item, label=label)
+    _require_exact_properties(row, _FIELD_PROPERTIES, label=label)
+    field = {
+        name: _require_string(row.get(name), label=f"{label}.{name}")
+        for name in _FIELD_PROPERTIES
+    }
+    _validate_index(field["index"], root_index=root_index, label=f"{label}.index")
+    if not _ITEM_PATTERN.fullmatch(field["item"]):
+        raise DocIRDraftError(f"{label}.item must be a plain XML item name")
+    _validate_multiplicity(field["multiplicity"], label=f"{label}.multiplicity")
+    if field["type"] not in _FIELD_TYPES:
+        raise DocIRDraftError(f"{label}.type uses an unsupported DocIR wire value")
+    if field["required"] not in _REQUIRED_VALUES:
+        raise DocIRDraftError(f"{label}.required uses an unsupported DocIR wire value")
+    if (
+        not field["multiplicity"] or not field["type"] or not field["required"]
+    ) and UNKNOWN_REVIEW_MARKER not in field["review"]:
+        raise DocIRDraftError(
+            f"{label}.review must contain {UNKNOWN_REVIEW_MARKER} when a wire value is empty"
+        )
+    return field
+
+
+def _validated_outline_section(
+    segment: dict[str, Any],
+    section_name: str,
+    *,
+    root_index: str,
+) -> dict[str, Any]:
+    section = _require_object(
+        segment.get(section_name),
+        label=f"DocIR messages-outline {section_name}",
+    )
+    _require_exact_properties(
+        section,
+        {"metadata", "fields", "conditions"},
+        label=f"DocIR messages-outline {section_name}",
+    )
+    return {
+        "metadata": _validated_metadata(section.get("metadata"), section_name=section_name),
+        "conditions": _require_string_array(
+            section.get("conditions"),
+            label=f"DocIR messages-outline {section_name}.conditions",
+        ),
+        "fields": _validated_field_outline(
+            section.get("fields"),
+            root_index=root_index,
+            label=f"DocIR messages-outline {section_name}.fields",
+        ),
+    }
+
+
+def _validated_field_outline(
+    value: Any,
+    *,
+    root_index: str,
+    label: str,
+) -> list[dict[str, str]]:
+    if not isinstance(value, list) or not value:
+        raise DocIRDraftError(f"{label} must be a non-empty array")
+    outline: list[dict[str, str]] = []
+    seen_indexes: set[str] = set()
+    previous_index_key: tuple[int, ...] | None = None
+    for position, item in enumerate(value):
+        field_label = f"{label}[{position}]"
+        row = _require_object(item, label=field_label)
+        _require_exact_properties(row, {"index", "item"}, label=field_label)
+        index = _require_string(row.get("index"), label=f"{field_label}.index")
+        item_name = _require_string(
+            row.get("item"), label=f"{field_label}.item", allow_empty=False
+        )
+        _validate_index(index, root_index=root_index, label=f"{field_label}.index")
+        index_key = _index_key(index)
+        if previous_index_key is not None and index_key <= previous_index_key:
+            raise DocIRDraftError(f"{field_label}.index order is invalid: {index}")
+        previous_index_key = index_key
+        if index in seen_indexes:
+            raise DocIRDraftError(f"{field_label}.index is duplicated: {index}")
+        if position == 0 and index != root_index:
+            raise DocIRDraftError(f"{label} root index must be {root_index}")
+        if index != root_index:
+            parent = index.rsplit(".", 1)[0]
+            if parent not in seen_indexes:
+                raise DocIRDraftError(f"{field_label} parent index must appear before {index}")
+        if not _ITEM_PATTERN.fullmatch(item_name):
+            raise DocIRDraftError(f"{field_label}.item must be a plain XML item name")
+        seen_indexes.add(index)
+        outline.append({"index": index, "item": item_name})
+    return outline
 
 
 def _validate_rendered_field_rows(

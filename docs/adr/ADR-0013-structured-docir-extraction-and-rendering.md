@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted. Amends ADR-0012's direct model-to-Markdown DocIR generation mechanism.
+Accepted. Amends ADR-0012's direct model-to-Markdown DocIR generation mechanism. Its single-response extraction mechanism is amended by ADR-0014.
 
 ## Date
 
@@ -109,3 +109,4 @@ Why not chosen:
 - `docir-010` 的完整流返回了 `artifact`，但缺少顶层 `reviewNotes`；继续要求模型重复表达 extraction 内已有的 Review 信息只增加失败面。
 - `draft-prompt/v7` 删除 DocIR 专属外层 envelope，直接校验 extraction 根对象，并由代码确定性生成 Review Notes；公开 `draft-provider-response/v1` 不变。
 - `docir-011` 验证了直接 extraction 根消除了 envelope 歧义，但模型在 `finish_reason=stop` 下只返回到不完整的 `assembly` 并缺少 `parse`。通用机械门禁按设计拒绝该响应并保存完整诊断；该结果不授权增加 Golden evaluator，也不自动触发下一次付费调用。
+- ADR-0014 基于该结果采用完整 Interface/Envelope、联合 messages outline 与有界字段详情分段；`docir-extraction/v1`、确定性 renderer、公开 response 和 Human Review 语义保持不变。

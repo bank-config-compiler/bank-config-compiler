@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted. Amends ADR-0003's P0-T4 fixture-only provider boundary. The direct DocIR Markdown generation mechanism is amended by ADR-0013.
+Accepted. Amends ADR-0003's P0-T4 fixture-only provider boundary. The direct DocIR Markdown generation mechanism is amended by ADR-0013; provider attempt evidence and DocIR call orchestration are further amended by ADR-0014.
 
 ## Date
 
@@ -32,6 +32,7 @@ Phase0 需要验证真实 LLM 到双方向 Workbook 的完整链路。用户确�
 - DocIR prompt contract 必须投影冻结的 Markdown wire 与来源分区规则，但不得读取 Golden 或硬编码银行样例事实。`draft-prompt/v4` 要求 Source Context、固定 Metadata/Fields 表头与值域、跨章节 1/2/3 Index、U+3000 层级 Message Item、Conditions、未知值留空 Review，以及不同交易代码示例不得投影目标交易字段；DocIR 最小结构门禁仍不升级为第四个 trusted-chain Validator。
 - ADR-0013 后续将上述“模型直接投影 Markdown”机制修订为内部 `docir-extraction/v1` 严格结构化提取与确定性 Markdown renderer；`draft-provider-response/v1` 和 Human Review gate 不变。
 - 开发验证期间，由本项目 provider 自身产生的流、JSON、extraction 门禁错误保留具体校验原因并由 CLI 输出；SDK 或任意第三方异常仍只暴露异常类型。失败摘要不记录 API key、endpoint 原文或 raw-doc，响应文件允许保存实际模型输出以便复盘；该诊断不改变失败不发布部分 Draft 和显式新 attempt ID 重试的边界。
+- ADR-0014 后续将单调用 evidence v1 升级为记录有序 subcall 的 attempt v2，并把 DocIR 单响应 extraction 修订为原子、顺序、fail-fast 的有界分段调用；本节保留的是实施历史。
 
 ## Alternatives Considered
 

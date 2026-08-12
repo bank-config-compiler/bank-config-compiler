@@ -17,7 +17,9 @@ from bank_config_compiler.draft_generation import (
     DraftGenerationRequest,
     DraftProviderDiagnosticError,
     ProviderCallMetadata,
+    ProviderFailureCallEvidence,
     ProviderFailureEvidence,
+    ProviderSubcallMetadata,
 )
 
 
@@ -244,6 +246,7 @@ def test_main_loads_allowlisted_llm_configuration_from_cwd_dotenv(
         "model": "qwen-test-snapshot",
         "attempt_id": "docir-001",
         "timeout_seconds": 45.5,
+        "docir_field_batch_size": 16,
     }
     assert "UNRELATED_SETTING" not in os.environ
 
@@ -287,12 +290,14 @@ def test_openai_chat_cli_configuration_is_forwarded_without_secret_defaults(
     monkeypatch.setenv("BANK_CONFIG_COMPILER_LLM_TIMEOUT_SECONDS", "10")
     monkeypatch.setattr(cli, "OpenAIChatDraftProvider", provider_factory)
     args = SimpleNamespace(
+        draft_kind="docir",
         provider="openai-chat",
         fixture_root=None,
         chat_base_url="https://example.invalid/v1",
         chat_model="qwen-test-snapshot",
         chat_timeout_seconds=45.5,
         attempt_id="docir-001",
+        docir_field_batch_size=8,
     )
 
     cli._draft_provider(args)
@@ -303,7 +308,60 @@ def test_openai_chat_cli_configuration_is_forwarded_without_secret_defaults(
         "model": "qwen-test-snapshot",
         "attempt_id": "docir-001",
         "timeout_seconds": 45.5,
+        "docir_field_batch_size": 8,
     }
+
+
+def test_docir_batch_size_must_be_positive() -> None:
+    with pytest.raises(SystemExit):
+        cli.build_parser().parse_args(
+            [
+                "generate-draft",
+                "docir",
+                "--workspace",
+                "workspace",
+                "--provider",
+                "openai-chat",
+                "--docir-field-batch-size",
+                "0",
+            ]
+        )
+
+
+def test_docir_batch_size_is_not_available_to_other_artifacts() -> None:
+    with pytest.raises(SystemExit):
+        cli.build_parser().parse_args(
+            [
+                "generate-draft",
+                "schemair",
+                "--workspace",
+                "workspace",
+                "--provider",
+                "openai-chat",
+                "--docir-field-batch-size",
+                "8",
+            ]
+        )
+
+
+def test_fixture_provider_rejects_explicit_docir_batch_size(tmp_path: Path) -> None:
+    workspace, fixture_root = prepare_docir_case(tmp_path)
+
+    result = run_cli(
+        "generate-draft",
+        "docir",
+        "--workspace",
+        str(workspace),
+        "--provider",
+        "fixture",
+        "--fixture-root",
+        str(fixture_root),
+        "--docir-field-batch-size",
+        "8",
+    )
+
+    assert result.returncode == 2
+    assert "fixture provider does not accept chat configuration" in result.stderr
 
 
 def test_dotenv_example_lists_only_supported_llm_configuration() -> None:
@@ -344,6 +402,12 @@ def test_generate_docir_failure_publishes_partial_provider_evidence(
     (workspace / "raw-doc.md").write_text(
         "# Raw bank document\n", encoding="utf-8", newline=""
     )
+    completed_responses = (
+        '{"contractVersion":"docir-interface-envelope-segment/v1"}',
+        '{"contractVersion":"docir-messages-outline-segment/v1"}',
+    )
+    partial_response = '{"contractVersion":"docir-field-details-segment/v1"'
+    partial_hash = "sha256:" + hashlib.sha256(partial_response.encode()).hexdigest()
 
     class FailingProvider:
         name = "openai-chat"
@@ -351,6 +415,52 @@ def test_generate_docir_failure_publishes_partial_provider_evidence(
         model = "qwen-test-snapshot"
 
         def generate(self, request, context):
+            completed_calls = tuple(
+                ProviderSubcallMetadata(
+                    segment=segment,
+                    outcome="succeeded",
+                    response_complete=True,
+                    response_content_hash=(
+                        "sha256:" + hashlib.sha256(response.encode()).hexdigest()
+                    ),
+                    requested_model=self.model,
+                    response_model=self.model,
+                    response_id=f"chatcmpl-{sequence}",
+                    started_at=f"2026-08-11T10:00:0{sequence}+08:00",
+                    completed_at=f"2026-08-11T10:00:0{sequence + 1}+08:00",
+                    finish_reason="stop",
+                    prompt_contract_version="draft-prompt/v8",
+                    segment_contract_version=contract,
+                )
+                for sequence, (segment, contract, response) in enumerate(
+                    (
+                        (
+                            "interface-envelope",
+                            "docir-interface-envelope-segment/v1",
+                            completed_responses[0],
+                        ),
+                        (
+                            "messages-outline",
+                            "docir-messages-outline-segment/v1",
+                            completed_responses[1],
+                        ),
+                    ),
+                    start=1,
+                )
+            )
+            failed_call = ProviderSubcallMetadata(
+                segment="assembly-fields-001",
+                outcome="failed",
+                response_complete=False,
+                response_content_hash=partial_hash,
+                requested_model=self.model,
+                response_model=self.model,
+                response_id="chatcmpl-test",
+                started_at="2026-08-11T10:00:00+08:00",
+                completed_at="2026-08-11T10:01:00+08:00",
+                prompt_contract_version="draft-prompt/v8",
+                segment_contract_version="docir-field-details-segment/v1",
+            )
             raise DraftProviderDiagnosticError(
                 "chat stream failed: TimeoutError",
                 evidence=ProviderFailureEvidence(
@@ -364,14 +474,26 @@ def test_generate_docir_failure_publishes_partial_provider_evidence(
                         started_at="2026-08-11T10:00:00+08:00",
                         completed_at="2026-08-11T10:01:00+08:00",
                         endpoint_fingerprint="sha256:" + "a" * 64,
-                        prompt_contract_version="draft-prompt/v7",
+                        prompt_contract_version="draft-prompt/v8",
+                        calls=completed_calls + (failed_call,),
+                        docir_field_batch_size=16,
                     ),
                     failure_stage="stream",
                     failure_detail="chat stream failed: TimeoutError",
                     error_type="TimeoutError",
                     response_complete=False,
-                    response_text='{"contractVersion":"docir-extraction/v1"',
+                    response_text=partial_response,
                     finish_reason=None,
+                    calls=tuple(
+                        ProviderFailureCallEvidence(call, response)
+                        for call, response in zip(
+                            completed_calls,
+                            completed_responses,
+                            strict=True,
+                        )
+                    )
+                    + (ProviderFailureCallEvidence(failed_call, partial_response),),
+                    failed_segment="assembly-fields-001",
                 ),
             )
 
@@ -387,13 +509,17 @@ def test_generate_docir_failure_publishes_partial_provider_evidence(
         cli._generate_draft(args)
 
     summary_path = workspace / "docir-provider-failure-result.json"
-    response_path = workspace / "docir-provider-failure-response.txt"
+    response_path = (
+        workspace
+        / "docir-provider-failure-response-003-assembly-fields-001.txt"
+    )
     summary = json.loads(summary_path.read_text(encoding="utf-8"))
-    assert summary["contractVersion"] == "draft-provider-failure-result/v1"
+    assert summary["contractVersion"] == "draft-provider-failure-result/v2"
     assert summary["artifactKind"] == "docir"
     assert summary["attemptId"] == "docir-011"
     assert summary["failureStage"] == "stream"
     assert summary["failureDetail"] == "chat stream failed: TimeoutError"
+    assert summary["failedSegment"] == "assembly-fields-001"
     assert summary["responseComplete"] is False
     assert summary["responseContentHash"].startswith("sha256:")
     assert summary["endpointFingerprint"] == "sha256:" + "a" * 64
@@ -401,13 +527,30 @@ def test_generate_docir_failure_publishes_partial_provider_evidence(
     assert "test-key" not in serialized_summary
     assert "https://" not in serialized_summary
     assert "Raw bank document" not in serialized_summary
-    assert response_path.read_text(encoding="utf-8") == (
-        '{"contractVersion":"docir-extraction/v1"'
-    )
+    assert [call["sequence"] for call in summary["calls"]] == [1, 2, 3]
+    assert [call["segment"] for call in summary["calls"]] == [
+        "interface-envelope",
+        "messages-outline",
+        "assembly-fields-001",
+    ]
+    assert [call["outcome"] for call in summary["calls"]] == [
+        "succeeded",
+        "succeeded",
+        "failed",
+    ]
+    assert response_path.read_text(encoding="utf-8") == partial_response
     assert not (workspace / "docir-draft.md").exists()
     assert not (workspace / "docir-review-notes.md").exists()
     assert not (workspace / "docir-provider-call-result.json").exists()
-    assert set(caught.value.failure_evidence_paths) == {summary_path, response_path}
+    expected_response_paths = {
+        workspace / "docir-provider-failure-response-001-interface-envelope.txt",
+        workspace / "docir-provider-failure-response-002-messages-outline.txt",
+        response_path,
+    }
+    assert set(caught.value.failure_evidence_paths) == {
+        summary_path,
+        *expected_response_paths,
+    }
     assert summary["responseContentHash"] in cli._safe_error(caught.value)
 
 
@@ -464,7 +607,7 @@ def test_generate_docir_request_failure_does_not_create_empty_response_file(
     summary = json.loads(summary_path.read_text(encoding="utf-8"))
     assert summary["failureStage"] == "request"
     assert summary["responseContentHash"] is None
-    assert not (workspace / "docir-provider-failure-response.txt").exists()
+    assert not list(workspace.glob("docir-provider-failure-response-*.txt"))
     assert caught.value.failure_evidence_paths == (summary_path,)
     assert str(summary_path) in cli._safe_error(caught.value)
 
@@ -502,7 +645,9 @@ def test_overwriting_request_failure_removes_stale_response_evidence(tmp_path: P
         )
 
     cli.publish_provider_failure(workspace, diagnostic("partial response"))
-    response_path = workspace / "docir-provider-failure-response.txt"
+    response_path = (
+        workspace / "docir-provider-failure-response-001-complete-artifact.txt"
+    )
     assert response_path.is_file()
 
     cli.publish_provider_failure(workspace, diagnostic(None), overwrite=True)
