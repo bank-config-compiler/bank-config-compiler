@@ -73,3 +73,8 @@ ADR-0013 将 DocIR 从模型直出 Markdown 改为严格结构化提取与确定
 - 对 CLI config → provider constructor → OpenAI/httpx timeout → stream create/iterate → exception translation → v2 evidence 的离线逆向确认：scalar SDK timeout 被配置为逐次 connect/read/write/pool I/O 上限，不是物理 subcall 从 create 到流结束的绝对墙钟期限。持续到达但不产生可接受内容的分块可以避开 read-idle timeout；这是 `docir-017` 长时间无完成门禁的本地控制缺口。
 - 现复用同一个 timeout 作为单个物理 subcall 的绝对期限。watchdog 从 stream create 前启动；create 尚未返回时关闭 client，stream 已建立时关闭 stream。期限触发统一转译为 `ProviderCallDeadlineExceeded`，elapsed、已解析 chunk count 与 content chunk count 只进入失败详情和结构化日志；公开 provider contract 与 v2 evidence shape 不变。
 - 离线 fake client 覆盖 create 阻塞、持续非内容分块、提前 SDK `ReadTimeout` 与期限内正常完成。该实现不增加 retry/resume，不修改 prompt、Validator 或 Human Review 门禁，也不授权真实 provider 调用；下一 attempt 必须使用新 ID 从第一段开始。
+- Commit 8A4（`25e03ce`）已实现并验证上述物理绝对期限；231 项 warnings-as-errors pytest、build、docs-sync、diff/BOM/secret 检查均通过。
+- `docir-018` 使用新 attempt ID 从第一段开始，但在请求阶段约 5 秒内以 `APIConnectionError` 停止，无 response body、usage 或 Draft。随后针对同一 endpoint 的独立 TLS/HTTP 诊断均能完成握手并收到 HTTP 响应，因此 evidence 只支持“该 attempt 遭遇瞬时 transport failure”，不支持把它归因为持久配置错误、Prompt、Validator 或绝对期限实现。
+- `docir-019` 再次从第一段开始：Interface/Envelope 与联合 messages outline 均通过机械门禁；首个 ASSEMBLY detail 也以正常 `finish_reason=stop`、完整 usage 和完整 JSON 结束。三个物理调用共使用 36,372 tokens。
+- 第三个 subcall 的 16 行中有 4 行在 `multiplicity` 为空时没有包含精确固定 Review 标记 `原文未说明，待人工确认`，因此 segment Validator fail-fast，未执行后续 subcall，也未发布 Draft。v12 detail prompt 已包含逐行后置检查；只读复核确认这是模型未遵守现有合同，不是 prompt 路由遗漏或 Validator false positive。
+- `docir-019` 证明有界分段可以产生连续的基本可用内容，同时也暴露出严格局部 invariant 的模型方差与全量重跑成本。是否允许把完整失败响应和聚合校验问题交给一次修正调用，属于 ADR-0015 的 Proposed 设计讨论；在其被接受并实现前，本 ADR 的无自动 retry/resume、失败 attempt 全量重跑决定继续生效。
