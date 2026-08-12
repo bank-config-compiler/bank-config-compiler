@@ -231,9 +231,14 @@ CONFIGURATION_WORKBOOK_GENERATED
 
 ```text
 workspace/{taskId}/
+├── task.json
 ├── raw-doc.md
+├── provider-attempts/{artifactKind}/{attemptId}/...
 ├── docir-draft.md
 ├── docir-review-notes.md
+├── docir-generation-result.json
+├── docir-validation-result.json
+├── docir-approval-result.json
 ├── docir-final.md
 ├── schemair-draft.json
 ├── schemair-review-notes.md
@@ -252,7 +257,7 @@ workspace/{taskId}/
     └── configuration-workbook.xlsx
 ```
 
-根级 SchemaIR artifact、library JSON I/O、通用 workspace selector/path contract 与完整 `phase0` CLI profile 均已实现。`phase0` 不扫描目录或自动选择最新版，只接受显式 direction/version/template selector，并分别加载 Standard 与 Template 实际引用的规则包。Draft 与 validation result 分别使用同目录临时文件原子替换；普通文件系统不提供跨文件事务，任何中断后的缺失或 canonical hash 不匹配都必须阻止下游。
+`task.json` 是 workspace 的身份锚点；provider attempt 保存外部调用证据，generation result 保存初始 Draft 血缘，validation/review notes 绑定当前 Human-editable Draft，approval result 绑定准确获批 hash。`phase0` 不扫描目录或自动选择最新版，只接受显式 selector，并分别加载 Standard 与 Template 实际引用的规则包。普通文件系统不提供跨文件事务，任何中断后的缺失或 hash 不匹配都必须阻止下游。
 
 ## 6. 分阶段交付
 

@@ -19,7 +19,7 @@ Draft.
 | Phase2-Pilot | 在受控真实场景中试点，验证实施提效、配置质量和运维边界。 | `docs/phases/02-phase2-pilot.md` |
 | Phase3-Production | 暂不定义目标和需求。 | `docs/phases/03-phase3-production.md` |
 
-Phase0-PoC 的完成门槛包括一条真实 LLM 证据链：调用用户批准、采用 OpenAI-compatible Chat API 的 provider，依次生成四类 Draft；每层 Draft 必须经过适用 Validator 和独立 Human Review 后形成 Final，再基于双方向 Final trusted chain 生成并验证 Configuration Workbook。deterministic fixture 仅是回归基线，不能替代该真实调用。
+Phase0-PoC 的完成门槛包括一条真实 LLM 证据链：调用用户批准、采用 OpenAI-compatible Chat API 的 provider，依次生成 DocIR、SchemaIR、双方向 Standard 和双方向 Template 共六份 Draft；可物化但校验失败的内容允许作为明确的 Invalid Draft 发布，每层必须重新通过适用 Validator 和独立 Human Review 后形成 Final，再基于双方向 Final trusted chain 生成并验证 Configuration Workbook。deterministic fixture 仅是回归基线，不能替代该真实调用。
 
 ## 2. 核心产物与术语
 
