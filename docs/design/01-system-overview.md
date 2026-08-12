@@ -102,9 +102,9 @@ Configuration Workbook 是派生交付物，不是事实源，也不是可导入
 - 从 Final SchemaIR 与指定规则版本生成 InterfaceStandardIR Draft。
 - 从 Final InterfaceStandardIR、方向性 FIELD catalog 与指定规则版本生成 InterfaceTemplateIR Draft。
 
-Phase0 中四类 generator 通过同一个 `DraftProvider` contract 调用。编排层显式传入 request 与只包含当前上游内容、media type 和适用 RELEASED 规则包的 `DraftGenerationContext`；provider 不读取 workspace、不扫描 Final/Golden，也不选择规则版本。provider 返回严格 UTF-8 的 `draft-provider-response/v1` JSON envelope 和非敏感调用 metadata；编排层负责 input hash/rule version 一致性、严格解析、dependency 校验、Validator 调用和 workspace 发布。deterministic fixture provider 只加载调用者显式指定的 `draft-stub-case/v1`。真实 `openai-chat` provider 使用运行时显式选择的 OpenAI-compatible Chat API，只把外部响应转换为同一公开 envelope，不能改变核心 trusted-chain 语义或自动产生 Final。SchemaIR/Standard/Template 各执行一个 `complete-artifact` 调用；DocIR 在一个 attempt 内依次提取完整 Interface/Envelope、联合 ASSEMBLY/PARSE messages outline 和有界字段详情，最终合并成内部 `docir-extraction/v1`，再由确定性 renderer 生成现有 Markdown 和 Human Review Notes。segment、outline 与 extraction 都不持久化，不成为公开 IR 或下游事实源。
+Phase0 中四类 generator 通过同一个 `DraftProvider` contract 调用。编排层显式传入 request 与只包含当前上游内容、media type 和适用 RELEASED 规则包的 `DraftGenerationContext`；provider 不读取 workspace、不扫描 Final/Golden，也不选择规则版本。provider 返回严格 UTF-8 的 `draft-provider-response/v1` semantic candidate 和非敏感调用 metadata；编排层负责 input hash/rule version 一致性、严格解析、deterministic materialization、Validator 调用和 workspace 发布。deterministic fixture provider 只加载调用者显式指定的 `draft-stub-case/v1`。真实 `openai-chat` provider 使用运行时显式选择的 OpenAI-compatible Chat API，只把外部响应转换为同一公开 envelope，不能改变核心 trusted-chain 语义或自动产生 Final。SchemaIR/Standard/Template 各执行一个 `complete-artifact` 调用；DocIR 在一个 attempt 内依次提取完整 Interface/Envelope semantic tree、联合 ASSEMBLY/PARSE message tree 和按代码 selector 覆盖的有界语义详情，最终合并成内部 `docir-semantic-candidate/v1`。代码据有序树分配 index 并渲染固定 Markdown wire。candidate 只保存于 Git-ignored attempt evidence，不成为公开 IR 或下游事实源。
 
-真实 provider 只读取四个白名单配置：`BANK_CONFIG_COMPILER_LLM_API_KEY`、`BANK_CONFIG_COMPILER_LLM_BASE_URL`、`BANK_CONFIG_COMPILER_LLM_MODEL` 和 `BANK_CONFIG_COMPILER_LLM_TIMEOUT_SECONDS`。它们可来自启动目录中被 Git 忽略的 `.env` 或进程环境，进程环境优先；base URL、model、timeout 可再由 CLI 覆盖。API key 不提供 CLI 参数，attempt ID 始终按调用显式传入。Chat API 固定使用流式响应并在内存中聚合；每个 subcall 只有收到 `finish_reason=stop`、最终 usage 且完整 JSON 通过 segment 校验才可进入下一步。同一个 timeout 同时配置 SDK 逐次 I/O timeout 与从 stream create 到聚合完成的物理 subcall 绝对墙钟期限；后者触发时关闭当前资源并以稳定错误类型 fail closed。DocIR field detail 默认每批最多 16 个字段，可通过仅适用于 DocIR `openai-chat` 的正整数 CLI 参数覆盖；联合 outline 的 `{index,item}` selector 必须准确覆盖并保持顺序，最终合并再次执行完整 extraction 与 renderer 机械校验。开发验证期间，本项目 provider 门禁的具体校验原因会进入 CLI 和结构化日志，deadline 额外记录非敏感 elapsed/chunk count，SDK/第三方异常仍只记录类型。SDK 自动重试固定为 0；attempt 顺序 fail-fast，不 resume，所有重跑都必须由操作者以新 attempt ID 从第一段发起。成功调用增加 `draft-provider-call-result/v2`；DocIR 失败则由编排层保存 `draft-provider-failure-result/v2`，并把已有内容的 subcall 响应按 sequence/segment 分文件保存。v2 摘要记录有序 calls、provider/model/response ID、token usage、时间、Prompt/segment contract 与 endpoint fingerprint，不记录 secret、endpoint 原文或 source；失败文件不是 trusted-chain artifact。
+真实 provider 只读取四个白名单配置：`BANK_CONFIG_COMPILER_LLM_API_KEY`、`BANK_CONFIG_COMPILER_LLM_BASE_URL`、`BANK_CONFIG_COMPILER_LLM_MODEL` 和 `BANK_CONFIG_COMPILER_LLM_TIMEOUT_SECONDS`。它们可来自启动目录中被 Git 忽略的 `.env` 或进程环境，进程环境优先；base URL、model、timeout 可再由 CLI 覆盖。API key 不提供 CLI 参数，attempt ID 始终按调用显式传入且在 workspace 内不可复用。Chat API 固定使用流式响应并在内存中聚合；每个 subcall 只有收到 `finish_reason=stop`、最终 usage 且完整 JSON 通过 segment 校验才可进入下一步。同一个 timeout 同时配置 SDK 逐次 I/O timeout 与从 stream create 到聚合完成的物理 subcall 绝对墙钟期限；后者触发时关闭当前资源并以稳定错误类型 fail closed。DocIR semantic detail 默认每批最多 16 个字段；message tree 不携带 index/path，编排层按前序遍历分配 selector，detail 必须准确覆盖这些 selector。开发验证期间，本项目 provider 门禁的具体校验原因会进入 CLI 和结构化日志，deadline 额外记录非敏感 elapsed/chunk count，SDK/第三方异常仍只记录类型。SDK 自动重试固定为 0；attempt 顺序 fail-fast，不 resume，所有重跑都必须由操作者以新 attempt ID 从第一段发起。成功/失败 v2 摘要、response、candidate 和初始生成快照保存于 `provider-attempts/{artifactKind}/{attemptId}/`；摘要不记录 secret、endpoint 原文或 source，原始内容是临时 evidence，不是 trusted-chain artifact。
 
 约束：
 
@@ -117,6 +117,8 @@ Phase0 中四类 generator 通过同一个 `DraftProvider` contract 调用。编
 - Provider response、原始银行文档、Draft 内容、review notes 和敏感固定值不得进入日志。
 
 ### 2.3 Validators
+
+DocIR Markdown Validator 聚合固定章节、表格 wire、index/缩进、语义空值 Review marker 和锁定 interface identity 的 issues，并绑定当前准确 UTF-8 bytes hash。它不判断 raw-doc 是否漏抽字段或业务语义是否正确。
 
 SchemaIR Validator 负责 SchemaIR 结构、枚举、完整 path、父子关系和确定性 invariant。
 
@@ -149,6 +151,8 @@ Template Validator 负责：
 - 已确认 omission 与 `EMPTY` 保持不同语义。
 
 Validator 不判断某个 function、mapping、目的系统业务 Condition 或字段省略是否符合业务语义；该判断必须由人工 Review 完成。
+
+`validate-draft` 只校验当前 Human working Draft，并原子替换与该 hash 匹配的 validation result 和 review notes；JSON 路径还会重新绑定 generation source hash、locked selectors 和当前上游 Final。`approve-draft` 要求具名 reviewer、非空 note、零 ERROR、当前匹配 hash 和 Final Validator；非交互模式必须传入 expected hash，交互模式展示 task/interface/artifact 身份、Validator 摘要和完整 hash。发布前锁定并重新读取 Draft 与上游 Final 的准确 bytes，防止 TOCTOU。DocIR Final 与获批 Markdown byte-identical；JSON Final 只在获批 Draft 上增加确定性的 lifecycle/review metadata，并由 approval result 记录 `approvedDraftHash → finalHash`。
 
 ### 2.4 Review Workbench
 
@@ -242,17 +246,23 @@ workspace/{taskId}/
 ├── docir-final.md
 ├── schemair-draft.json
 ├── schemair-review-notes.md
+├── schemair-generation-result.json
 ├── schemair-validation-result.json
+├── schemair-approval-result.json
 ├── schemair-final.json
 ├── standards/{direction}/{standardVersion}/
 │   ├── standard-draft.json
 │   ├── standard-review-notes.md
+│   ├── standard-generation-result.json
 │   ├── standard-validation-result.json
+│   ├── standard-approval-result.json
 │   └── standard-final.json
 └── templates/{direction}/{templateId}/{templateVersion}/
     ├── template-draft.json
     ├── template-review-notes.md
+    ├── template-generation-result.json
     ├── template-validation-result.json
+    ├── template-approval-result.json
     ├── template-final.json
     └── configuration-workbook.xlsx
 ```
@@ -261,7 +271,7 @@ workspace/{taskId}/
 
 ## 6. 分阶段交付
 
-- Phase0-PoC：文件 workspace、受控 fixture、真实 OpenAI-compatible Chat API Draft 验证、三个 Validator、逐层 Human Review、确定性 Workbook Generator 和结构化 golden regression。
+- Phase0-PoC：文件 workspace、受控 fixture、真实 OpenAI-compatible Chat API Draft 验证、DocIR Markdown Validator 与三个 JSON IR Validator、逐层 Human Review、确定性 Workbook Generator 和结构化 golden regression。
 - Phase1-MVP：增加四类 IR Review、omission Review 与工作簿预览/下载。
 - Phase2-Pilot：验证标准复用、模板接受率、omission 质量、规则版本影响和人工返工量。
 - Phase3-Production：暂不定义。

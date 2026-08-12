@@ -41,7 +41,7 @@ Draft. P0-T2 expected DocIR / SchemaIR remains a historical Review baseline; the
 
 DocIR 主表不展示完整 `Path`，避免人工 review 时被长路径淹没。完整 path 由 SchemaIR 表达；DocIR 必须通过 `Index`、`Message Item` 缩进和 review 信息保留足够层级线索。`Index` 不是展示行号，不能用连续行号跨越层级；例如 `2.3.4` 的子节点应编号为 `2.3.4.1`，而不是后续行号 `2.17`。DocIR 不负责把复杂条件转换为 DSL。
 
-真实 provider 的模型响应不直接承载本表 Markdown。内部 `docir-extraction/v1` 保存未排版的 `index` 与 plain XML `item`，renderer 按 Index 层级确定性添加 U+3000、代码标记和固定列；代码再按稳定 section/index 位置聚合非空 `reviewNote` 与 `review`。extraction 本身不持久化，也不改变本页定义的 DocIR wire。
+真实 provider 的模型响应不直接承载本表 Markdown。内部 `docir-semantic-candidate/v1` 保存有序 XML element/attribute 树和语义属性，不保存由模型选择的 index/path/level；代码按固定 section root 与当前父子/兄弟顺序分配 Index，再确定性添加 U+3000、代码标记和固定列。candidate 只存在于临时 attempt evidence，不改变本页定义的公开 DocIR wire，也不能作为 SchemaIR 输入。
 
 Draft 无法从原文直接确认 `Mult.`、`Type` 或 `Required` 时，对应单元格留空，并在 `Review` 标记“原文未说明，待人工确认”。空值表示待 Review，不是默认 `N`、`String` 或 `[0..1]`。
 

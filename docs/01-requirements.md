@@ -61,7 +61,7 @@ Configuration Workbook 不是事实源，不反向更新任何 IR。人工填写
 - Phase0 的真实 LLM 验证必须保持 provider-neutral 核心边界；provider/model 由运行时显式选择，API secret 不得写入 artifact、日志或版本库。
 - Draft 未经对应 Validator（适用时）和人工 Review，不得成为 Final 产物。
 - 三类 IR 使用显式 stable ID、不可变 artifact version、`DRAFT | FINAL` 状态和 `PENDING | APPROVED` Review。任何 `uncertain=true`、`UNKNOWN`、未决差异、未决 omission 或 blocking Warning 都阻止 Final eligibility。
-- Human 先完成完整 Final candidate 和 Review metadata，再运行 Validator。Validation result 使用 canonical UTF-8 JSON SHA-256 绑定包括 Review 在内的全部语义内容；空白和属性顺序不影响 hash，任何语义值变化都使旧结果失效。
+- Human 在工作 Draft 中修正语义和树结构，再运行 Validator。Approval 必须绑定零 ERROR 的当前准确 Draft hash；DocIR Final 与获批 Markdown byte-identical，JSON Final 只由代码增加确定性的 lifecycle/review metadata。Validation result 对 JSON 使用 canonical UTF-8 SHA-256、对 DocIR 使用准确 bytes SHA-256，任何内容变化都使旧结果失效。
 - 接口标准必须在接口模板之前形成 Final；新增模板直接复用已确认的标准，不重新生成标准。
 - Validator 只校验结构、引用和确定性 invariant，不能代替人工判断 function、mapping 或场景性字段省略是否符合业务语义。
 - Workbook Generator 只做确定性格式化和配置指导，不补业务字段、不临时推断配置逻辑、不对接目标系统、不承诺导入兼容性。
@@ -209,59 +209,40 @@ InterfaceStandardIR 与 InterfaceTemplateIR 的权威目标系统规则来源位
 
 ```mermaid
 flowchart TD
-    A["Raw Docs"] --> B["LLM 生成 DocIR Draft"]
-    B --> C["人工 Review DocIR"]
-    C -->|"修正后重新 Review"| B
-    C -->|"确认"| D["Final DocIR"]
+    A["Raw Docs"] --> D1["DocIR semantic candidate / materialize"]
+    D1 --> V1["validate 当前 DocIR Draft"]
+    V1 --> H1["Human 修改与审查"]
+    H1 -->|"内容变化"| V1
+    H1 --> A1["approve 准确 hash"]
+    A1 --> F1["Final DocIR"]
 
-    D --> E["LLM 生成 SchemaIR Draft"]
-    E --> F["SchemaIR Validator / Draft Result"]
-    F -->|"结构错误：修正后重新校验"| E
-    F --> G["人工 Review SchemaIR"]
-    G -->|"修改事实"| E
-    G -->|"完成 Final metadata"| HC["完整 Final SchemaIR Candidate"]
-    HC --> FV["SchemaIR Validator 复验"]
-    FV -->|"失败：返回 Review"| G
-    FV -->|"通过且 hash 匹配"| SV["Final SchemaIR Validation Result"]
-    SV --> H["Eligible Final SchemaIR"]
+    F1 --> D2["SchemaIR candidate / materialize"]
+    D2 --> V2["validate 当前 SchemaIR Draft"]
+    V2 --> H2["Human 修改与审查"]
+    H2 -->|"内容变化"| V2
+    H2 --> A2["approve 准确 hash"]
+    A2 --> F2["Final SchemaIR"]
 
-    H --> I["LLM 生成 InterfaceStandardIR Draft"]
-    RS["Standard 使用的 configuration-rules 版本"] --> I
-    I --> J["Standard Validator / Draft Result"]
-    J -->|"结构错误：修正后重新校验"| I
-    J --> K["人工 Review Interface Standard"]
-    K -->|"修改事实"| I
-    K -->|"完成 Final metadata"| LC["完整 Final Standard Candidate"]
-    LC --> JV["Standard Validator 复验"]
-    JV -->|"失败：返回 Review"| K
-    JV -->|"通过且 hash 匹配"| STV["Final Standard Validation Result"]
-    STV --> L["Eligible Final InterfaceStandardIR"]
+    F2 --> D3["双方向 Standard candidate / materialize"]
+    RS["Standard 精确规则版本"] --> D3
+    D3 --> V3["分别 validate / Human Review / approve"]
+    V3 --> F3["双方向 Final Standard"]
 
-    L --> M["LLM 生成 InterfaceTemplateIR Draft"]
-    RT["Template 使用的 configuration-rules 版本"] --> M
-    M --> N["Template Validator / Draft Result"]
-    N -->|"结构错误：修正后重新校验"| M
-    N --> O["人工 Review Interface Template / Omissions"]
-    O -->|"修改事实"| M
-    O -->|"完成 Final metadata"| PC["完整 Final Template Candidate"]
-    PC --> NV["Template Validator 复验"]
-    NV -->|"失败：返回 Review"| O
-    NV -->|"通过且 hash 匹配"| TV["Final Template Validation Result"]
-    TV --> P["Eligible Final InterfaceTemplateIR"]
+    F3 --> D4["双方向 Template candidate / materialize"]
+    RT["Template 精确规则版本"] --> D4
+    D4 --> V4["分别 validate / Human Review / approve"]
+    V4 --> F4["双方向 Final Template"]
 
-    H --> Q["确定性 Workbook Generator"]
-    L --> Q
-    P --> Q
-    SV -->|"匹配 Final SchemaIR"| Q
-    STV -->|"匹配 Final Standard"| Q
-    TV -->|"匹配 Final Template"| Q
+    F2 --> Q["确定性 Workbook Generator"]
+    F3 --> Q
+    F4 --> Q
     RS -->|"Standard 精确规则版本"| Q
     RT -->|"Template 精确规则版本"| Q
     X["人工指定 Standard Action"] --> Q
     Q --> W["Configuration Workbook"]
 ```
 
-人工 Review 修改 Draft 后，必须先形成完整 Final candidate，再重新运行对应 Validator，旧校验结果不得复用。每份 validation result 保存 artifact kind、stable ID、artifact version、contract version、canonical content hash、`finalEligible` 和带 `blocking` 标记的 issues。Generator 只能接收三份 Final 模型、三份 identity/version/contract/hash 全部匹配且 `finalEligible=true` 的结果、各自产物记录的精确规则版本和显式 Standard Action。
+人工 Review 修改 Draft 后必须重新运行对应 Validator，旧校验结果不得复用。Approval 在锁定准确 bytes 后再次执行 Final Validator；DocIR 保持获批 bytes，JSON Final 记录确定性的 lifecycle/review metadata，并由 approval result 保存 Draft→Final hash 映射。Workbook Generator 只能接收三份 Final JSON 模型、三份 identity/version/contract/hash 全部匹配且 `finalEligible=true` 的结果、各自产物记录的精确规则版本和显式 Standard Action。
 
 ## 9. Configuration Workbook 成功标准
 

@@ -166,6 +166,25 @@ def model_field(index: str, item: str) -> dict[str, str]:
     }
 
 
+def model_tree_node(item: str, *, children: list[dict] | None = None) -> dict:
+    return {
+        "item": item,
+        "nodeKind": "XML_ATTRIBUTE" if item.startswith("@") else "XML_ELEMENT",
+        "children": children or [],
+    }
+
+
+def model_semantics(field: dict[str, str], *, selector: str) -> dict[str, str]:
+    return {
+        "selector": selector,
+        **{
+            key: value
+            for key, value in field.items()
+            if key not in {"index", "item"}
+        },
+    }
+
+
 def docir_model_artifact() -> dict:
     return {
         "contractVersion": "docir-extraction/v1",
@@ -233,40 +252,73 @@ def docir_segment_responses(
         ],
     ]
     interface_envelope = {
-        "contractVersion": "docir-interface-envelope-segment/v1",
+        "contractVersion": "docir-interface-envelope-tree-segment/v1",
         "interface": extraction["interface"],
         "sourceContext": extraction["sourceContext"],
-        "envelope": extraction["envelope"],
+        "envelope": {
+            "metadata": extraction["envelope"]["metadata"],
+            "nodes": [
+                {
+                    **model_tree_node(extraction["envelope"]["fields"][0]["item"]),
+                    **{
+                        key: value
+                        for key, value in extraction["envelope"]["fields"][0].items()
+                        if key not in {"index", "item"}
+                    },
+                }
+            ],
+        },
     }
     outline = {
-        "contractVersion": "docir-messages-outline-segment/v1",
+        "contractVersion": "docir-messages-tree-segment/v1",
         "assembly": {
             "metadata": extraction["assembly"]["metadata"],
             "conditions": extraction["assembly"]["conditions"],
-            "fields": [
-                {"index": row["index"], "item": row["item"]}
-                for row in extraction["assembly"]["fields"]
+            "nodes": [
+                model_tree_node(
+                    extraction["assembly"]["fields"][0]["item"],
+                    children=[
+                        model_tree_node(row["item"])
+                        for row in extraction["assembly"]["fields"][1:]
+                    ],
+                )
             ],
         },
         "parse": {
             "metadata": extraction["parse"]["metadata"],
             "conditions": extraction["parse"]["conditions"],
-            "fields": [
-                {"index": row["index"], "item": row["item"]}
-                for row in extraction["parse"]["fields"]
+            "nodes": [
+                model_tree_node(
+                    extraction["parse"]["fields"][0]["item"],
+                    children=[
+                        model_tree_node(row["item"])
+                        for row in extraction["parse"]["fields"][1:]
+                    ],
+                )
             ],
         },
     }
     responses = [interface_envelope, outline]
     for direction, section_name in (("ASSEMBLY", "assembly"), ("PARSE", "parse")):
         fields = extraction[section_name]["fields"]
-        for start in range(0, len(fields), batch_size):
+        semantics = [
+            model_semantics(
+                row,
+                selector=(
+                    f"{section_name}:1"
+                    if position == 0
+                    else f"{section_name}:1.{position}"
+                ),
+            )
+            for position, row in enumerate(fields)
+        ]
+        for start in range(0, len(semantics), batch_size):
             responses.append(
                 {
-                    "contractVersion": "docir-field-details-segment/v1",
+                    "contractVersion": "docir-field-semantics-segment/v1",
                     "direction": direction,
                     "batchIndex": start // batch_size + 1,
-                    "fields": fields[start : start + batch_size],
+                    "fields": semantics[start : start + batch_size],
                 }
             )
     return responses
@@ -323,7 +375,7 @@ def test_openai_chat_provider_segments_docir_with_default_bounded_batches() -> N
     assert result.metadata.total_tokens == 150
     for call in client.completions.calls:
         assert "# Raw bank document" in call["messages"][1]["content"]
-        assert "Prompt contract: draft-prompt/v12" in call["messages"][1]["content"]
+        assert "Prompt contract: draft-prompt/v13" in call["messages"][1]["content"]
     envelope = json.loads(result.response_text)
     assert envelope["contractVersion"] == "draft-provider-response/v1"
     assert "| 2.26 |" in envelope["artifactContent"]
@@ -358,7 +410,7 @@ def test_openai_chat_provider_respects_configured_docir_batch_size() -> None:
 
 def test_openai_chat_provider_fails_fast_after_invalid_field_segment() -> None:
     responses = docir_segment_responses(assembly_count=2, parse_count=2)
-    responses[2]["fields"][0]["item"] = "unexpected-root"
+    responses[2]["fields"][0]["selector"] = "assembly:unexpected-root"
     client = QueuedFakeClient(
         [chat_stream(json.dumps(response, ensure_ascii=False)) for response in responses]
     )
@@ -370,7 +422,7 @@ def test_openai_chat_provider_fails_fast_after_invalid_field_segment() -> None:
         client=client,
     )
 
-    with pytest.raises(DraftProviderDiagnosticError, match="target outline") as caught:
+    with pytest.raises(DraftProviderDiagnosticError, match="target selectors") as caught:
         provider.generate(
             DraftGenerationRequest(
                 task_id="phase0-test",
@@ -595,7 +647,7 @@ def test_openai_chat_provider_records_merge_failure_after_all_subcalls(
         raise DocIRDraftError("forced merge failure")
 
     monkeypatch.setattr(
-        "bank_config_compiler.openai_chat_provider.merge_docir_extraction_segments",
+        "bank_config_compiler.openai_chat_provider.merge_docir_semantic_segments",
         fail_merge,
     )
 
@@ -717,9 +769,9 @@ def test_docir_prompt_requests_structured_extraction_and_preserves_source_scope(
     system_prompt = messages[0]["content"]
     user_prompt = messages[1]["content"]
     normalized_system_prompt = " ".join(system_prompt.split())
-    assert "Prompt contract: draft-prompt/v12" in user_prompt
+    assert "Prompt contract: draft-prompt/v13" in user_prompt
     assert "Segment: interface-envelope" in user_prompt
-    assert "docir-interface-envelope-segment/v1" in system_prompt
+    assert "docir-interface-envelope-tree-segment/v1" in system_prompt
     assert "`contractVersion`, `interface`, `sourceContext`, `envelope`" in system_prompt
     assert "`sourceContext` is a non-empty JSON array of non-empty strings" in system_prompt
     assert "complete shared Envelope structure" in system_prompt
@@ -759,14 +811,20 @@ def test_docir_segment_prompts_keep_stage_responsibilities_separate() -> None:
     )
     outline_prompt = openai_chat_provider._DocIRSegmentPrompt(
         segment="messages-outline",
-        contract_version="docir-messages-outline-segment/v1",
+        contract_version="docir-messages-tree-segment/v1",
     )
     detail_prompt = openai_chat_provider._DocIRSegmentPrompt(
         segment="assembly-fields-001",
-        contract_version="docir-field-details-segment/v1",
+        contract_version="docir-field-semantics-segment/v1",
         direction="ASSEMBLY",
         batch_index=1,
-        target_outline=[{"index": "2", "item": "request-root"}],
+        target_outline=[
+            {
+                "selector": "assembly:1",
+                "item": "request-root",
+                "nodeKind": "XML_ELEMENT",
+            }
+        ],
     )
 
     interface_system = " ".join(build_chat_messages(request, context)[0]["content"].split())
@@ -790,41 +848,29 @@ def test_docir_segment_prompts_keep_stage_responsibilities_separate() -> None:
         "must not name or enumerate transaction-specific request or response fields"
         in interface_system
     )
-    assert "Envelope field indexes are rooted at `1`" in interface_system
-    assert r"^1(?:\.[1-9][0-9]*)*$" in interface_system
-    assert "Indexes contain digits and dots only" in interface_system
-    assert "never an XML item or attribute name" in interface_system
+    assert "Never return `index`, `selector`" in interface_system
+    assert "Child array order" in interface_system
     assert "Do not return `assembly`, `parse`, message metadata or conditions" in interface_system
-    assert "Full field rows have exactly" in interface_system
-    assert "Every Envelope field row must contain all ten properties" in interface_system
-    assert "check `multiplicity`, `type` and `required`" in interface_system
-    assert "If any of those three values is empty" in interface_system
-    assert "do not leave `review` empty" in interface_system
+    assert "Omitted semantic properties mean unknown" in interface_system
+    assert "materializer injects the fixed Review marker" in interface_system
     assert "assembly/parse: Message Name" not in interface_system
     assert "Conditions contain only" not in interface_system
 
-    assert "Return one combined outline for both directions" in outline_system
-    assert "Each outline field has exactly `index` and `item`" in outline_system
-    assert r"^2(?:\.[1-9][0-9]*)*$" in outline_system
-    assert r"^3(?:\.[1-9][0-9]*)*$" in outline_system
-    assert "Indexes contain digits and dots only" in outline_system
-    assert "never an XML item or attribute name" in outline_system
-    assert "Do not return full field detail properties" in outline_system
+    assert "Return one combined ordered semantic tree" in outline_system
+    assert "Every node has exactly `item`, `nodeKind`, and `children`" in outline_system
+    assert "Never return `index`, `selector`" in outline_system
+    assert "Do not return semantic detail properties" in outline_system
     assert "Do not include shared Envelope nodes" in outline_system
-    assert "Full field rows have exactly" not in outline_system
+    assert "semantic string properties" not in outline_system
     assert "interface: Interface Code" not in outline_system
 
-    assert "The validated outline selector" in detail_system
+    assert "The validated semantic selector" in detail_system
     assert '\"direction\": \"ASSEMBLY\"' in detail_system
     assert '\"batchIndex\": 1' in detail_system
     assert "REQUESTED_DIRECTION" not in detail_system
     assert "REQUESTED_BATCH_INDEX" not in detail_system
-    assert "Full field rows have exactly" in detail_system
-    assert "Every field row must contain all ten properties" in detail_system
-    assert "check `multiplicity`, `type` and `required`" in detail_system
-    assert "If any of those three values is empty" in detail_system
-    assert "do not leave `review` empty" in detail_system
-    assert "Do not return metadata or conditions" in detail_system
+    assert "Each field requires only `selector`" in detail_system
+    assert "Do not return `item`, `nodeKind`, `index`" in detail_system
     assert "Metadata rows have exactly" not in detail_system
     assert "Conditions contain only" not in detail_system
 
@@ -910,7 +956,7 @@ def test_orchestration_reports_docir_extraction_validation_detail(
         DraftGenerationError,
         match=(
             "DocIR interface-envelope segment is invalid: "
-            "DocIR interface-envelope segment has invalid properties"
+            "DocIR interface-envelope tree segment has invalid properties"
         ),
     ) as caught:
         generate_docir_draft(
@@ -922,7 +968,7 @@ def test_orchestration_reports_docir_extraction_validation_detail(
     assert "missing properties" in str(caught.value)
     assert caplog.records[-1].failure_detail == (
         "DocIR interface-envelope segment is invalid: "
-        "DocIR interface-envelope segment has invalid properties "
+        "DocIR interface-envelope tree segment has invalid properties "
         "(missing properties: envelope, interface, sourceContext)"
     )
 
@@ -949,6 +995,8 @@ def test_openai_chat_provider_serializes_json_artifact_without_double_encoded_pr
         task_id="phase0-test",
         artifact_kind="schemair",
         source_hash="sha256:" + "2" * 64,
+        schema_id="b2eboc-b2e0061-schema",
+        schema_version="v1",
     )
     context = DraftGenerationContext(
         source_content="# Final DocIR\n",
@@ -1196,6 +1244,7 @@ def test_standard_prompt_contains_canonical_rules_but_no_workspace_or_golden_pat
         task_id="phase0-test",
         artifact_kind="standard",
         source_hash="sha256:" + "1" * 64,
+        standard_id="b2e0061-assembly-standard",
         direction="ASSEMBLY",
         standard_version="v1",
         rule_package_version="v1",

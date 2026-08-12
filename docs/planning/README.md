@@ -12,4 +12,4 @@ Active.
 
 ## Documents
 
-- `00-phase0-poc-plan.md`：进行中的 Phase0-PoC 执行计划，记录已完成的 P0-T3 trusted chain、P0-T4 Draft-to-Workbook closure，以及尚待真实验收的 P0-T5。
+- `00-phase0-poc-plan.md`：进行中的 Phase0-PoC 执行计划，记录已完成的 P0-T3/P0-T4、已离线实现但待真实 DocIR Gate 的 P0-T5，以及受该 Final DocIR 阻塞的 P0-T6。

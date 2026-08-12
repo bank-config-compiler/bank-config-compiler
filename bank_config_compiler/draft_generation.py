@@ -12,10 +12,16 @@ from typing import Any, Literal, Protocol
 
 from .artifact_validation import canonical_json_bytes, content_hash
 from .configuration_rules import RulePackage
+from .docir_draft import (
+    DOCIR_MATERIALIZER_CONTRACT,
+    materialize_docir_semantic_candidate,
+    render_docir_extraction,
+    validate_docir_markdown,
+)
 from .interface_standard_validator import validate_interface_standard
 from .interface_template_validator import validate_interface_template
 from .schemair_validator import validate_schemair
-from .workspace import artifact_path, ensure_workspace_dir
+from .workspace import artifact_path, ensure_workspace_dir, load_task_manifest
 
 
 LOGGER = logging.getLogger(__name__)
@@ -23,6 +29,7 @@ LOGGER = logging.getLogger(__name__)
 PROVIDER_RESPONSE_CONTRACT = "draft-provider-response/v1"
 PROVIDER_CALL_RESULT_CONTRACT = "draft-provider-call-result/v2"
 PROVIDER_FAILURE_RESULT_CONTRACT = "draft-provider-failure-result/v2"
+DRAFT_GENERATION_RESULT_CONTRACT = "draft-generation-result/v1"
 STUB_CASE_CONTRACT = "draft-stub-case/v1"
 ARTIFACT_KINDS = {"docir", "schemair", "standard", "template"}
 DIRECTIONS = {"ASSEMBLY", "PARSE"}
@@ -35,6 +42,9 @@ CASE_ENTRY_PROPERTIES = {"request", "artifactFile", "reviewNotesFile"}
 CASE_REQUEST_PROPERTIES = {
     "artifactKind",
     "sourceHash",
+    "schemaId",
+    "schemaVersion",
+    "standardId",
     "direction",
     "standardVersion",
     "templateId",
@@ -50,6 +60,7 @@ ProviderFailureStage = Literal[
     "segment-validation",
     "merge-validation",
     "provider-response",
+    "materialization",
 ]
 
 
@@ -94,6 +105,9 @@ class DraftGenerationRequest:
     task_id: str
     artifact_kind: ArtifactKind
     source_hash: str
+    schema_id: str | None = None
+    schema_version: str | None = None
+    standard_id: str | None = None
     direction: str | None = None
     standard_version: str | None = None
     template_id: str | None = None
@@ -123,13 +137,26 @@ class DraftGenerationRequest:
             self.rule_package_version
         ):
             raise DraftGenerationError("rule_package_version must match v<positive integer>")
+        for label, value in (
+            ("schema_id", self.schema_id),
+            ("standard_id", self.standard_id),
+        ):
+            if value is not None and not STABLE_ID_PATTERN.fullmatch(value):
+                raise DraftGenerationError(f"{label} must be a kebab-case stable ID")
+        if self.schema_version is not None and not VERSION_PATTERN.fullmatch(
+            self.schema_version
+        ):
+            raise DraftGenerationError("schema_version must match v<positive integer>")
         self._validate_selectors()
 
     def _validate_selectors(self) -> None:
-        if self.artifact_kind in {"docir", "schemair"}:
+        if self.artifact_kind == "docir":
             if any(
                 value is not None
                 for value in (
+                    self.schema_id,
+                    self.schema_version,
+                    self.standard_id,
                     self.direction,
                     self.standard_version,
                     self.template_id,
@@ -139,17 +166,38 @@ class DraftGenerationRequest:
             ):
                 raise DraftGenerationError(f"{self.artifact_kind} request does not accept selectors")
             return
+        if self.artifact_kind == "schemair":
+            if self.schema_id is None or self.schema_version is None:
+                raise DraftGenerationError(
+                    "schemair request requires schema_id and schema_version"
+                )
+            if any(
+                value is not None
+                for value in (
+                    self.standard_id,
+                    self.direction,
+                    self.standard_version,
+                    self.template_id,
+                    self.template_version,
+                    self.rule_package_version,
+                )
+            ):
+                raise DraftGenerationError("schemair request accepts only schema identity selectors")
+            return
         if self.artifact_kind == "standard":
             if (
-                self.direction is None
+                self.standard_id is None
+                or self.direction is None
                 or self.standard_version is None
                 or self.rule_package_version is None
             ):
                 raise DraftGenerationError(
-                    "standard request requires direction, standard_version and rule_package_version"
+                    "standard request requires standard_id, direction, standard_version and rule_package_version"
                 )
             if self.template_id is not None or self.template_version is not None:
                 raise DraftGenerationError("standard request does not accept template selectors")
+            if self.schema_id is not None or self.schema_version is not None:
+                raise DraftGenerationError("standard request does not accept schema selectors")
             return
         if any(
             value is None
@@ -165,11 +213,21 @@ class DraftGenerationRequest:
                 "template request requires direction, standard_version, template_id, "
                 "template_version and rule_package_version"
             )
+        if any(
+            value is not None
+            for value in (self.schema_id, self.schema_version, self.standard_id)
+        ):
+            raise DraftGenerationError(
+                "template request does not accept schema or standard identity selectors"
+            )
 
     def case_fingerprint(self) -> dict[str, str]:
         values = {
             "artifactKind": self.artifact_kind,
             "sourceHash": self.source_hash,
+            "schemaId": self.schema_id,
+            "schemaVersion": self.schema_version,
+            "standardId": self.standard_id,
             "direction": self.direction,
             "standardVersion": self.standard_version,
             "templateId": self.template_id,
@@ -303,6 +361,10 @@ class ProviderCallMetadata:
     def __post_init__(self) -> None:
         if not isinstance(self.provider_name, str) or not self.provider_name.strip():
             raise DraftGenerationError("provider metadata name must be a non-empty string")
+        if self.attempt_id is not None and not STABLE_ID_PATTERN.fullmatch(self.attempt_id):
+            raise DraftGenerationError(
+                "provider metadata attempt_id must be a lowercase kebab-case stable ID"
+            )
         for label, value in (
             ("attempt_id", self.attempt_id),
             ("requested_model", self.requested_model),
@@ -351,6 +413,7 @@ class ProviderFailureEvidence:
     response_complete: bool
     response_text: str | None
     finish_reason: str | None
+    candidate_text: str | None = None
     calls: tuple[ProviderFailureCallEvidence, ...] = ()
     failed_segment: str | None = None
 
@@ -368,6 +431,7 @@ class ProviderFailureEvidence:
             "segment-validation",
             "merge-validation",
             "provider-response",
+            "materialization",
         }:
             raise DraftGenerationError("provider failure stage is invalid")
         if not isinstance(self.failure_detail, str) or not self.failure_detail.strip():
@@ -382,6 +446,10 @@ class ProviderFailureEvidence:
             not isinstance(self.response_text, str) or not self.response_text
         ):
             raise DraftGenerationError("provider failure response text must be non-empty")
+        if self.candidate_text is not None and (
+            not isinstance(self.candidate_text, str) or not self.candidate_text
+        ):
+            raise DraftGenerationError("provider failure candidate text must be non-empty")
         if self.finish_reason is not None and (
             not isinstance(self.finish_reason, str) or not self.finish_reason.strip()
         ):
@@ -417,6 +485,8 @@ class ProviderFailureEvidence:
 class DraftProviderResult:
     response_text: str
     metadata: ProviderCallMetadata
+    candidate_content: str | None = None
+    materializer_contract_version: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -428,6 +498,17 @@ class GeneratedDraft:
     validation_result: dict[str, Any] | None
     content_hash: str
     provider_metadata: ProviderCallMetadata
+    candidate_hash: str
+    provider_response_text: str
+    materializer_contract_version: str
+    candidate_content: str | None = None
+
+    @property
+    def publication_state(self) -> Literal["invalid", "reviewable"]:
+        summary = self.validation_result.get("summary") if self.validation_result else None
+        if isinstance(summary, dict) and summary.get("errorCount", 0) > 0:
+            return "invalid"
+        return "reviewable"
 
 
 class FixtureDraftProvider:
@@ -521,21 +602,47 @@ def generate_docir_draft(*, raw_doc: str, provider: DraftProvider, task_id: str)
         artifact_kind="docir",
         source_hash=_text_hash(raw_doc),
     )
-    artifact_content, review_notes, metadata = _provider_content(
+    (
+        artifact_content,
+        review_notes,
+        metadata,
+        response_text,
+        candidate_content,
+        materializer_contract_version,
+    ) = _provider_content(
         provider,
         request,
         _text_context(raw_doc),
     )
+    if candidate_content is not None:
+        candidate = _strict_json_object(candidate_content, label="DocIR semantic candidate")
+        materialized = render_docir_extraction(
+            materialize_docir_semantic_candidate(candidate)
+        )
+        if materialized != artifact_content:
+            raise DraftGenerationError(
+                "provider DocIR artifact does not match deterministic candidate materialization"
+            )
+        materializer_contract_version = (
+            materializer_contract_version or DOCIR_MATERIALIZER_CONTRACT
+        )
     _validate_docir_structure(artifact_content)
     draft_hash = _text_hash(artifact_content)
+    validation_result = validate_docir_markdown(artifact_content)
     return _generated(
         request=request,
         provider=provider,
         artifact=artifact_content,
         review_notes=review_notes,
-        validation_result=None,
+        validation_result=validation_result,
         draft_hash=draft_hash,
         provider_metadata=metadata,
+        candidate_hash=_text_hash(candidate_content or artifact_content),
+        provider_response_text=response_text,
+        materializer_contract_version=(
+            materializer_contract_version or "legacy-docir-pass-through/v1"
+        ),
+        candidate_content=candidate_content,
     )
 
 
@@ -544,22 +651,60 @@ def generate_schemair_draft(
     docir_final: str,
     provider: DraftProvider,
     task_id: str,
+    interface_code: str,
+    schema_id: str,
+    schema_version: str,
 ) -> GeneratedDraft:
     request = DraftGenerationRequest(
         task_id=task_id,
         artifact_kind="schemair",
         source_hash=_text_hash(docir_final),
+        schema_id=schema_id,
+        schema_version=schema_version,
     )
-    artifact_content, review_notes, metadata = _provider_content(
+    artifact_content, review_notes, metadata, response_text, _, _ = _provider_content(
         provider,
         request,
         _text_context(docir_final),
     )
-    artifact = _strict_json_object(artifact_content, label="SchemaIR Draft")
-    _require_pending_draft(artifact, label="SchemaIR")
-    result = validate_schemair(artifact)
-    _require_valid_draft_result(result, label="SchemaIR")
-    return _generated_json(request, provider, artifact, review_notes, result, metadata)
+    try:
+        candidate = _strict_json_object(artifact_content, label="SchemaIR candidate")
+        from .ir_materialization import (
+            SCHEMAIR_MATERIALIZER_CONTRACT,
+            materialize_schemair_candidate,
+        )
+
+        artifact = materialize_schemair_candidate(
+            candidate,
+            docir_final=docir_final,
+            schema_id=schema_id,
+            schema_version=schema_version,
+            interface_code=interface_code,
+        )
+        _require_pending_draft(artifact, label="SchemaIR")
+        result = validate_schemair(artifact)
+        return _generated_json(
+            request,
+            provider,
+            artifact,
+            review_notes,
+            result,
+            metadata,
+            candidate_hash=_text_hash(artifact_content),
+            provider_response_text=response_text,
+            materializer_contract_version=SCHEMAIR_MATERIALIZER_CONTRACT,
+            candidate_content=artifact_content,
+        )
+    except DraftGenerationError as exc:
+        if metadata.attempt_id is None:
+            raise
+        raise _post_provider_materialization_failure(
+            request,
+            metadata,
+            response_text=response_text,
+            candidate_text=artifact_content,
+            error=exc,
+        ) from exc
 
 
 def generate_interface_standard_draft(
@@ -568,6 +713,7 @@ def generate_interface_standard_draft(
     rule_package: RulePackage,
     direction: str,
     standard_version: str,
+    standard_id: str,
     provider: DraftProvider,
     task_id: str,
 ) -> GeneratedDraft:
@@ -579,32 +725,70 @@ def generate_interface_standard_draft(
         task_id=task_id,
         artifact_kind="standard",
         source_hash=content_hash(schemair_final),
+        standard_id=standard_id,
         direction=direction,
         standard_version=standard_version,
         rule_package_version=rule_package.version,
     )
-    artifact_content, review_notes, metadata = _provider_content(
+    artifact_content, review_notes, metadata, response_text, _, _ = _provider_content(
         provider,
         request,
         _json_context(schemair_final, rule_package),
     )
-    artifact = _strict_json_object(artifact_content, label="InterfaceStandardIR Draft")
-    _require_pending_draft(artifact, label="InterfaceStandardIR")
-    _require_matching_request_identity(
-        artifact,
-        expected={
-            "direction": request.direction,
-            "standardVersion": request.standard_version,
-        },
-        label="InterfaceStandardIR",
-    )
-    result = validate_interface_standard(
-        artifact,
-        schemair=schemair_final,
-        rule_package=rule_package,
-    )
-    _require_valid_draft_result(result, label="InterfaceStandardIR")
-    return _generated_json(request, provider, artifact, review_notes, result, metadata)
+    try:
+        candidate = _strict_json_object(
+            artifact_content, label="InterfaceStandardIR candidate"
+        )
+        from .ir_materialization import (
+            STANDARD_MATERIALIZER_CONTRACT,
+            materialize_standard_candidate,
+        )
+
+        artifact = materialize_standard_candidate(
+            candidate,
+            schemair_final=schemair_final,
+            rule_package=rule_package,
+            direction=direction,
+            standard_id=standard_id,
+            standard_version=standard_version,
+        )
+        _require_pending_draft(artifact, label="InterfaceStandardIR")
+        _require_matching_request_identity(
+            artifact,
+            expected={
+                "direction": request.direction,
+                "standardId": request.standard_id,
+                "standardVersion": request.standard_version,
+            },
+            label="InterfaceStandardIR",
+        )
+        result = validate_interface_standard(
+            artifact,
+            schemair=schemair_final,
+            rule_package=rule_package,
+        )
+        return _generated_json(
+            request,
+            provider,
+            artifact,
+            review_notes,
+            result,
+            metadata,
+            candidate_hash=_text_hash(artifact_content),
+            provider_response_text=response_text,
+            materializer_contract_version=STANDARD_MATERIALIZER_CONTRACT,
+            candidate_content=artifact_content,
+        )
+    except DraftGenerationError as exc:
+        if metadata.attempt_id is None:
+            raise
+        raise _post_provider_materialization_failure(
+            request,
+            metadata,
+            response_text=response_text,
+            candidate_text=artifact_content,
+            error=exc,
+        ) from exc
 
 
 def generate_interface_template_draft(
@@ -641,25 +825,114 @@ def generate_interface_template_draft(
         template_version=template_version,
         rule_package_version=rule_package.version,
     )
-    artifact_content, review_notes, metadata = _provider_content(
+    artifact_content, review_notes, metadata, response_text, _, _ = _provider_content(
         provider,
         request,
         _json_context(standard_final, rule_package),
     )
-    artifact = _strict_json_object(artifact_content, label="InterfaceTemplateIR Draft")
-    _require_pending_draft(artifact, label="InterfaceTemplateIR")
-    _require_matching_request_identity(
-        artifact,
-        expected={
-            "direction": request.direction,
-            "templateId": request.template_id,
-            "templateVersion": request.template_version,
-        },
-        label="InterfaceTemplateIR",
+    try:
+        candidate = _strict_json_object(
+            artifact_content, label="InterfaceTemplateIR candidate"
+        )
+        from .ir_materialization import (
+            TEMPLATE_MATERIALIZER_CONTRACT,
+            materialize_template_candidate,
+        )
+
+        artifact = materialize_template_candidate(
+            candidate,
+            standard_final=standard_final,
+            rule_package=rule_package,
+            direction=direction,
+            template_id=template_id,
+            template_version=template_version,
+        )
+        _require_pending_draft(artifact, label="InterfaceTemplateIR")
+        _require_matching_request_identity(
+            artifact,
+            expected={
+                "direction": request.direction,
+                "templateId": request.template_id,
+                "templateVersion": request.template_version,
+            },
+            label="InterfaceTemplateIR",
+        )
+        result = validate_interface_template(
+            artifact, standard=standard_final, rule_package=rule_package
+        )
+        return _generated_json(
+            request,
+            provider,
+            artifact,
+            review_notes,
+            result,
+            metadata,
+            candidate_hash=_text_hash(artifact_content),
+            provider_response_text=response_text,
+            materializer_contract_version=TEMPLATE_MATERIALIZER_CONTRACT,
+            candidate_content=artifact_content,
+        )
+    except DraftGenerationError as exc:
+        if metadata.attempt_id is None:
+            raise
+        raise _post_provider_materialization_failure(
+            request,
+            metadata,
+            response_text=response_text,
+            candidate_text=artifact_content,
+            error=exc,
+        ) from exc
+
+
+def _post_provider_materialization_failure(
+    request: DraftGenerationRequest,
+    metadata: ProviderCallMetadata,
+    *,
+    response_text: str,
+    candidate_text: str,
+    error: DraftGenerationError,
+) -> DraftProviderDiagnosticError:
+    detail = f"{request.artifact_kind} candidate cannot be materialized: {error}"
+    calls = metadata.calls or (
+        ProviderSubcallMetadata(
+            segment="complete-artifact",
+            outcome="succeeded",
+            response_complete=True,
+            response_content_hash=_text_hash(response_text),
+            requested_model=metadata.requested_model,
+            response_model=metadata.response_model,
+            response_id=metadata.response_id,
+            prompt_tokens=metadata.prompt_tokens,
+            completion_tokens=metadata.completion_tokens,
+            total_tokens=metadata.total_tokens,
+            started_at=metadata.started_at,
+            completed_at=metadata.completed_at,
+            finish_reason="stop",
+            prompt_contract_version=metadata.prompt_contract_version,
+        ),
     )
-    result = validate_interface_template(artifact, standard=standard_final, rule_package=rule_package)
-    _require_valid_draft_result(result, label="InterfaceTemplateIR")
-    return _generated_json(request, provider, artifact, review_notes, result, metadata)
+    call_evidence = tuple(
+        ProviderFailureCallEvidence(
+            call,
+            response_text if index == len(calls) - 1 else None,
+        )
+        for index, call in enumerate(calls)
+    )
+    return DraftProviderDiagnosticError(
+        detail,
+        evidence=ProviderFailureEvidence(
+            request=request,
+            metadata=metadata,
+            failure_stage="materialization",
+            failure_detail=detail,
+            error_type=type(error).__name__,
+            response_complete=True,
+            response_text=response_text,
+            finish_reason="stop",
+            candidate_text=candidate_text,
+            calls=call_evidence,
+        ),
+    )
 
 
 def publish_generated_draft(
@@ -668,27 +941,36 @@ def publish_generated_draft(
     *,
     overwrite: bool = False,
 ) -> dict[str, Path]:
-    """Publish one fully validated Draft output set without exposing temporary files."""
+    """Publish one materialized Draft plus immutable generation lineage."""
 
     ensure_workspace_dir(workspace_path)
-    include_provider_call = generated.provider_metadata.attempt_id is not None
-    names = _draft_artifact_names(
-        generated.request,
-        include_provider_call=include_provider_call,
-    )
+    task = load_task_manifest(workspace_path)
+    if task.get("taskId") != generated.request.task_id:
+        raise DraftGenerationError("generated Draft taskId does not match task.json")
+    names = _draft_artifact_names(generated.request)
     outputs = {key: artifact_path(workspace_path, name) for key, name in names.items()}
     payloads: dict[str, bytes] = {
         "artifact": _serialize_artifact(generated.artifact),
         "review_notes": generated.review_notes.encode("utf-8"),
+        "generation_result": _serialize_json(_generation_result(generated, task)),
     }
     if generated.validation_result is not None:
         payloads["validation_result"] = _serialize_json(generated.validation_result)
-    if include_provider_call:
-        payloads["provider_call_result"] = _serialize_json(
-            _provider_call_result(generated)
-        )
     if set(outputs) != set(payloads):
         raise DraftGenerationError("generated Draft output set is internally inconsistent")
+
+    if generated.provider_metadata.attempt_id is not None:
+        attempt_outputs, attempt_payloads = _successful_attempt_artifacts(
+            workspace_path,
+            generated,
+        )
+        _atomic_publish_payloads(
+            attempt_outputs,
+            attempt_payloads,
+            overwrite=False,
+            existing_label="provider attempt ID",
+            failure_label="provider attempt evidence",
+        )
 
     _atomic_publish_payloads(
         outputs,
@@ -706,52 +988,52 @@ def publish_provider_failure(
     *,
     overwrite: bool = False,
 ) -> dict[str, Path]:
-    """Persist DocIR diagnostic evidence without turning it into a Draft artifact."""
+    """Persist provider diagnostic evidence without turning it into a Draft artifact."""
 
     evidence = error.evidence
     if evidence is None:
         raise DraftGenerationError("provider failure does not contain diagnostic evidence")
-    if evidence.request.artifact_kind != "docir":
-        raise DraftGenerationError("only DocIR provider failure evidence is supported")
     ensure_workspace_dir(workspace_path)
+    task = load_task_manifest(workspace_path)
+    if task.get("taskId") != evidence.request.task_id:
+        raise DraftGenerationError("provider failure taskId does not match task.json")
+    attempt_id = evidence.metadata.attempt_id
+    if attempt_id is None:
+        raise DraftGenerationError("provider failure evidence requires an attempt ID")
+    # `--overwrite` only applies to the Human-editable root working set. Attempt evidence is immutable.
+    del overwrite
+    attempt_root = f"provider-attempts/{evidence.request.artifact_kind}/{attempt_id}"
+    assert_provider_attempt_unused(workspace_path, attempt_id)
     outputs: dict[str, Path] = {}
     payloads: dict[str, bytes] = {}
     failure_calls = _provider_failure_calls(evidence)
-    current_response_paths: set[Path] = set()
     for sequence, call in enumerate(failure_calls, start=1):
         if call.response_text is None:
             continue
         response_path = artifact_path(
             workspace_path,
-            f"docir-provider-failure-response-{sequence:03d}-{call.metadata.segment}.txt",
+            f"{attempt_root}/response-{sequence:03d}-{call.metadata.segment}.txt",
         )
         key = f"failure_response_{sequence:03d}"
         outputs[key] = response_path
         payloads[key] = call.response_text.encode("utf-8")
-        current_response_paths.add(response_path)
+    if evidence.candidate_text is not None:
+        outputs["candidate"] = artifact_path(
+            workspace_path, f"{attempt_root}/candidate.json"
+        )
+        payloads["candidate"] = evidence.candidate_text.encode("utf-8")
     # result 是该组 evidence 的提交标记；最后替换可避免先暴露指向尚未落盘响应的摘要。
     outputs["failure_result"] = artifact_path(
-        workspace_path, "docir-provider-failure-result.json"
+        workspace_path, f"{attempt_root}/provider-failure-result.json"
     )
     payloads["failure_result"] = _serialize_json(_provider_failure_result(evidence))
     _atomic_publish_payloads(
         outputs,
         payloads,
-        overwrite=overwrite,
-        existing_label="provider failure evidence",
+        overwrite=False,
+        existing_label="provider attempt ID",
         failure_label="provider failure evidence",
     )
-    if overwrite:
-        for stale_path in workspace_path.glob("docir-provider-failure-response-*.txt"):
-            if stale_path in current_response_paths:
-                continue
-            try:
-                stale_path.unlink()
-            except OSError as exc:
-                raise DraftGenerationError(
-                    "failed to remove stale provider failure response: "
-                    f"{type(exc).__name__}"
-                ) from exc
     paths = tuple(outputs.values())
     error.bind_failure_evidence_paths(paths)
     LOGGER.warning(
@@ -829,25 +1111,22 @@ def _atomic_publish_payloads(
 
 def _draft_artifact_names(
     request: DraftGenerationRequest,
-    *,
-    include_provider_call: bool = False,
 ) -> dict[str, str]:
     if request.artifact_kind == "docir":
         names = {
             "artifact": "docir-draft.md",
             "review_notes": "docir-review-notes.md",
+            "validation_result": "docir-validation-result.json",
+            "generation_result": "docir-generation-result.json",
         }
-        if include_provider_call:
-            names["provider_call_result"] = "docir-provider-call-result.json"
         return names
     if request.artifact_kind == "schemair":
         names = {
             "artifact": "schemair-draft.json",
             "review_notes": "schemair-review-notes.md",
             "validation_result": "schemair-validation-result.json",
+            "generation_result": "schemair-generation-result.json",
         }
-        if include_provider_call:
-            names["provider_call_result"] = "schemair-provider-call-result.json"
         return names
     direction = request.direction.lower() if request.direction else ""
     if request.artifact_kind == "standard":
@@ -856,19 +1135,96 @@ def _draft_artifact_names(
             "artifact": f"{root}/standard-draft.json",
             "review_notes": f"{root}/standard-review-notes.md",
             "validation_result": f"{root}/standard-validation-result.json",
+            "generation_result": f"{root}/standard-generation-result.json",
         }
-        if include_provider_call:
-            names["provider_call_result"] = f"{root}/standard-provider-call-result.json"
         return names
     root = f"templates/{direction}/{request.template_id}/{request.template_version}"
     names = {
         "artifact": f"{root}/template-draft.json",
         "review_notes": f"{root}/template-review-notes.md",
         "validation_result": f"{root}/template-validation-result.json",
+        "generation_result": f"{root}/template-generation-result.json",
     }
-    if include_provider_call:
-        names["provider_call_result"] = f"{root}/template-provider-call-result.json"
     return names
+
+
+def _successful_attempt_artifacts(
+    workspace_path: Path,
+    generated: GeneratedDraft,
+) -> tuple[dict[str, Path], dict[str, bytes]]:
+    attempt_id = generated.provider_metadata.attempt_id
+    if attempt_id is None:
+        raise DraftGenerationError("auditable provider attempt requires an attempt ID")
+    assert_provider_attempt_unused(workspace_path, attempt_id)
+    root = f"provider-attempts/{generated.request.artifact_kind}/{attempt_id}"
+    extension = "md" if generated.request.artifact_kind == "docir" else "json"
+    outputs = {
+        "provider_response": artifact_path(workspace_path, f"{root}/provider-response.json"),
+        "generated_snapshot": artifact_path(
+            workspace_path,
+            f"{root}/generated-draft.{extension}",
+        ),
+        "provider_call_result": artifact_path(
+            workspace_path,
+            f"{root}/provider-call-result.json",
+        ),
+    }
+    payloads = {
+        "provider_response": generated.provider_response_text.encode("utf-8"),
+        "generated_snapshot": _serialize_artifact(generated.artifact),
+        "provider_call_result": _serialize_json(_provider_call_result(generated)),
+    }
+    if generated.candidate_content is not None:
+        outputs["candidate"] = artifact_path(workspace_path, f"{root}/candidate.json")
+        payloads["candidate"] = generated.candidate_content.encode("utf-8")
+    return outputs, payloads
+
+
+def assert_provider_attempt_unused(
+    workspace_path: Path, attempt_id: str | None
+) -> None:
+    """Fail before an external call when its immutable attempt ID already exists."""
+
+    if not isinstance(attempt_id, str) or not attempt_id:
+        raise DraftGenerationError("provider attempt ID must be non-empty")
+    attempt_root = artifact_path(workspace_path, "provider-attempts")
+    if attempt_root.exists() and any(
+        path.is_dir() and path.name == attempt_id
+        for path in attempt_root.glob(f"*/{attempt_id}")
+    ):
+        raise DraftGenerationError(f"provider attempt ID already exists: {attempt_id}")
+
+
+def _generation_result(generated: GeneratedDraft, task: dict[str, Any]) -> dict[str, Any]:
+    summary = generated.validation_result.get("summary") if generated.validation_result else {}
+    error_count = summary.get("errorCount", 0) if isinstance(summary, dict) else 0
+    warning_count = summary.get("warningCount", 0) if isinstance(summary, dict) else 0
+    selectors = generated.request.case_fingerprint()
+    selectors.pop("artifactKind")
+    selectors.pop("sourceHash")
+    return {
+        "contractVersion": DRAFT_GENERATION_RESULT_CONTRACT,
+        "taskId": generated.request.task_id,
+        "interfaceCode": task.get("interfaceCode"),
+        "artifactKind": generated.request.artifact_kind,
+        "sourceHash": generated.request.source_hash,
+        "selectors": selectors,
+        "provider": generated.provider_name,
+        "attemptId": generated.provider_metadata.attempt_id,
+        "candidateHash": generated.candidate_hash,
+        "materializerContractVersion": generated.materializer_contract_version,
+        "initialDraftHash": generated.content_hash,
+        "initialValidation": {
+            "state": generated.publication_state,
+            "errorCount": error_count,
+            "warningCount": warning_count,
+            "finalEligible": (
+                generated.validation_result.get("finalEligible", False)
+                if generated.validation_result
+                else False
+            ),
+        },
+    }
 
 
 def _provider_call_result(generated: GeneratedDraft) -> dict[str, Any]:
@@ -964,6 +1320,11 @@ def _provider_failure_result(evidence: ProviderFailureEvidence) -> dict[str, Any
             if evidence.response_text is not None
             else None
         ),
+        "candidateContentHash": (
+            _text_hash(evidence.candidate_text)
+            if evidence.candidate_text is not None
+            else None
+        ),
         "usage": {
             "promptTokens": metadata.prompt_tokens,
             "completionTokens": metadata.completion_tokens,
@@ -1050,7 +1411,14 @@ def _provider_content(
     provider: DraftProvider,
     request: DraftGenerationRequest,
     context: DraftGenerationContext,
-) -> tuple[str, str, ProviderCallMetadata]:
+) -> tuple[
+    str,
+    str,
+    ProviderCallMetadata,
+    str,
+    str | None,
+    str | None,
+]:
     provider_name = getattr(provider, "name", None)
     if not isinstance(provider_name, str) or not provider_name:
         raise DraftGenerationError("provider must expose a non-empty name")
@@ -1158,7 +1526,29 @@ def _provider_content(
             },
         )
         raise
-    return artifact_content, review_notes, provider_result.metadata
+    if provider_result.candidate_content is not None:
+        if (
+            not isinstance(provider_result.candidate_content, str)
+            or not provider_result.candidate_content.strip()
+        ):
+            raise DraftGenerationError("provider candidate_content must be non-empty text")
+        if provider_result.candidate_content.startswith("\ufeff"):
+            raise DraftGenerationError("provider candidate_content must be UTF-8 without BOM")
+    if provider_result.materializer_contract_version is not None and (
+        not isinstance(provider_result.materializer_contract_version, str)
+        or not provider_result.materializer_contract_version.strip()
+    ):
+        raise DraftGenerationError(
+            "provider materializer_contract_version must be non-empty"
+        )
+    return (
+        artifact_content,
+        review_notes,
+        provider_result.metadata,
+        provider_result.response_text,
+        provider_result.candidate_content,
+        provider_result.materializer_contract_version,
+    )
 
 
 def _generated_json(
@@ -1168,6 +1558,11 @@ def _generated_json(
     review_notes: str,
     result: dict[str, Any],
     provider_metadata: ProviderCallMetadata,
+    *,
+    candidate_hash: str,
+    provider_response_text: str,
+    materializer_contract_version: str,
+    candidate_content: str,
 ) -> GeneratedDraft:
     validated = result.get("validatedArtifact")
     draft_hash = validated.get("contentHash") if isinstance(validated, dict) else None
@@ -1181,6 +1576,10 @@ def _generated_json(
         result,
         draft_hash,
         provider_metadata,
+        candidate_hash=candidate_hash,
+        provider_response_text=provider_response_text,
+        materializer_contract_version=materializer_contract_version,
+        candidate_content=candidate_content,
     )
 
 
@@ -1192,6 +1591,11 @@ def _generated(
     validation_result: dict[str, Any] | None,
     draft_hash: str,
     provider_metadata: ProviderCallMetadata,
+    *,
+    candidate_hash: str,
+    provider_response_text: str,
+    materializer_contract_version: str,
+    candidate_content: str | None = None,
 ) -> GeneratedDraft:
     bound_notes = (
         "# Generated Draft Review Context\n\n"
@@ -1209,6 +1613,10 @@ def _generated(
         validation_result=validation_result,
         content_hash=draft_hash,
         provider_metadata=provider_metadata,
+        candidate_hash=candidate_hash,
+        provider_response_text=provider_response_text,
+        materializer_contract_version=materializer_contract_version,
+        candidate_content=candidate_content,
     )
     LOGGER.info(
         "Generated IR Draft",
@@ -1269,23 +1677,6 @@ def _require_matching_request_identity(
             )
 
 
-def _require_valid_draft_result(result: dict[str, Any], *, label: str) -> None:
-    summary = result.get("summary")
-    if not isinstance(summary, dict) or summary.get("errorCount") != 0:
-        raise DraftGenerationError(f"{label} Draft must pass structural validation with zero errors")
-    if result.get("finalEligible") is not False:
-        raise DraftGenerationError(f"{label} Draft must remain ineligible for the trusted chain")
-    issues = result.get("issues")
-    codes = (
-        {item.get("code") for item in issues if isinstance(item, dict)}
-        if isinstance(issues, list)
-        else set()
-    )
-    required = {"ARTIFACT_NOT_FINAL", "REVIEW_NOT_APPROVED"}
-    if not required.issubset(codes):
-        raise DraftGenerationError(f"{label} Draft is missing lifecycle blocking issues")
-
-
 def _require_released_rule_package(rule_package: RulePackage) -> None:
     if not isinstance(rule_package, RulePackage) or rule_package.status != "RELEASED":
         raise DraftGenerationError("Draft generator requires a validated RELEASED rule package")
@@ -1331,6 +1722,9 @@ def _request_from_case(value: Any, *, label: str) -> DraftGenerationRequest:
         task_id="fixture-case-validation",
         artifact_kind=value.get("artifactKind"),
         source_hash=value.get("sourceHash"),
+        schema_id=value.get("schemaId"),
+        schema_version=value.get("schemaVersion"),
+        standard_id=value.get("standardId"),
         direction=value.get("direction"),
         standard_version=value.get("standardVersion"),
         template_id=value.get("templateId"),

@@ -13,17 +13,19 @@ from typing import Any
 from urllib.parse import urlsplit, urlunsplit
 
 from .docir_draft import (
-    FIELD_DETAILS_SEGMENT_CONTRACT,
-    INTERFACE_ENVELOPE_SEGMENT_CONTRACT,
-    MESSAGES_OUTLINE_SEGMENT_CONTRACT,
+    DOCIR_MATERIALIZER_CONTRACT,
+    SEMANTIC_FIELD_DETAILS_SEGMENT_CONTRACT,
+    SEMANTIC_INTERFACE_ENVELOPE_SEGMENT_CONTRACT,
+    SEMANTIC_MESSAGES_TREE_SEGMENT_CONTRACT,
     DocIRDraftError,
-    build_docir_field_batches,
-    merge_docir_extraction_segments,
+    build_docir_semantic_field_batches,
+    materialize_docir_semantic_candidate,
+    merge_docir_semantic_segments,
     render_docir_extraction,
     render_docir_review_notes,
-    validate_docir_field_details_segment,
-    validate_docir_interface_envelope_segment,
-    validate_docir_messages_outline_segment,
+    validate_docir_interface_envelope_tree_segment,
+    validate_docir_messages_tree_segment,
+    validate_docir_semantic_field_details_segment,
 )
 from .draft_generation import (
     PROVIDER_RESPONSE_CONTRACT,
@@ -39,8 +41,8 @@ from .draft_generation import (
 )
 
 
-PROMPT_CONTRACT_VERSION = "draft-prompt/v7"
-DOCIR_PROMPT_CONTRACT_VERSION = "draft-prompt/v12"
+PROMPT_CONTRACT_VERSION = "draft-prompt/v8"
+DOCIR_PROMPT_CONTRACT_VERSION = "draft-prompt/v13"
 DEFAULT_DOCIR_FIELD_BATCH_SIZE = 16
 JSON_IR_MODEL_RESPONSE_PROPERTIES = {"artifact", "reviewNotes"}
 ATTEMPT_ID_PATTERN = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$")
@@ -49,28 +51,31 @@ LOGGER = logging.getLogger(__name__)
 
 _ARTIFACT_INSTRUCTIONS = {
     "schemair": """
-Return artifact as a JSON object using `contractVersion=schemair/v2`, XML-only messages and
-`status=DRAFT`. Set `review.status=PENDING`, `reviewer=null`, and `reviewedAt=null`.
-Use stable artifact identity/version, direction-level XML encoding evidence, envelope/messages,
-and field objects with path, parent path, level, node kind, data type, occurs, required, length,
-condition, evidence, confidence and uncertainty. Preserve unsupported or conflicting facts as
-reviewable uncertainty; never resolve them from model knowledge.
+Return a SchemaIR semantic candidate containing `envelope` and both ordered `messages`.
+Do not choose artifact identity, version, lifecycle, interface identity, field path, parent path,
+level, node kind, occurs, required, multiple or hasChildren; the materializer locks or derives them
+from the exact Final DocIR. Keep one `fieldName` per candidate field so the materializer can prove
+preorder coverage. Propose only non-derivable XML encoding, descriptions, format/length, conditions,
+evidence, confidence and uncertainty. Preserve unsupported or conflicting facts as reviewable
+uncertainty; never resolve them from model knowledge.
 """.strip(),
     "standard": """
-Return artifact as a JSON object using `contractVersion=interface-standard/v1`, `status=DRAFT`
-and `review.status=PENDING` with null reviewer metadata. Bind the exact supplied SchemaIR identity,
-version and canonical hash; match the requested direction and Standard version. Project fields,
-parent/full paths, sequence, types, XML keys, three-state constraints, bank conditions,
-differences and rule references only from the supplied Final SchemaIR and RELEASED rule package.
+Return an InterfaceStandardIR semantic candidate with one field per Final SchemaIR XML element and
+identify each only by `schemaIrFieldPath`. Do not choose Standard identity/version/lifecycle,
+dependency hash, direction, field ID, parent/full path, sibling sequence or XML Keys; the materializer
+locks and derives them. Propose field descriptions, condition text, required/type/length projections,
+three-state constraints, differences, evidence, confidence, uncertainty and rule references from the
+supplied Final SchemaIR and RELEASED rule package. Any projection difference must remain explicit for
+Validator and Human review.
 """.strip(),
     "template": """
-Return artifact as a JSON object using `contractVersion=interface-template/v1`, `status=DRAFT`
-and `review.status=PENDING` with null reviewer metadata. Bind the exact supplied Final Standard,
-requested direction, Standard version, Template ID/version and RELEASED rule package. Use only
-the supported VALUE, STRUCTURE_ONLY and COLLECTION_ITEM bindings and the six documented value
-modes. Scalar configs require value expressions; Node/Object containers do not. Keep omissions,
-mapping/replacement choices, processing policy and uncertainty reviewable and do not use redacted
-mapping targets or fabricate secure values.
+Return an InterfaceTemplateIR semantic candidate containing only Human-reviewable field configs.
+Do not choose Template identity/version/lifecycle, dependency hash, direction or Standard projection;
+the materializer locks and derives them. Use only the supported VALUE, STRUCTURE_ONLY and
+COLLECTION_ITEM bindings and the six documented value modes. Scalar configs require value
+expressions; Node/Object containers do not. Keep omissions, XML Key expressions, mapping/replacement
+choices, processing policy and uncertainty reviewable and do not use redacted mapping targets or
+fabricate secure values.
 """.strip(),
 }
 
@@ -302,13 +307,13 @@ class OpenAIChatDraftProvider:
         completed_calls: list[_CompletedChatCall] = []
         interface_prompt = _DocIRSegmentPrompt(
             segment="interface-envelope",
-            contract_version=INTERFACE_ENVELOPE_SEGMENT_CONTRACT,
+            contract_version=SEMANTIC_INTERFACE_ENVELOPE_SEGMENT_CONTRACT,
         )
         interface_call = self._run_call(
             request, context, interface_prompt, completed_calls
         )
         try:
-            interface_envelope = validate_docir_interface_envelope_segment(
+            interface_envelope = validate_docir_interface_envelope_tree_segment(
                 interface_call.model_response
             )
         except DocIRDraftError as exc:
@@ -324,11 +329,11 @@ class OpenAIChatDraftProvider:
 
         outline_prompt = _DocIRSegmentPrompt(
             segment="messages-outline",
-            contract_version=MESSAGES_OUTLINE_SEGMENT_CONTRACT,
+            contract_version=SEMANTIC_MESSAGES_TREE_SEGMENT_CONTRACT,
         )
         outline_call = self._run_call(request, context, outline_prompt, completed_calls)
         try:
-            messages_outline = validate_docir_messages_outline_segment(
+            messages_outline = validate_docir_messages_tree_segment(
                 outline_call.model_response
             )
         except DocIRDraftError as exc:
@@ -344,15 +349,15 @@ class OpenAIChatDraftProvider:
 
         details: dict[str, list[dict[str, Any]]] = {"ASSEMBLY": [], "PARSE": []}
         for direction, section_name in (("ASSEMBLY", "assembly"), ("PARSE", "parse")):
-            outline_batches = build_docir_field_batches(
-                messages_outline[section_name]["fields"],
+            outline_batches = build_docir_semantic_field_batches(
+                messages_outline[section_name]["nodes"],
                 batch_size=self.docir_field_batch_size,
             )
             for batch_index, target_outline in enumerate(outline_batches, start=1):
                 segment_name = f"{section_name}-fields-{batch_index:03d}"
                 detail_prompt = _DocIRSegmentPrompt(
                     segment=segment_name,
-                    contract_version=FIELD_DETAILS_SEGMENT_CONTRACT,
+                    contract_version=SEMANTIC_FIELD_DETAILS_SEGMENT_CONTRACT,
                     direction=direction,
                     batch_index=batch_index,
                     target_outline=target_outline,
@@ -361,7 +366,7 @@ class OpenAIChatDraftProvider:
                     request, context, detail_prompt, completed_calls
                 )
                 try:
-                    detail = validate_docir_field_details_segment(
+                    detail = validate_docir_semantic_field_details_segment(
                         detail_call.model_response,
                         direction=direction,
                         batch_index=batch_index,
@@ -380,13 +385,14 @@ class OpenAIChatDraftProvider:
                 completed_calls.append(detail_call)
 
         try:
-            extraction = merge_docir_extraction_segments(
-                interface_envelope=interface_envelope,
-                messages_outline=messages_outline,
+            candidate = merge_docir_semantic_segments(
+                interface_envelope=interface_call.model_response,
+                messages_tree=outline_call.model_response,
                 assembly_details=details["ASSEMBLY"],
                 parse_details=details["PARSE"],
                 batch_size=self.docir_field_batch_size,
             )
+            extraction = materialize_docir_semantic_candidate(candidate)
             artifact_content = render_docir_extraction(extraction)
             review_notes = render_docir_review_notes(extraction)
         except DocIRDraftError as exc:
@@ -402,6 +408,8 @@ class OpenAIChatDraftProvider:
             artifact_content=artifact_content,
             review_notes=review_notes,
             calls=tuple(completed_calls),
+            candidate_content=_serialize_json(candidate),
+            materializer_contract_version=DOCIR_MATERIALIZER_CONTRACT,
         )
 
     def _run_call(
@@ -735,6 +743,8 @@ class OpenAIChatDraftProvider:
         artifact_content: str,
         review_notes: str,
         calls: tuple[_CompletedChatCall, ...],
+        candidate_content: str | None = None,
+        materializer_contract_version: str | None = None,
     ) -> DraftProviderResult:
         envelope = json.dumps(
             {
@@ -753,6 +763,8 @@ class OpenAIChatDraftProvider:
                 tuple(call.metadata for call in calls),
                 docir=request.artifact_kind == "docir",
             ),
+            candidate_content=candidate_content,
+            materializer_contract_version=materializer_contract_version,
         )
 
     def _attempt_metadata(
@@ -1008,7 +1020,7 @@ def build_chat_messages(
     if request.artifact_kind == "docir":
         prompt = docir_segment or _DocIRSegmentPrompt(
             segment="interface-envelope",
-            contract_version=INTERFACE_ENVELOPE_SEGMENT_CONTRACT,
+            contract_version=SEMANTIC_INTERFACE_ENVELOPE_SEGMENT_CONTRACT,
         )
         system_message = _docir_segment_system_message(prompt)
         selector = json.dumps(request.case_fingerprint(), ensure_ascii=False, sort_keys=True)
@@ -1023,13 +1035,13 @@ def build_chat_messages(
                 [
                     f"Direction: {prompt.direction}",
                     f"Batch index: {prompt.batch_index}",
-                    "<VALIDATED_OUTLINE_SELECTOR_JSON>",
+                    "<VALIDATED_SEMANTIC_SELECTOR_JSON>",
                     json.dumps(
                         prompt.target_outline,
                         ensure_ascii=False,
                         separators=(",", ":"),
                     ),
-                    "</VALIDATED_OUTLINE_SELECTOR_JSON>",
+                    "</VALIDATED_SEMANTIC_SELECTOR_JSON>",
                 ]
             )
         user_parts.extend(
@@ -1087,15 +1099,15 @@ Do not wrap the JSON in Markdown fences. {_ARTIFACT_INSTRUCTIONS[request.artifac
 def _docir_segment_system_message(prompt: _DocIRSegmentPrompt) -> str:
     if prompt.segment == "interface-envelope":
         segment_contract = f"""
-Return exactly one `{INTERFACE_ENVELOPE_SEGMENT_CONTRACT}` JSON object with these properties:
+Return exactly one `{SEMANTIC_INTERFACE_ENVELOPE_SEGMENT_CONTRACT}` JSON object with these properties:
 `contractVersion`, `interface`, `sourceContext`, `envelope`.
 
 Use exactly this shape. Uppercase placeholders describe the schema and are not source facts:
 {{
-  "contractVersion": "{INTERFACE_ENVELOPE_SEGMENT_CONTRACT}",
+  "contractVersion": "{SEMANTIC_INTERFACE_ENVELOPE_SEGMENT_CONTRACT}",
   "interface": {{"metadata": [METADATA_ROW, ...]}},
   "sourceContext": ["SOURCE-SUPPORTED SUMMARY", ...],
-  "envelope": {{"metadata": [METADATA_ROW, ...], "fields": [FULL_FIELD_ROW, ...]}}
+  "envelope": {{"metadata": [METADATA_ROW, ...], "nodes": [SEMANTIC_NODE]}}
 }}
 
 `sourceContext` is a non-empty JSON array of non-empty strings; never return an object.
@@ -1107,70 +1119,67 @@ Metadata rows have exactly `key`, `value`, `reviewNote`. Use only these exact ke
 - envelope: Envelope Name, Root Path, Applies To, Evidence Scope
 Message Format is `XML`; Source Document is `raw-doc.md`.
 
-Full field rows have exactly `index`, `or`, `item`, `multiplicity`, `type`, `required`,
-`description`, `preValidation`, `platformValidation`, `review`, all as strings. `item` is a plain
-XML item name; use `@name` for an attribute. Envelope field indexes are rooted at `1`: the root is
-exactly `1`; each child appends a dot-separated positive integer; every parent appears before its
-children; indexes are unique and ordered.
-Every Envelope index must match `^1(?:\\.[1-9][0-9]*)*$`. Indexes contain digits and dots only and
-encode hierarchy position, never an XML item or attribute name. For example, an attribute may have
-`"index": "1.1", "item": "@version"`; `"index": "1.@version"` is forbidden.
+`nodes` contains exactly one ordered XML root. Every node requires `item`, `nodeKind`, and `children`.
+`item` is a plain XML item name.
+`nodeKind` is exactly `XML_ELEMENT` or `XML_ATTRIBUTE`; attribute item names start with `@` and
+attributes always have an empty `children` array. Child array order is the source-proposed sibling
+order. Never return `index`, `selector`, `path`, `parent`, `level`, `sequence` or `hasChildren`;
+the orchestrator derives structural identity from this ordered tree.
+
+Envelope nodes may additionally contain any of these semantic string properties: `or`,
+`multiplicity`, `type`, `required`, `description`, `preValidation`, `platformValidation`, `review`.
+Omitted semantic properties mean unknown and are not a structural error.
 
 Envelope means only the reusable shared XML wrapper that applies to both message directions.
-Return the complete shared Envelope structure within this scope; do not omit shared nodes.
+Return the complete shared Envelope structure within this scope; do not omit the root.
 It may contain the shared XML root, root attributes, `head`, shared head fields and the `trans`
 container. Envelope scope ends at the `trans` container. Treat `trans` as a leaf in this segment,
 even when SOURCE_DATA shows transaction children below it. Do not include transaction-specific
 request or response roots, any descendants of `trans`, or any fields owned by ASSEMBLY or PARSE.
 Do not return `assembly`, `parse`, message metadata or conditions.
 
-`multiplicity` is empty or bracketed such as `[1..1]`, `[0..1]` or `[0..1000]`. `type` is empty
+`multiplicity` is omitted, empty, or bracketed such as `[1..1]`, `[0..1]` or `[0..1000]`. `type` is omitted, empty,
 or exactly `String`, `Boolean`, `Date`, `Decimal` or `Object`. `required` is empty or exactly `Y`,
-`N` or `C`. Every Envelope field row must contain all ten properties, including properties whose
-value is an empty string. Before returning JSON, inspect every Envelope field row independently and
-check `multiplicity`, `type` and `required` after filling the row. If any of those three values is
-empty, `review` must contain the exact text `原文未说明，待人工确认`; do not leave `review` empty and
-do not omit it. This also applies to structural container rows and values legitimately not explicit
-in SOURCE_DATA. When a metadata value is not explicit, leave it empty and include that exact text in
-its `reviewNote`. A maximum without a minimum does not support inventing the minimum.
+`N` or `C`. Do not invent omitted values. The materializer injects the fixed Review marker for
+missing `multiplicity`, `type` or `required`. When a metadata value is not explicit, leave it empty
+and include `原文未说明，待人工确认` in its `reviewNote`. A maximum without a minimum does not
+support inventing the minimum.
 """.strip()
     elif prompt.segment == "messages-outline":
         segment_contract = f"""
-Return exactly one `{MESSAGES_OUTLINE_SEGMENT_CONTRACT}` JSON object with these properties:
+Return exactly one `{SEMANTIC_MESSAGES_TREE_SEGMENT_CONTRACT}` JSON object with these properties:
 `contractVersion`, `assembly`, `parse`.
-Return one combined outline for both directions in this single response.
+Return one combined ordered semantic tree for both directions in this single response.
 
 Use exactly this shape. Uppercase placeholders describe the schema and are not source facts:
 {{
-  "contractVersion": "{MESSAGES_OUTLINE_SEGMENT_CONTRACT}",
+  "contractVersion": "{SEMANTIC_MESSAGES_TREE_SEGMENT_CONTRACT}",
   "assembly": {{
     "metadata": [MESSAGE_METADATA_ROW, ...],
     "conditions": ["SOURCE-SUPPORTED CONDITION", ...],
-    "fields": [{{"index": "2", "item": "ASSEMBLY_ROOT"}}, ...]
+    "nodes": [{{"item": "ASSEMBLY_ROOT", "nodeKind": "XML_ELEMENT", "children": [NODE, ...]}}]
   }},
   "parse": {{
     "metadata": [MESSAGE_METADATA_ROW, ...],
     "conditions": ["SOURCE-SUPPORTED CONDITION", ...],
-    "fields": [{{"index": "3", "item": "PARSE_ROOT"}}, ...]
+    "nodes": [{{"item": "PARSE_ROOT", "nodeKind": "XML_ELEMENT", "children": [NODE, ...]}}]
   }}
 }}
 
-Both message sections have exactly `metadata`, `conditions`, `fields`. Metadata rows have exactly
+Both message sections have exactly `metadata`, `conditions`, `nodes`. Metadata rows have exactly
 `key`, `value`, `reviewNote` and use only: Message Name, Function Type, Root Path, Description.
 Function Type is `ASSEMBLY` or `PARSE` for the matching section. If a metadata value is not explicit,
 leave it empty and put `原文未说明，待人工确认` in `reviewNote`.
 
-Each outline field has exactly `index` and `item`; include every transaction-specific structural
-container and scalar field below the shared Envelope boundary, in parent-first order. ASSEMBLY
-indexes are rooted at `2`; PARSE indexes are rooted at `3`. Each child appends a dot-separated
-positive integer; indexes are unique and ordered. `item` is a plain XML item name; use `@name` for
-an attribute.
-Every ASSEMBLY index must match `^2(?:\\.[1-9][0-9]*)*$`; every PARSE index must match
-`^3(?:\\.[1-9][0-9]*)*$`. Indexes contain digits and dots only and encode hierarchy position, never
-an XML item or attribute name. Put names such as `request` or `@version` only in `item`.
+Each section has exactly one XML element root. Every node has exactly `item`, `nodeKind`, and
+`children`. `nodeKind` is `XML_ELEMENT` or `XML_ATTRIBUTE`; attributes use `@name` and cannot have
+children. Include every transaction-specific container and scalar below the shared Envelope boundary.
+Child array order is the proposed sibling order. Never return `index`, `selector`, `path`, `parent`,
+`level`, `sequence`, `hasChildren` or any full field detail properties. The orchestrator assigns
+selectors and DocIR indexes by preorder traversal.
 
 Do not include shared Envelope nodes such as the XML root, root attributes, `head`, shared head
-fields or `trans`. Do not return full field detail properties: `or`, `multiplicity`, `type`,
+fields or `trans`. Do not return semantic detail properties: `or`, `multiplicity`, `type`,
 `required`, `description`, `preValidation`, `platformValidation` or `review`. Do not return
 `interface`, `sourceContext` or `envelope`.
 
@@ -1179,32 +1188,27 @@ Conditions contain only source-supported rules for their matching direction. Use
 """.strip()
     else:
         segment_contract = f"""
-Return exactly one `{FIELD_DETAILS_SEGMENT_CONTRACT}` JSON object with these properties:
+Return exactly one `{SEMANTIC_FIELD_DETAILS_SEGMENT_CONTRACT}` JSON object with these properties:
 `contractVersion`, `direction`, `batchIndex`, `fields`.
 
 Use exactly this shape. Uppercase placeholders describe the schema and are not source facts:
 {{
-  "contractVersion": "{FIELD_DETAILS_SEGMENT_CONTRACT}",
+  "contractVersion": "{SEMANTIC_FIELD_DETAILS_SEGMENT_CONTRACT}",
   "direction": {json.dumps(prompt.direction)},
   "batchIndex": {prompt.batch_index},
-  "fields": [FULL_FIELD_ROW, ...]
+  "fields": [{{"selector": "CODE-ASSIGNED SELECTOR", SEMANTIC_PROPERTIES...}}, ...]
 }}
 
-The validated outline selector defines the complete field identity and order for this batch, but it
-is not business evidence. Return exactly those fields in exactly that order. Do not add, remove,
-reorder, rename or change any selected `index` or `item`. Do not return metadata or conditions.
+The validated semantic selector defines complete field identity and order for this batch, but it is
+not business evidence. Return exactly those selectors in exactly that order. Do not add, remove,
+reorder or change selectors. Do not return `item`, `nodeKind`, `index`, metadata or conditions.
 
-Full field rows have exactly `index`, `or`, `item`, `multiplicity`, `type`, `required`,
-`description`, `preValidation`, `platformValidation`, `review`, all as strings. `multiplicity` is
-empty or bracketed such as `[1..1]`, `[0..1]` or `[0..1000]`. `type` is empty or exactly `String`,
-`Boolean`, `Date`, `Decimal` or `Object`. `required` is empty or exactly `Y`, `N` or `C`.
-Every field row must contain all ten properties, including properties whose value is an empty string.
-Before returning JSON, inspect every field row independently and check `multiplicity`, `type` and
-`required` after filling the row. If any of those three values is empty, `review` must contain the
-exact text `原文未说明，待人工确认`; do not leave `review` empty and do not omit it. This rule also
-applies to structural container rows and to values that are legitimately not explicit in SOURCE_DATA.
-A maximum without a minimum does not support inventing the minimum; response fields without explicit
-requiredness stay empty and therefore require the marker in `review`.
+Each field requires only `selector`; it may contain semantic string properties `or`, `multiplicity`,
+`type`, `required`, `description`, `preValidation`, `platformValidation`, `review`. Omitted semantic
+properties mean unknown. `multiplicity` is empty or bracketed, `type` is empty or one of `String`,
+`Boolean`, `Date`, `Decimal`, `Object`, and `required` is empty or one of `Y`, `N`, `C`. Do not invent
+missing semantics; the materializer injects the fixed Review marker. A maximum without a minimum does
+not support inventing the minimum.
 """.strip()
     return f"""
 You extract exactly one requested segment of a Bank Config Compiler DocIR candidate for Human Review.

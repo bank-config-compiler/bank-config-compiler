@@ -1,13 +1,21 @@
 from __future__ import annotations
 
+import hashlib
 import re
+from collections import Counter
 from typing import Any
 
 
 DOCIR_EXTRACTION_CONTRACT = "docir-extraction/v1"
+DOCIR_SEMANTIC_CANDIDATE_CONTRACT = "docir-semantic-candidate/v1"
+DOCIR_MATERIALIZER_CONTRACT = "docir-semantic-materializer/v1"
+DOCIR_VALIDATION_RESULT_CONTRACT = "docir-validation-result/v1"
 INTERFACE_ENVELOPE_SEGMENT_CONTRACT = "docir-interface-envelope-segment/v1"
 MESSAGES_OUTLINE_SEGMENT_CONTRACT = "docir-messages-outline-segment/v1"
 FIELD_DETAILS_SEGMENT_CONTRACT = "docir-field-details-segment/v1"
+SEMANTIC_INTERFACE_ENVELOPE_SEGMENT_CONTRACT = "docir-interface-envelope-tree-segment/v1"
+SEMANTIC_MESSAGES_TREE_SEGMENT_CONTRACT = "docir-messages-tree-segment/v1"
+SEMANTIC_FIELD_DETAILS_SEGMENT_CONTRACT = "docir-field-semantics-segment/v1"
 METADATA_HEADER = "| Key | Value | Review Note |"
 FIELDS_HEADER = (
     "| Index | Or | Message Item | Mult. | Type | Required | 说明 | "
@@ -42,6 +50,8 @@ _FIELD_PROPERTIES = {
     "platformValidation",
     "review",
 }
+_SEMANTIC_NODE_PROPERTIES = _FIELD_PROPERTIES - {"index", "item"}
+_SEMANTIC_NODE_KINDS = {"XML_ELEMENT", "XML_ATTRIBUTE"}
 _METADATA_KEYS = {
     "interface": (
         "Interface Code",
@@ -69,6 +79,545 @@ _MULTIPLICITY_PATTERN = re.compile(r"^\[(0|[1-9]\d*)\.\.(0|[1-9]\d*|\*)\]$")
 
 class DocIRDraftError(ValueError):
     """Raised when structured DocIR extraction or its rendered wire is invalid."""
+
+
+def materialize_docir_semantic_candidate(value: Any) -> dict[str, Any]:
+    """Project one structurally unambiguous ordered semantic tree to DocIR wire fields."""
+
+    candidate = _require_object(value, label="DocIR semantic candidate")
+    _require_exact_properties(candidate, _TOP_PROPERTIES, label="DocIR semantic candidate")
+    if candidate.get("contractVersion") != DOCIR_SEMANTIC_CANDIDATE_CONTRACT:
+        raise DocIRDraftError(
+            "DocIR semantic candidate contractVersion must be "
+            f"{DOCIR_SEMANTIC_CANDIDATE_CONTRACT}"
+        )
+
+    interface = _require_object(
+        candidate.get("interface"), label="DocIR semantic candidate interface"
+    )
+    _require_exact_properties(
+        interface, {"metadata"}, label="DocIR semantic candidate interface"
+    )
+    extraction: dict[str, Any] = {
+        "contractVersion": DOCIR_EXTRACTION_CONTRACT,
+        "interface": {
+            "metadata": _validated_metadata(
+                interface.get("metadata"), section_name="interface"
+            )
+        },
+        "sourceContext": _require_string_array(
+            candidate.get("sourceContext"),
+            label="DocIR semantic candidate sourceContext",
+        ),
+    }
+    for section_name, root_index in (
+        ("envelope", "1"),
+        ("assembly", "2"),
+        ("parse", "3"),
+    ):
+        extraction[section_name] = _materialized_semantic_section(
+            candidate,
+            section_name=section_name,
+            root_index=root_index,
+        )
+    return _validated_extraction(extraction)
+
+
+def validate_docir_interface_envelope_tree_segment(value: Any) -> dict[str, Any]:
+    segment = _require_object(value, label="DocIR interface-envelope tree segment")
+    _require_exact_properties(
+        segment,
+        {"contractVersion", "interface", "sourceContext", "envelope"},
+        label="DocIR interface-envelope tree segment",
+    )
+    if segment.get("contractVersion") != SEMANTIC_INTERFACE_ENVELOPE_SEGMENT_CONTRACT:
+        raise DocIRDraftError(
+            "DocIR interface-envelope tree segment contractVersion must be "
+            f"{SEMANTIC_INTERFACE_ENVELOPE_SEGMENT_CONTRACT}"
+        )
+    interface = _require_object(
+        segment.get("interface"), label="DocIR interface-envelope tree segment interface"
+    )
+    _require_exact_properties(
+        interface,
+        {"metadata"},
+        label="DocIR interface-envelope tree segment interface",
+    )
+    envelope = _require_object(
+        segment.get("envelope"), label="DocIR interface-envelope tree segment envelope"
+    )
+    _require_exact_properties(
+        envelope,
+        {"metadata", "nodes"},
+        label="DocIR interface-envelope tree segment envelope",
+    )
+    return {
+        "contractVersion": SEMANTIC_INTERFACE_ENVELOPE_SEGMENT_CONTRACT,
+        "interface": {
+            "metadata": _validated_metadata(
+                interface.get("metadata"), section_name="interface"
+            )
+        },
+        "sourceContext": _require_string_array(
+            segment.get("sourceContext"),
+            label="DocIR interface-envelope tree segment sourceContext",
+        ),
+        "envelope": {
+            "metadata": _validated_metadata(
+                envelope.get("metadata"), section_name="envelope"
+            ),
+            "nodes": _normalize_external_semantic_tree(
+                envelope.get("nodes"), section_name="envelope", include_semantics=True
+            ),
+        },
+    }
+
+
+def validate_docir_messages_tree_segment(value: Any) -> dict[str, Any]:
+    segment = _require_object(value, label="DocIR messages tree segment")
+    _require_exact_properties(
+        segment,
+        {"contractVersion", "assembly", "parse"},
+        label="DocIR messages tree segment",
+    )
+    if segment.get("contractVersion") != SEMANTIC_MESSAGES_TREE_SEGMENT_CONTRACT:
+        raise DocIRDraftError(
+            "DocIR messages tree segment contractVersion must be "
+            f"{SEMANTIC_MESSAGES_TREE_SEGMENT_CONTRACT}"
+        )
+    result: dict[str, Any] = {"contractVersion": SEMANTIC_MESSAGES_TREE_SEGMENT_CONTRACT}
+    for section_name in ("assembly", "parse"):
+        label = f"DocIR messages tree segment {section_name}"
+        section = _require_object(segment.get(section_name), label=label)
+        _require_exact_properties(
+            section, {"metadata", "conditions", "nodes"}, label=label
+        )
+        result[section_name] = {
+            "metadata": _validated_metadata(
+                section.get("metadata"), section_name=section_name
+            ),
+            "conditions": _require_string_array(
+                section.get("conditions"), label=f"{label}.conditions"
+            ),
+            "nodes": _normalize_external_semantic_tree(
+                section.get("nodes"), section_name=section_name, include_semantics=False
+            ),
+        }
+    return result
+
+
+def build_docir_semantic_field_batches(
+    nodes: Any,
+    *,
+    batch_size: int,
+) -> list[list[dict[str, str]]]:
+    if isinstance(batch_size, bool) or not isinstance(batch_size, int) or batch_size <= 0:
+        raise DocIRDraftError("DocIR field batch size must be a positive integer")
+    outline: list[dict[str, str]] = []
+
+    def visit(node: dict[str, Any]) -> None:
+        outline.append(
+            {
+                "selector": node["selector"],
+                "item": node["item"],
+                "nodeKind": node["nodeKind"],
+            }
+        )
+        for child in node["children"]:
+            visit(child)
+
+    if not isinstance(nodes, list) or len(nodes) != 1:
+        raise DocIRDraftError("DocIR semantic nodes must contain exactly one root")
+    visit(nodes[0])
+    return [outline[index : index + batch_size] for index in range(0, len(outline), batch_size)]
+
+
+def validate_docir_semantic_field_details_segment(
+    value: Any,
+    *,
+    direction: str,
+    batch_index: int,
+    expected_outline: list[dict[str, str]],
+) -> dict[str, Any]:
+    segment = _require_object(value, label="DocIR field-semantics segment")
+    _require_exact_properties(
+        segment,
+        {"contractVersion", "direction", "batchIndex", "fields"},
+        label="DocIR field-semantics segment",
+    )
+    if segment.get("contractVersion") != SEMANTIC_FIELD_DETAILS_SEGMENT_CONTRACT:
+        raise DocIRDraftError(
+            "DocIR field-semantics segment contractVersion must be "
+            f"{SEMANTIC_FIELD_DETAILS_SEGMENT_CONTRACT}"
+        )
+    if direction not in {"ASSEMBLY", "PARSE"} or segment.get("direction") != direction:
+        raise DocIRDraftError("DocIR field-semantics direction does not match the request")
+    if isinstance(batch_index, bool) or not isinstance(batch_index, int) or batch_index <= 0:
+        raise DocIRDraftError("DocIR field-semantics batch index must be a positive integer")
+    if segment.get("batchIndex") != batch_index:
+        raise DocIRDraftError("DocIR field-semantics batch index does not match the request")
+    fields_value = segment.get("fields")
+    if not isinstance(fields_value, list) or not fields_value:
+        raise DocIRDraftError("DocIR field-semantics fields must be a non-empty array")
+    if len(fields_value) != len(expected_outline):
+        raise DocIRDraftError("DocIR field-semantics fields do not exactly cover target selectors")
+
+    fields: list[dict[str, str]] = []
+    for position, (row_value, expected) in enumerate(
+        zip(fields_value, expected_outline, strict=True)
+    ):
+        label = f"DocIR field-semantics fields[{position}]"
+        row = _require_object(row_value, label=label)
+        allowed = {"selector"} | _SEMANTIC_NODE_PROPERTIES
+        missing = {"selector"} - set(row)
+        unknown = set(row) - allowed
+        if missing or unknown:
+            detail: list[str] = []
+            if missing:
+                detail.append("missing properties: selector")
+            if unknown:
+                detail.append("unknown properties: " + ", ".join(sorted(unknown)))
+            raise DocIRDraftError(f"{label} has invalid properties ({'; '.join(detail)})")
+        selector = _require_string(
+            row.get("selector"), label=f"{label}.selector", allow_empty=False
+        )
+        if selector != expected["selector"]:
+            raise DocIRDraftError(
+                "DocIR field-semantics fields do not exactly cover target selectors"
+            )
+        fields.append({"selector": selector, **_normalized_semantics(row, label=label)})
+    return {
+        "contractVersion": SEMANTIC_FIELD_DETAILS_SEGMENT_CONTRACT,
+        "direction": direction,
+        "batchIndex": batch_index,
+        "fields": fields,
+    }
+
+
+def merge_docir_semantic_segments(
+    *,
+    interface_envelope: Any,
+    messages_tree: Any,
+    assembly_details: list[Any],
+    parse_details: list[Any],
+    batch_size: int = 16,
+) -> dict[str, Any]:
+    envelope_segment = validate_docir_interface_envelope_tree_segment(interface_envelope)
+    messages_segment = validate_docir_messages_tree_segment(messages_tree)
+    detail_values = {"ASSEMBLY": assembly_details, "PARSE": parse_details}
+    completed_nodes: dict[str, list[dict[str, Any]]] = {}
+
+    for direction, section_name in (("ASSEMBLY", "assembly"), ("PARSE", "parse")):
+        expected_batches = build_docir_semantic_field_batches(
+            messages_segment[section_name]["nodes"], batch_size=batch_size
+        )
+        supplied_batches = detail_values[direction]
+        if len(supplied_batches) != len(expected_batches):
+            raise DocIRDraftError(
+                f"DocIR {direction} detail batches do not exactly cover the semantic tree"
+            )
+        semantics_by_selector: dict[str, dict[str, str]] = {}
+        for batch_index, (supplied, expected) in enumerate(
+            zip(supplied_batches, expected_batches, strict=True), start=1
+        ):
+            validated = validate_docir_semantic_field_details_segment(
+                supplied,
+                direction=direction,
+                batch_index=batch_index,
+                expected_outline=expected,
+            )
+            for row in validated["fields"]:
+                semantics_by_selector[row["selector"]] = {
+                    key: row[key] for key in _SEMANTIC_NODE_PROPERTIES
+                }
+        completed_nodes[section_name] = _attach_semantics(
+            messages_segment[section_name]["nodes"], semantics_by_selector
+        )
+
+    return {
+        "contractVersion": DOCIR_SEMANTIC_CANDIDATE_CONTRACT,
+        "interface": envelope_segment["interface"],
+        "sourceContext": envelope_segment["sourceContext"],
+        "envelope": envelope_segment["envelope"],
+        "assembly": {
+            "metadata": messages_segment["assembly"]["metadata"],
+            "conditions": messages_segment["assembly"]["conditions"],
+            "nodes": completed_nodes["assembly"],
+        },
+        "parse": {
+            "metadata": messages_segment["parse"]["metadata"],
+            "conditions": messages_segment["parse"]["conditions"],
+            "nodes": completed_nodes["parse"],
+        },
+    }
+
+
+def _normalize_external_semantic_tree(
+    value: Any,
+    *,
+    section_name: str,
+    include_semantics: bool,
+) -> list[dict[str, Any]]:
+    label = f"DocIR {section_name} semantic nodes"
+    if not isinstance(value, list) or len(value) != 1:
+        raise DocIRDraftError(f"{label} must contain exactly one root")
+    visited: set[int] = set()
+
+    def normalize(node_value: Any, *, suffix: str, node_label: str) -> dict[str, Any]:
+        node = _require_object(node_value, label=node_label)
+        object_id = id(node)
+        if object_id in visited:
+            raise DocIRDraftError(
+                f"{node_label} is reused by multiple parents or forms a cycle"
+            )
+        visited.add(object_id)
+        required = {"item", "nodeKind", "children"}
+        allowed = required | (_SEMANTIC_NODE_PROPERTIES if include_semantics else set())
+        _require_exact_or_optional_properties(node, required, allowed, label=node_label)
+        item = _require_string(
+            node.get("item"), label=f"{node_label}.item", allow_empty=False
+        )
+        if not _ITEM_PATTERN.fullmatch(item):
+            raise DocIRDraftError(f"{node_label}.item must be a plain XML item name")
+        node_kind = _require_string(
+            node.get("nodeKind"), label=f"{node_label}.nodeKind", allow_empty=False
+        )
+        if node_kind not in _SEMANTIC_NODE_KINDS:
+            raise DocIRDraftError(
+                f"{node_label}.nodeKind must be XML_ELEMENT or XML_ATTRIBUTE"
+            )
+        if (node_kind == "XML_ATTRIBUTE") != item.startswith("@"):
+            raise DocIRDraftError(
+                f"{node_label}.item and nodeKind must describe the same XML node kind"
+            )
+        children = node.get("children")
+        if not isinstance(children, list):
+            raise DocIRDraftError(f"{node_label}.children must be an ordered array")
+        if node_kind == "XML_ATTRIBUTE" and children:
+            raise DocIRDraftError(f"{node_label} attribute nodes cannot have children")
+        sibling_names: set[str] = set()
+        normalized_children: list[dict[str, Any]] = []
+        for position, child_value in enumerate(children, start=1):
+            child = _require_object(
+                child_value, label=f"{node_label}.children[{position - 1}]"
+            )
+            child_name = _require_string(
+                child.get("item"),
+                label=f"{node_label}.children[{position - 1}].item",
+                allow_empty=False,
+            )
+            if child_name in sibling_names:
+                raise DocIRDraftError(
+                    f"{node_label} has duplicate sibling item {child_name}"
+                )
+            sibling_names.add(child_name)
+            normalized_children.append(
+                normalize(
+                    child,
+                    suffix=f"{suffix}.{position}",
+                    node_label=f"{node_label}.children[{position - 1}]",
+                )
+            )
+        normalized: dict[str, Any] = {
+            "selector": f"{section_name}:{suffix}",
+            "item": item,
+            "nodeKind": node_kind,
+            "children": normalized_children,
+        }
+        if include_semantics:
+            normalized.update(_normalized_semantics(node, label=node_label))
+        return normalized
+
+    root = normalize(value[0], suffix="1", node_label=f"{label}[0]")
+    if root["nodeKind"] != "XML_ELEMENT":
+        raise DocIRDraftError(f"{label}[0] root must be an XML_ELEMENT")
+    return [root]
+
+
+def _normalized_semantics(value: dict[str, Any], *, label: str) -> dict[str, str]:
+    semantics = {
+        name: _require_string(value.get(name, ""), label=f"{label}.{name}")
+        for name in _SEMANTIC_NODE_PROPERTIES
+    }
+    if (
+        not semantics["multiplicity"]
+        or not semantics["type"]
+        or not semantics["required"]
+    ) and UNKNOWN_REVIEW_MARKER not in semantics["review"]:
+        prefix = f"{semantics['review']}；" if semantics["review"] else ""
+        semantics["review"] = f"{prefix}{UNKNOWN_REVIEW_MARKER}"
+    return semantics
+
+
+def _attach_semantics(
+    nodes: list[dict[str, Any]], semantics_by_selector: dict[str, dict[str, str]]
+) -> list[dict[str, Any]]:
+    def attach(node: dict[str, Any]) -> dict[str, Any]:
+        selector = node["selector"]
+        if selector not in semantics_by_selector:
+            raise DocIRDraftError(
+                f"DocIR semantic detail coverage is missing selector {selector}"
+            )
+        return {
+            "selector": selector,
+            "item": node["item"],
+            "nodeKind": node["nodeKind"],
+            "children": [attach(child) for child in node["children"]],
+            **semantics_by_selector[selector],
+        }
+
+    return [attach(node) for node in nodes]
+
+
+def _require_exact_or_optional_properties(
+    value: dict[str, Any],
+    required: set[str],
+    allowed: set[str],
+    *,
+    label: str,
+) -> None:
+    missing = required - set(value)
+    unknown = set(value) - allowed
+    if missing or unknown:
+        detail: list[str] = []
+        if missing:
+            detail.append("missing properties: " + ", ".join(sorted(missing)))
+        if unknown:
+            detail.append("unknown properties: " + ", ".join(sorted(unknown)))
+        raise DocIRDraftError(f"{label} has invalid properties ({'; '.join(detail)})")
+
+
+def _materialized_semantic_section(
+    candidate: dict[str, Any],
+    *,
+    section_name: str,
+    root_index: str,
+) -> dict[str, Any]:
+    label = f"DocIR semantic candidate {section_name}"
+    section = _require_object(candidate.get(section_name), label=label)
+    expected_properties = {"metadata", "nodes"}
+    if section_name in {"assembly", "parse"}:
+        expected_properties.add("conditions")
+    _require_exact_properties(section, expected_properties, label=label)
+    nodes = section.get("nodes")
+    if not isinstance(nodes, list) or len(nodes) != 1:
+        raise DocIRDraftError(f"{label}.nodes must contain exactly one root")
+
+    fields: list[dict[str, str]] = []
+    visited: set[int] = set()
+    _materialize_semantic_node(
+        nodes[0],
+        section_name=section_name,
+        selector_suffix="1",
+        index=root_index,
+        label=f"{label}.nodes[0]",
+        fields=fields,
+        visited=visited,
+        is_root=True,
+    )
+    result: dict[str, Any] = {
+        "metadata": _validated_metadata(
+            section.get("metadata"), section_name=section_name
+        ),
+        "fields": fields,
+    }
+    if section_name in {"assembly", "parse"}:
+        result["conditions"] = _require_string_array(
+            section.get("conditions"), label=f"{label}.conditions"
+        )
+    return result
+
+
+def _materialize_semantic_node(
+    value: Any,
+    *,
+    section_name: str,
+    selector_suffix: str,
+    index: str,
+    label: str,
+    fields: list[dict[str, str]],
+    visited: set[int],
+    is_root: bool,
+) -> None:
+    node = _require_object(value, label=label)
+    object_id = id(node)
+    if object_id in visited:
+        raise DocIRDraftError(f"{label} is reused by multiple parents or forms a cycle")
+    visited.add(object_id)
+
+    required = {"selector", "item", "nodeKind", "children"}
+    unknown = set(node) - required - _SEMANTIC_NODE_PROPERTIES
+    missing = required - set(node)
+    if missing or unknown:
+        detail: list[str] = []
+        if missing:
+            detail.append("missing properties: " + ", ".join(sorted(missing)))
+        if unknown:
+            detail.append("unknown properties: " + ", ".join(sorted(unknown)))
+        raise DocIRDraftError(f"{label} has invalid properties ({'; '.join(detail)})")
+
+    expected_selector = f"{section_name}:{selector_suffix}"
+    selector = _require_string(
+        node.get("selector"), label=f"{label}.selector", allow_empty=False
+    )
+    if selector != expected_selector:
+        raise DocIRDraftError(
+            f"{label}.selector must be the canonical selector {expected_selector}"
+        )
+    item = _require_string(node.get("item"), label=f"{label}.item", allow_empty=False)
+    if not _ITEM_PATTERN.fullmatch(item):
+        raise DocIRDraftError(f"{label}.item must be a plain XML item name")
+    node_kind = _require_string(
+        node.get("nodeKind"), label=f"{label}.nodeKind", allow_empty=False
+    )
+    if node_kind not in _SEMANTIC_NODE_KINDS:
+        raise DocIRDraftError(f"{label}.nodeKind must be XML_ELEMENT or XML_ATTRIBUTE")
+    if (node_kind == "XML_ATTRIBUTE") != item.startswith("@"):
+        raise DocIRDraftError(f"{label}.item and nodeKind must describe the same XML node kind")
+    if is_root and node_kind != "XML_ELEMENT":
+        raise DocIRDraftError(f"{label} root must be an XML_ELEMENT")
+
+    children = node.get("children")
+    if not isinstance(children, list):
+        raise DocIRDraftError(f"{label}.children must be an ordered array")
+    if node_kind == "XML_ATTRIBUTE" and children:
+        raise DocIRDraftError(f"{label} attribute nodes cannot have children")
+
+    semantics = {
+        name: _require_string(node.get(name, ""), label=f"{label}.{name}")
+        for name in _SEMANTIC_NODE_PROPERTIES
+    }
+    if (
+        not semantics["multiplicity"]
+        or not semantics["type"]
+        or not semantics["required"]
+    ) and UNKNOWN_REVIEW_MARKER not in semantics["review"]:
+        prefix = f"{semantics['review']}；" if semantics["review"] else ""
+        semantics["review"] = f"{prefix}{UNKNOWN_REVIEW_MARKER}"
+    field = {"index": index, "item": item, **semantics}
+    fields.append(_validated_field(field, root_index=index.split(".", 1)[0], label=label))
+
+    sibling_names: set[str] = set()
+    for position, child in enumerate(children, start=1):
+        child_object = _require_object(child, label=f"{label}.children[{position - 1}]")
+        child_name = _require_string(
+            child_object.get("item"),
+            label=f"{label}.children[{position - 1}].item",
+            allow_empty=False,
+        )
+        if child_name in sibling_names:
+            raise DocIRDraftError(f"{label} has duplicate sibling item {child_name}")
+        sibling_names.add(child_name)
+        _materialize_semantic_node(
+            child_object,
+            section_name=section_name,
+            selector_suffix=f"{selector_suffix}.{position}",
+            index=f"{index}.{position}",
+            label=f"{label}.children[{position - 1}]",
+            fields=fields,
+            visited=visited,
+            is_root=False,
+        )
 
 
 def validate_docir_interface_envelope_segment(value: Any) -> dict[str, Any]:
@@ -418,6 +967,268 @@ def validate_docir_markdown_wire(content: Any) -> None:
                 raise DocIRDraftError(f"DocIR {heading} Fields row must have ten cells")
             rows.append(cells)
         _validate_rendered_field_rows(rows, root_index=root_index, label=heading)
+
+
+def validate_docir_markdown(content: Any) -> dict[str, Any]:
+    """Return all independently discoverable DocIR Draft issues for the exact bytes."""
+
+    if not isinstance(content, str):
+        raise DocIRDraftError("DocIR Markdown wire must be text")
+    content_hash = f"sha256:{hashlib.sha256(content.encode('utf-8')).hexdigest()}"
+    issues: list[dict[str, Any]] = []
+    lines = content.splitlines()
+
+    def add(code: str, path: str | None, message: str) -> None:
+        issues.append(
+            {
+                "severity": "ERROR",
+                "blocking": True,
+                "code": code,
+                "path": path,
+                "message": message,
+            }
+        )
+
+    if not content:
+        add("DOCIR_EMPTY", None, "DocIR Markdown wire must be non-empty text")
+    if content.startswith("\ufeff"):
+        add("DOCIR_UTF8_BOM", None, "DocIR Markdown wire must be UTF-8 without BOM")
+
+    headings = [line for line in lines if line.startswith("# ")]
+    expected_headings = [
+        "# Interface",
+        "# Source Context / 来源上下文",
+        "# Envelope",
+        "# Message: ASSEMBLY",
+        "# Message: PARSE",
+    ]
+    if headings != expected_headings:
+        add(
+            "DOCIR_HEADING_ORDER",
+            None,
+            "DocIR Markdown wire has invalid top-level heading order",
+        )
+    if content.count(METADATA_HEADER) != 4:
+        add(
+            "DOCIR_METADATA_TABLE_COUNT",
+            None,
+            "DocIR Markdown wire must contain four fixed Metadata headers",
+        )
+    if content.count(FIELDS_HEADER) != 3:
+        add(
+            "DOCIR_FIELDS_TABLE_COUNT",
+            None,
+            "DocIR Markdown wire must contain three fixed Fields headers",
+        )
+    if content.count("## Conditions") != 2:
+        add(
+            "DOCIR_CONDITIONS_COUNT",
+            None,
+            "DocIR Markdown wire must contain two Conditions sections",
+        )
+    if "| Path |" in content or "| Tag |" in content or "…/" in content:
+        add(
+            "DOCIR_FORBIDDEN_WIRE_FORM",
+            None,
+            "DocIR Markdown wire contains a forbidden path or tag form",
+        )
+
+    field_count = 0
+    covered_sections = 0
+    for heading, section_label, root_index in (
+        ("# Envelope", "Envelope", "1"),
+        ("# Message: ASSEMBLY", "ASSEMBLY", "2"),
+        ("# Message: PARSE", "PARSE", "3"),
+    ):
+        if heading not in lines:
+            add(
+                "DOCIR_SECTION_MISSING",
+                section_label,
+                f"DocIR is missing the {section_label} section",
+            )
+            continue
+        start = lines.index(heading)
+        end = next(
+            (
+                position
+                for position in range(start + 1, len(lines))
+                if lines[position].startswith("# ")
+            ),
+            len(lines),
+        )
+        section_lines = lines[start:end]
+        if FIELDS_HEADER not in section_lines:
+            add(
+                "DOCIR_FIELDS_TABLE_MISSING",
+                f"{section_label}.Fields",
+                f"DocIR {section_label} is missing its Fields table",
+            )
+            continue
+        covered_sections += 1
+        header_index = section_lines.index(FIELDS_HEADER)
+        rows: list[list[str]] = []
+        for line in section_lines[header_index + 2 :]:
+            if not line.startswith("|"):
+                if rows:
+                    break
+                continue
+            try:
+                cells = _split_markdown_row(line)
+            except DocIRDraftError as exc:
+                add("DOCIR_FIELD_ROW_FORMAT", f"{section_label}.Fields", str(exc))
+                continue
+            if len(cells) != 10:
+                add(
+                    "DOCIR_FIELD_CELL_COUNT",
+                    f"{section_label}.Fields",
+                    f"DocIR {section_label} Fields row must have ten cells",
+                )
+                continue
+            rows.append(cells)
+        field_count += len(rows)
+        _collect_rendered_field_issues(
+            rows,
+            root_index=root_index,
+            section_label=section_label,
+            add=add,
+        )
+
+    ordered = sorted(
+        issues,
+        key=lambda item: (item["path"] or "", item["code"], item["message"]),
+    )
+    counts = Counter(item["severity"] for item in ordered)
+    error_count = counts["ERROR"]
+    return {
+        "contractVersion": DOCIR_VALIDATION_RESULT_CONTRACT,
+        "validatedArtifact": {
+            "kind": "docir",
+            "contentHash": content_hash,
+        },
+        "status": "failed" if error_count else "passed",
+        "finalEligible": False,
+        "summary": {
+            "fieldCount": field_count,
+            "errorCount": error_count,
+            "warningCount": counts["WARNING"],
+            "infoCount": counts["INFO"],
+            "blockingCount": sum(1 for item in ordered if item["blocking"]),
+        },
+        "coverage": {
+            "expectedSections": 3,
+            "validatedSections": covered_sections,
+        },
+        "issues": ordered,
+    }
+
+
+def _collect_rendered_field_issues(
+    rows: list[list[str]],
+    *,
+    root_index: str,
+    section_label: str,
+    add: Any,
+) -> None:
+    if not rows:
+        add(
+            "DOCIR_ROOT_MISSING",
+            f"{section_label}.Fields",
+            f"DocIR {section_label} Fields must contain a root",
+        )
+        return
+    if rows[0][0] != root_index:
+        add(
+            "DOCIR_ROOT_INDEX",
+            f"{section_label}.Fields[{rows[0][0]}]",
+            f"DocIR {section_label} root index must be {root_index}",
+        )
+
+    seen_indexes: set[str] = set()
+    previous_index_key: tuple[int, ...] | None = None
+    for position, row in enumerate(rows):
+        index = row[0]
+        path = f"{section_label}.Fields[{index or position}]"
+        try:
+            _validate_index(index, root_index=root_index, label=f"DocIR {section_label} index")
+        except DocIRDraftError as exc:
+            add("DOCIR_INDEX", path, str(exc))
+            continue
+        index_key = _index_key(index)
+        if previous_index_key is not None and index_key <= previous_index_key:
+            add(
+                "DOCIR_INDEX_ORDER",
+                path,
+                f"DocIR {section_label} index order is invalid: {index}",
+            )
+        previous_index_key = index_key
+        if index in seen_indexes:
+            add(
+                "DOCIR_INDEX_DUPLICATE",
+                path,
+                f"DocIR {section_label} index is duplicated: {index}",
+            )
+        if index != root_index:
+            parent = index.rsplit(".", 1)[0]
+            if parent not in seen_indexes:
+                add(
+                    "DOCIR_PARENT_MISSING",
+                    path,
+                    f"DocIR {section_label} parent index is missing for {index}",
+                )
+        seen_indexes.add(index)
+
+        depth = index.count(".")
+        expected_prefix = "\u3000" * depth
+        item_cell = row[2]
+        item_valid = item_cell.startswith(expected_prefix + "`") and item_cell.endswith("`")
+        if not item_valid:
+            add(
+                "DOCIR_ITEM_INDENTATION",
+                path,
+                f"DocIR {section_label} Message Item indentation is invalid for {index}",
+            )
+        else:
+            item = item_cell[len(expected_prefix) + 1 : -1]
+            if not _ITEM_PATTERN.fullmatch(item):
+                add(
+                    "DOCIR_ITEM",
+                    path,
+                    f"DocIR {section_label} Message Item is invalid for {index}",
+                )
+
+        try:
+            _validate_multiplicity(row[3], label=f"DocIR {section_label} multiplicity")
+        except DocIRDraftError as exc:
+            add("DOCIR_MULTIPLICITY", path, str(exc))
+        if row[4] not in _FIELD_TYPES:
+            add(
+                "DOCIR_TYPE",
+                path,
+                f"DocIR {section_label} Type wire value is invalid",
+            )
+        if row[5] not in _REQUIRED_VALUES:
+            add(
+                "DOCIR_REQUIRED",
+                path,
+                f"DocIR {section_label} Required wire value is invalid",
+            )
+        for column, value in (
+            ("multiplicity", row[3]),
+            ("type", row[4]),
+            ("required", row[5]),
+        ):
+            if not value:
+                add(
+                    "DOCIR_SEMANTIC_VALUE_MISSING",
+                    path,
+                    f"DocIR {section_label} {index} {column} requires Human confirmation",
+                )
+        if (not row[3] or not row[4] or not row[5]) and UNKNOWN_REVIEW_MARKER not in row[9]:
+            add(
+                "DOCIR_REVIEW_MARKER_MISSING",
+                path,
+                f"DocIR {section_label} {index} missing semantic values require the fixed Review marker",
+            )
 
 
 def _validated_section(

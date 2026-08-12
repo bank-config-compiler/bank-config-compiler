@@ -2,9 +2,9 @@
 
 ## Status
 
-**In Progress。P0-T5 正在实现可信 Draft 基础与真实 DocIR 闭环；P0-T6 尚未开始。**
+**In Progress。P0-T5 离线实现已完成，等待真实 DocIR 与 Human Gate；P0-T6 runtime 已离线实现，但真实下游链受 Final DocIR 阻塞。**
 
-P0-T3 trusted chain 与 P0-T4 deterministic Draft-to-Workbook closure 已完成。ADR-0015 已接受 candidate → deterministic materialization → Invalid/Reviewable Draft → Human Gate 的六类 Draft 共同策略。`docir-019` 是旧 fail-fast 语义下的最后一个真实 attempt；其临时 workspace 不是阻塞证据，`docir-020` 只能在新的离线实现和验证通过后单独授权。
+P0-T3 trusted chain 与 P0-T4 deterministic Draft-to-Workbook closure 已完成。ADR-0015 已接受 candidate → deterministic materialization → Invalid/Reviewable Draft → Human Gate 的六类 Draft 共同策略。`docir-019` 是旧 fail-fast 语义下的最后一个真实 attempt；其临时 workspace 不是阻塞证据。新的离线实现完成门禁后，`docir-020` 仍须单独授权。
 
 ## 1. 目标与可信边界
 
@@ -33,8 +33,8 @@ Raw Docs
 | P0-T2 Review Golden boundary | Done | 审查前 Golden byte-stable |
 | P0-T3 Trusted chain | Done | Final IR、Validator、规则和双方向 Workbook |
 | P0-T4 Draft generators | Done | provider-neutral fixture 六 Draft closure |
-| P0-T5 可信基础与真实 DocIR | In Progress | 公共 lineage/validation/approval + 一份真实 Final DocIR |
-| P0-T6 下游收割与 Phase0 收口 | Pending | 五份下游真实 Final、双向 check/Workbook |
+| P0-T5 可信基础与真实 DocIR | In Progress | 公共 lineage/validation/approval 已离线实现；仍需一份真实 Final DocIR |
+| P0-T6 下游收割与 Phase0 收口 | Blocked | runtime 已离线实现；仍需五份下游真实 Final、双向 check/Workbook |
 
 P0-T5 Done 不代表 Phase0 Done，也不授权进入 Phase1 planning。
 
@@ -50,11 +50,11 @@ P0-T5 Done 不代表 Phase0 Done，也不授权进入 Phase1 planning。
 
 ### 3.2 完成标志
 
-- [ ] hard failure 不发布 Draft；可物化语义缺失发布 Invalid Draft并返回 `3`。
-- [ ] DocIR Validator 聚合 issues，并绑定当前 Markdown bytes hash。
-- [ ] attempt ID 不可覆盖；Generation Result 保持初始 lineage，不随 Human 编辑改写。
-- [ ] `validate-draft` 原子刷新 result/notes，不修改 Draft。
-- [ ] `approve-draft` 交互模式无需手输 hash；非交互模式必须显式提供 expected hash。
+- [x] hard failure 不发布 Draft；可物化语义缺失发布 Invalid Draft并返回 `3`。
+- [x] DocIR Validator 聚合 issues，并绑定当前 Markdown bytes hash。
+- [x] attempt ID 不可覆盖；Generation Result 保持初始 lineage，不随 Human 编辑改写。
+- [x] `validate-draft` 原子刷新 result/notes，不修改 Draft。
+- [x] `approve-draft` 交互模式无需手输 hash；非交互模式必须显式提供 expected hash。
 - [ ] 一份真实 DocIR 完成 candidate → Draft → Human edit → validate → approval → Final。
 
 ## 4. P0-T6：下游收割与 Phase0 收口
@@ -67,6 +67,8 @@ P0-T6 只能消费 P0-T5 获批的 Final DocIR，并按以下顺序执行：
 4. **P0-T6.4 Closure**：两个 `check --profile phase0`、两个 Workbook、结构化/安全检查和 Phase0 状态收口。
 
 每一小节必须等待上一层准确 Final，不能集中到最后一次批准。
+
+SchemaIR、Standard、Template 的 semantic materializer、统一 validate/approve CLI 和离线回归已经实现。该实现不改变执行依赖：没有 P0-T5 获批的真实 Final DocIR 时，不得把 fixture closure 记为 P0-T6 真实验收。
 
 ## 5. Commit Plan
 
@@ -99,8 +101,8 @@ git diff --check
 
 ## 7. 当前阻塞
 
-- P0-T5 代码实现与离线验证尚未完成，因此不得启动新的真实 attempt。
-- P0-T5 真实 Final DocIR 需要用户单独授权 provider 调用，并对准确内容执行 Human approval。
+- P0-T5 真实 Final DocIR 需要用户单独授权一次新的 provider attempt，并对准确内容执行 Human 修改、重验和 approval。
 - P0-T6 的每一层均受前一层 Human-approved Final 阻塞。
+- Phase0 Done 仍受五份下游真实 Final、双方向 `check --profile phase0` 和 Workbook 验收阻塞。
 
 若本计划与 Accepted ADR、当前代码/测试或准确真实 evidence 冲突，应停止执行并先修正文档或建立 superseding decision。

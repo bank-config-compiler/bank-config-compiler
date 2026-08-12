@@ -415,6 +415,21 @@ def test_paths_sequences_sources_and_coverage_are_closed(rule_package: RulePacka
     } <= issue_codes(result)
 
 
+def test_sequence_is_recomputed_against_schemair_sibling_order(
+    rule_package: RulePackage,
+) -> None:
+    schemair = valid_schemair()
+    standard = valid_standard(schemair)
+    standard["fields"][2]["sequence"] = 2
+    standard["fields"][3]["sequence"] = 1
+
+    result = validate(standard, schemair, rule_package)
+
+    assert "NON_CONTIGUOUS_FIELD_SEQUENCE" not in issue_codes(result)
+    assert "DUPLICATE_FIELD_SEQUENCE" not in issue_codes(result)
+    assert "SCHEMAIR_SEQUENCE_PROJECTION_MISMATCH" in issue_codes(result)
+
+
 def test_xml_keys_must_exactly_cover_schemair_attributes(rule_package: RulePackage) -> None:
     schemair = valid_schemair()
     standard = valid_standard(schemair)

@@ -13,7 +13,9 @@
     {
       "request": {
         "artifactKind": "schemair",
-        "sourceHash": "sha256:31d7fc002ccc2b840f401206f54665e36771f2bb5502d480566defdff9ac7585"
+        "sourceHash": "sha256:31d7fc002ccc2b840f401206f54665e36771f2bb5502d480566defdff9ac7585",
+        "schemaId": "b2eboc-b2e0061-schema",
+        "schemaVersion": "v1"
       },
       "artifactFile": "artifacts/schemair-draft.json",
       "reviewNotesFile": "notes/schemair-review.md"
@@ -22,6 +24,7 @@
       "request": {
         "artifactKind": "standard",
         "sourceHash": "sha256:4729131ad59fd29899895b1149a476c1f95b71f304cb43bd17749985f19e7162",
+        "standardId": "b2e0061-assembly-standard",
         "direction": "ASSEMBLY",
         "standardVersion": "v1",
         "rulePackageVersion": "v1"
@@ -33,6 +36,7 @@
       "request": {
         "artifactKind": "standard",
         "sourceHash": "sha256:4729131ad59fd29899895b1149a476c1f95b71f304cb43bd17749985f19e7162",
+        "standardId": "b2e0061-parse-standard",
         "direction": "PARSE",
         "standardVersion": "v1",
         "rulePackageVersion": "v1"
