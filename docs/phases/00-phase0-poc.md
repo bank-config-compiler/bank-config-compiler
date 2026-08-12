@@ -2,7 +2,7 @@
 
 ## Status
 
-In Progress. P0-T3 trusted chain 与 P0-T4 deterministic Draft-to-Workbook closure 均已完成；P0-T5 的 DocIR 有界分段与 attempt v2 evidence 已完成离线实现。`docir-014/015` 证明空 wire 值 Review invariant 必须覆盖两个 full-field 阶段；v11 的 `docir-016` 已满足该规则并保持 `trans` 边界，但属性 index 混入 XML 名而 fail-fast。v12 已明确纯数字层级 regex 与 name/index 隔离，尚待新 attempt 从头验证；真实 LLM 全链路验证仍未完成，Phase0-PoC 最终门禁未通过。
+In Progress. P0-T3 trusted chain 与 P0-T4 deterministic Draft-to-Workbook closure 均已完成；P0-T5 的 DocIR 有界分段与 attempt v2 evidence 已完成离线实现。v12 的 `docir-017` Interface/Envelope 已通过 `trans` 边界、纯数字 index、十属性和空值 Review 全部门禁；联合 outline 随后未产生可校验响应并发生 `ReadTimeout`。下一真实 attempt 前须先调查 transport 行为；真实 LLM 全链路验证仍未完成，Phase0-PoC 最终门禁未通过。
 
 ## 1. 阶段目标
 
@@ -42,7 +42,7 @@ LLM、Agent 或 workflow 可以生成 Draft，但不能替代 Validator、人工
 
 尚未完成：
 
-- P0-T5 真实 provider adapter、OpenAI-compatible Chat API 显式运行时配置、成功/失败调用证据与离线自动化候选已经实现。`docir-014` 已验证职责隔离有效，12-node Envelope 在 `trans` 截止，27/10-field 联合 outline 只有字段身份；首个 detail 因空 wire 值缺少 Review 标记而停止。`docir-015` 又在 Envelope 随机复现相同标记缺口；v11 统一两个 full-field 阶段后，`docir-016` 的标记规则通过，但三个属性 index 使用 `1.@name` 而被纯数字层级门禁拒绝。v12 已给出精确 regex、有效/无效示例和 name/index 隔离。仍没有真实 Final DocIR、下游真实 Draft/Final/Review 记录或双方向 Workbook。
+- P0-T5 真实 provider adapter、OpenAI-compatible Chat API 显式运行时配置、成功/失败调用证据与离线自动化候选已经实现。`docir-014` 已验证职责隔离有效，后续 attempts 收口了 full-field Review 与纯数字 index。v12 的 `docir-017` Interface/Envelope 已通过机械门禁；联合 outline 随后在没有 response body、usage 或 `finish_reason` 的情况下发生 `ReadTimeout` 并 fail-fast。现有 timeout 配置已为 600 秒，不能把新 attempt 简化为继续增大 timeout。仍没有真实 Final DocIR、下游真实 Draft/Final/Review 记录或双方向 Workbook。
 
 `configuration-rules/v1` 与 v2 均已发布并冻结；v2 不改变其 27/207/14/5/6 catalog、Function String、Mapping/Replacement、字符长度默认 `STANDARD_1` 或业务 Condition 边界，只修订 Template Standard projection。现有 Final Standard 继续绑定 v1；Final InterfaceTemplateIR 精确绑定 v2。详细任务状态见 `docs/planning/00-phase0-poc-plan.md`。
 

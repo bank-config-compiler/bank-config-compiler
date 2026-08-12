@@ -200,7 +200,7 @@ Phase0 可以用受控 fixture 或命令流程表达人工确认；Phase1 才提
 
 规则版本一旦发布不可原地覆盖。InterfaceStandardIR、InterfaceTemplateIR、Validator result 和 Configuration Workbook 必须记录实际使用的精确规则版本及 Rule ID。标准和后续模板可以使用不同规则版本，但模板对标准 artifact 的绑定不因此改变。
 
-`configuration-rules/v1` 与只修订方向相关 Standard projection 的 v2 均已发布并冻结。SchemaIR v2、InterfaceStandardIR、InterfaceTemplateIR、Configuration Workbook、双方向 Golden 与匹配 validation results 均已实现并冻结；P0-T3 已完成。P0-T4 的 provider-neutral runtime、六个受控 response、四类 CLI 和准确 hash 的 reviewed Final DocIR 已冻结；完整受控回归显式装载已审核 Final fixtures，双方向 Workbook 结构化内容均与 Golden 一致。P0-T5 的真实 provider adapter、显式配置、Prompt/context 边界与离线测试候选已经实现。`docir-012/013` 暴露 shape 与职责问题，`docir-014/015` 证明空值 Review invariant 必须覆盖两个 full-field 阶段。v11 的 `docir-016` 已满足标记规则并保持 `trans` 边界，但属性 index 混入 XML 名而 fail-fast；v12 已补充精确纯数字层级 regex 和 name/index 隔离规则，尚待新 attempt 从头验证。Golden 不参与真实候选自动语义判定。其余真实 Draft、逐层 Final validation 与双方向 Workbook 证据仍未完成，Phase0-PoC 为 In Progress。Final IR 必须精确引用适用的 `RELEASED` 规则版本。
+`configuration-rules/v1` 与只修订方向相关 Standard projection 的 v2 均已发布并冻结。SchemaIR v2、InterfaceStandardIR、InterfaceTemplateIR、Configuration Workbook、双方向 Golden 与匹配 validation results 均已实现并冻结；P0-T3 已完成。P0-T4 的 provider-neutral runtime、六个受控 response、四类 CLI 和准确 hash 的 reviewed Final DocIR 已冻结；完整受控回归显式装载已审核 Final fixtures，双方向 Workbook 结构化内容均与 Golden 一致。P0-T5 的真实 provider adapter、显式配置、Prompt/context 边界与离线测试候选已经实现。`docir-012` 至 `docir-016` 逐步收口 shape、职责、空值 Review 与 index/name 问题。v12 的 `docir-017` Interface/Envelope 已通过全部机械门禁；联合 outline 随后在无可校验响应的情况下发生 `ReadTimeout`，须在新 attempt 前独立调查 transport 行为。Golden 不参与真实候选自动语义判定。其余真实 Draft、逐层 Final validation 与双方向 Workbook 证据仍未完成，Phase0-PoC 为 In Progress。Final IR 必须精确引用适用的 `RELEASED` 规则版本。
 
 ## 4. 候选任务状态
 

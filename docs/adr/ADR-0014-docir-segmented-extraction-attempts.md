@@ -65,3 +65,5 @@ ADR-0013 将 DocIR 从模型直出 Markdown 改为严格结构化提取与确定
 - `draft-prompt/v11` 将同一十属性完整性和逐行空值后置检查加入 Interface/Envelope full-field 合同；outline 仍不包含任何字段详情指令。该修订统一两个 full-field 阶段与既有 Validator，不放宽门禁或改变分段职责。
 - `docir-016` 证明 v11 的 Review 修订生效：空 wire 值均带固定标记，12-node Envelope 也仍在 `trans` 截止；但三个属性 index 被写成 `1.@version` 等 XML 名路径，而非纯数字层级，因此第一段仍被既有 index 门禁拒绝。
 - `draft-prompt/v12` 在 Envelope 与两个方向 outline 中给出准确纯数字层级 regex，并明确 index 只编码位置、XML item/attribute 名只进入 `item`；有效 `1.1`/`@version` 与无效 `1.@version` 示例直接对应真实失败。detail 继续逐字复制已校验 outline selector，不重新生成 index。
+- `docir-017` 的 v12 Interface/Envelope 已通过机械门禁：12 个共享节点在 `trans` 截止，index 全为纯数字层级，十属性完整，空 wire 值均带固定 Review 标记。随后联合 messages outline 未产生可校验 response、usage 或 `finish_reason`，以 `ReadTimeout` 失败并停止；这不是新的 prompt/schema 失败。
+- 当前运行时 timeout 配置已为 600 秒，但该失败 evidence 的时间跨度不能仅由“增大 timeout”安全解释。后续 attempt 前应单独调查 provider/SDK 流式 timeout 行为；不得 resume `docir-017` 或把首段成功前缀复用到新 attempt。
