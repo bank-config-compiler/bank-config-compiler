@@ -169,8 +169,9 @@ def _add_draft_provider_arguments(parser: argparse.ArgumentParser) -> None:
         "--chat-timeout-seconds",
         type=float,
         help=(
-            "Request timeout in seconds; overrides "
-            "BANK_CONFIG_COMPILER_LLM_TIMEOUT_SECONDS and defaults to 600."
+            "Per-subcall absolute deadline in seconds; also configures SDK I/O "
+            "timeouts, overrides BANK_CONFIG_COMPILER_LLM_TIMEOUT_SECONDS, and "
+            "defaults to 600."
         ),
     )
     parser.add_argument(

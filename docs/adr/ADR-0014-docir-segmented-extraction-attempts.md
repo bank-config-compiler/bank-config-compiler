@@ -67,3 +67,9 @@ ADR-0013 将 DocIR 从模型直出 Markdown 改为严格结构化提取与确定
 - `draft-prompt/v12` 在 Envelope 与两个方向 outline 中给出准确纯数字层级 regex，并明确 index 只编码位置、XML item/attribute 名只进入 `item`；有效 `1.1`/`@version` 与无效 `1.@version` 示例直接对应真实失败。detail 继续逐字复制已校验 outline selector，不重新生成 index。
 - `docir-017` 的 v12 Interface/Envelope 已通过机械门禁：12 个共享节点在 `trans` 截止，index 全为纯数字层级，十属性完整，空 wire 值均带固定 Review 标记。随后联合 messages outline 未产生可校验 response、usage 或 `finish_reason`，以 `ReadTimeout` 失败并停止；这不是新的 prompt/schema 失败。
 - 当前运行时 timeout 配置已为 600 秒，但该失败 evidence 的时间跨度不能仅由“增大 timeout”安全解释。后续 attempt 前应单独调查 provider/SDK 流式 timeout 行为；不得 resume `docir-017` 或把首段成功前缀复用到新 attempt。
+
+### Implementation amendment (2026-08-12)
+
+- 对 CLI config → provider constructor → OpenAI/httpx timeout → stream create/iterate → exception translation → v2 evidence 的离线逆向确认：scalar SDK timeout 被配置为逐次 connect/read/write/pool I/O 上限，不是物理 subcall 从 create 到流结束的绝对墙钟期限。持续到达但不产生可接受内容的分块可以避开 read-idle timeout；这是 `docir-017` 长时间无完成门禁的本地控制缺口。
+- 现复用同一个 timeout 作为单个物理 subcall 的绝对期限。watchdog 从 stream create 前启动；create 尚未返回时关闭 client，stream 已建立时关闭 stream。期限触发统一转译为 `ProviderCallDeadlineExceeded`，elapsed、已解析 chunk count 与 content chunk count 只进入失败详情和结构化日志；公开 provider contract 与 v2 evidence shape 不变。
+- 离线 fake client 覆盖 create 阻塞、持续非内容分块、提前 SDK `ReadTimeout` 与期限内正常完成。该实现不增加 retry/resume，不修改 prompt、Validator 或 Human Review 门禁，也不授权真实 provider 调用；下一 attempt 必须使用新 ID 从第一段开始。

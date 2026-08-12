@@ -2,7 +2,7 @@
 
 ## Status
 
-In Progress. P0-T3 trusted chain 与 P0-T4 deterministic Draft-to-Workbook closure 均已完成；P0-T5 的 DocIR 有界分段与 attempt v2 evidence 已完成离线实现。v12 的 `docir-017` Interface/Envelope 已通过 `trans` 边界、纯数字 index、十属性和空值 Review 全部门禁；联合 outline 随后未产生可校验响应并发生 `ReadTimeout`。下一真实 attempt 前须先调查 transport 行为；真实 LLM 全链路验证仍未完成，Phase0-PoC 最终门禁未通过。
+In Progress. P0-T3 trusted chain 与 P0-T4 deterministic Draft-to-Workbook closure 均已完成；P0-T5 的 DocIR 有界分段、attempt v2 evidence 与物理 subcall 绝对期限已完成离线实现。v12 的 `docir-017` Interface/Envelope 已通过 `trans` 边界、纯数字 index、十属性和空值 Review 全部门禁；联合 outline 随后未产生可校验响应并发生 `ReadTimeout`。离线调查和修复已完成；再次真实调用必须另获授权，并以新 attempt ID 从第一段开始。真实 LLM 全链路验证仍未完成，Phase0-PoC 最终门禁未通过。
 
 ## 1. 阶段目标
 
@@ -42,7 +42,7 @@ LLM、Agent 或 workflow 可以生成 Draft，但不能替代 Validator、人工
 
 尚未完成：
 
-- P0-T5 真实 provider adapter、OpenAI-compatible Chat API 显式运行时配置、成功/失败调用证据与离线自动化候选已经实现。`docir-014` 已验证职责隔离有效，后续 attempts 收口了 full-field Review 与纯数字 index。v12 的 `docir-017` Interface/Envelope 已通过机械门禁；联合 outline 随后在没有 response body、usage 或 `finish_reason` 的情况下发生 `ReadTimeout` 并 fail-fast。现有 timeout 配置已为 600 秒，不能把新 attempt 简化为继续增大 timeout。仍没有真实 Final DocIR、下游真实 Draft/Final/Review 记录或双方向 Workbook。
+- P0-T5 真实 provider adapter、OpenAI-compatible Chat API 显式运行时配置、成功/失败调用证据与离线自动化候选已经实现。`docir-014` 已验证职责隔离有效，后续 attempts 收口了 full-field Review 与纯数字 index。v12 的 `docir-017` Interface/Envelope 已通过机械门禁；联合 outline 随后在没有 response body、usage 或 `finish_reason` 的情况下发生 `ReadTimeout` 并 fail-fast。离线逆向确认现有 600 秒 scalar SDK timeout 只提供逐次 I/O 上限，不能约束持续分块的总墙钟时间；现已为每个物理 subcall 补齐同值绝对期限、稳定失败分类和非敏感诊断计数。仍没有真实 Final DocIR、下游真实 Draft/Final/Review 记录或双方向 Workbook。
 
 `configuration-rules/v1` 与 v2 均已发布并冻结；v2 不改变其 27/207/14/5/6 catalog、Function String、Mapping/Replacement、字符长度默认 `STANDARD_1` 或业务 Condition 边界，只修订 Template Standard projection。现有 Final Standard 继续绑定 v1；Final InterfaceTemplateIR 精确绑定 v2。详细任务状态见 `docs/planning/00-phase0-poc-plan.md`。
 
@@ -97,7 +97,7 @@ Provider 接收 request 和由编排层显式构造的上下文；request 包含
 
 deterministic stub 只接受显式 `fixture-root` 中 `draft-stub-case/v1` 声明的精确 `b2e0061` 输入指纹。它不扫描目录、不选择最新版本，也不参与 Final trusted chain 的 `phase0` selector。文本输入使用 UTF-8 bytes SHA-256，JSON dependency 使用 canonical semantic SHA-256；`.gitattributes` 显式保留既有 Golden/Draft Markdown 的 CRLF bytes baseline，并固定 fixture JSON 的 LF，避免 checkout 平台改变 hash。任何不匹配都 fail closed。
 
-真实 provider 必须把 Chat API 的 SSE 分块在内存中聚合，并在公开边界返回相同的 `draft-provider-response/v1` envelope。每个 subcall 只有 `finish_reason=stop`、最终 usage、完整 JSON 和当前 segment 校验均有效才可进入下一步；流中断、截断或 segment 不匹配不得发布部分 Draft。DocIR attempt 固定为完整 Interface/Envelope、一个联合 ASSEMBLY/PARSE messages outline、ASSEMBLY 有界字段详情、PARSE 有界字段详情和确定性 merge；默认详情 batch size 为 16，只能由 DocIR `openai-chat` CLI 正整数参数覆盖。合并后的内部 `docir-extraction/v1` 继续严格校验固定属性、Metadata key、字段值域、父子 Index、未知值 Review 与条件数组，再由代码确定性渲染现有 Markdown、Human Review Notes 并执行机械 wire 校验。中间结构不是新的 IR，也不能替代 Human Review。API key、base URL、精确 model ID 和 timeout 可来自启动目录中被 Git 忽略的 `.env` 或进程环境；进程环境优先，非敏感项可由 CLI 覆盖，attempt ID 始终显式传入；SDK 自动重试关闭，attempt 不 resume。成功调用发布 `draft-provider-call-result/v2`；DocIR 失败默认发布 `draft-provider-failure-result/v2`，并按 sequence/segment 保存已有内容的 subcall 响应。失败证据不是 Draft 或 trusted-chain artifact。Golden 只服务 fixture、历史样例和确定性回归，不参与真实候选自动语义判定。真实调用按依赖顺序进行：DocIR → Human Review/Final DocIR → SchemaIR → Human Review/Final SchemaIR → 双方向 Standard → 各自 Human Review/Final Standard → 双方向 Template → 各自 Human Review/Final Template → `check --profile phase0` 与 `generate-workbook`。不得在最后一次集中确认来绕过上游 Final 依赖，也不得自动 promotion。
+真实 provider 必须把 Chat API 的 SSE 分块在内存中聚合，并在公开边界返回相同的 `draft-provider-response/v1` envelope。每个 subcall 只有 `finish_reason=stop`、最终 usage、完整 JSON 和当前 segment 校验均有效才可进入下一步；流中断、截断或 segment 不匹配不得发布部分 Draft。同一个 timeout 同时配置 SDK 逐次 I/O timeout 和从 stream create 到聚合完成的物理 subcall 绝对墙钟期限；后者触发时关闭当前 stream 或尚在 create 的 client，以 `ProviderCallDeadlineExceeded` fail closed，只在失败详情和结构化日志增加 elapsed/chunk count。DocIR attempt 固定为完整 Interface/Envelope、一个联合 ASSEMBLY/PARSE messages outline、ASSEMBLY 有界字段详情、PARSE 有界字段详情和确定性 merge；默认详情 batch size 为 16，只能由 DocIR `openai-chat` CLI 正整数参数覆盖。合并后的内部 `docir-extraction/v1` 继续严格校验固定属性、Metadata key、字段值域、父子 Index、未知值 Review 与条件数组，再由代码确定性渲染现有 Markdown、Human Review Notes 并执行机械 wire 校验。中间结构不是新的 IR，也不能替代 Human Review。API key、base URL、精确 model ID 和 timeout 可来自启动目录中被 Git 忽略的 `.env` 或进程环境；进程环境优先，非敏感项可由 CLI 覆盖，attempt ID 始终显式传入；SDK 自动重试关闭，attempt 不 resume。成功调用发布 `draft-provider-call-result/v2`；DocIR 失败默认发布 `draft-provider-failure-result/v2`，并按 sequence/segment 保存已有内容的 subcall 响应。失败证据不是 Draft 或 trusted-chain artifact。Golden 只服务 fixture、历史样例和确定性回归，不参与真实候选自动语义判定。真实调用按依赖顺序进行：DocIR → Human Review/Final DocIR → SchemaIR → Human Review/Final SchemaIR → 双方向 Standard → 各自 Human Review/Final Standard → 双方向 Template → 各自 Human Review/Final Template → `check --profile phase0` 与 `generate-workbook`。不得在最后一次集中确认来绕过上游 Final 依赖，也不得自动 promotion。
 
 DocIR 没有独立可信链 Validator。真实 provider 内部的 extraction/schema/renderer 校验只保证模型响应与 Markdown wire 的机械完整性，不判断银行业务事实；provider-neutral 编排层继续执行既有最小结构检查。Human Review 对准确内容 hash 确认后，才可冻结为 `docir-final.md` 并成为 SchemaIR generator 输入。三个 JSON generator 只保存 `DRAFT/PENDING` artifact、匹配 validation result 和 review notes，且结果必须无 ERROR、`finalEligible=false`。
 

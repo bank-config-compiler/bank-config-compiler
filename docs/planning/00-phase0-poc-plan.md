@@ -2,7 +2,7 @@
 
 ## Status
 
-In Progress. P0-T3 trusted chain 与 P0-T4 deterministic Draft-to-Workbook closure 均已完成；P0-T5 adapter、严格流式传输、内部结构化 DocIR extraction、确定性 renderer/review notes，以及 ADR-0014 的有界分段与 attempt v2 evidence 均已完成离线实现。v12 的 `docir-017` Interface/Envelope 已通过全部机械门禁；联合 outline 随后无可校验响应并发生 `ReadTimeout`。下一真实 attempt 前须先调查 transport 行为。当前没有通过 Human Review 的真实 DocIR candidate，Phase0-PoC 最终门禁未通过。
+In Progress. P0-T3 trusted chain 与 P0-T4 deterministic Draft-to-Workbook closure 均已完成；P0-T5 adapter、严格流式传输、内部结构化 DocIR extraction、确定性 renderer/review notes，以及 ADR-0014 的有界分段与 attempt v2 evidence 均已完成离线实现。v12 的 `docir-017` Interface/Envelope 已通过全部机械门禁；联合 outline 随后无可校验响应并发生 `ReadTimeout`。离线调查已确认原 timeout 缺少物理 subcall 绝对墙钟期限，并已补齐 watchdog、稳定失败分类与诊断计数。当前没有通过 Human Review 的真实 DocIR candidate；再次真实调用必须另获授权并以新 attempt ID 从第一段开始，Phase0-PoC 最终门禁未通过。
 
 ## 1. 目标与边界
 
@@ -33,7 +33,7 @@ Phase0 不实现 UI、JSON 银行报文、目标系统 Import JSON/API、Excel �
 | P0-T2：Review Golden sample boundary | Done | P0-T1 | 无 | Expected DocIR、修订前 expected SchemaIR、expected review notes 和 v1 validation result 已冻结为审查前 Golden。 |
 | P0-T3：Trusted chain | Done | P0-T2、`configuration-rules/v1` 与 v2 RELEASED | 无 | 两个配置 IR/Validator、Workbook 和完整 trusted-chain regression 已完成。 |
 | P0-T4：Draft generators | Done | P0-T3、reviewed Final DocIR | 无 | Provider-neutral generator interface 与四类确定性 stub 可运行，显式 Human Review gate 和双方向 Workbook Golden closure 已通过。 |
-| P0-T5：真实 LLM Draft-to-Workbook 验证 | In Progress | P0-T4、用户批准的 OpenAI-compatible Chat API provider 与测试样例 | adapter、分段 DocIR、attempt v2 evidence 和离线回归已实现；`docir-017` 首段通过，联合 outline transport `ReadTimeout`；尚无通过 Human Review 的真实 DocIR candidate | 先调查无响应 timeout 行为；解决后以新 attempt ID 从第一段验证，不得 resume 失败 attempt。 |
+| P0-T5：真实 LLM Draft-to-Workbook 验证 | In Progress | P0-T4、用户批准的 OpenAI-compatible Chat API provider 与测试样例 | adapter、分段 DocIR、attempt v2 evidence、物理 subcall 绝对期限和离线回归已实现；`docir-017` 首段通过，联合 outline transport `ReadTimeout`；尚无通过 Human Review 的真实 DocIR candidate | 另获真实调用授权后，以新 attempt ID 从第一段验证；不得 resume 失败 attempt。 |
 
 状态定义：
 
@@ -469,7 +469,7 @@ Phase0 不实现 UI、JSON 银行报文、目标系统 Import JSON/API、Excel �
 - 真实 provider 使用 OpenAI-compatible Chat API；实际模型由运行时显式选择，可以是 DeepSeek、Qwen 或其他兼容服务。
 - 一次验收必须真实生成 DocIR、SchemaIR、ASSEMBLY/PARSE Standard 和 ASSEMBLY/PARSE Template 共六个 Draft artifact；DocIR attempt 内含多个物理 subcall，fixture 不得充当其中任一 artifact。
 - API key、HTTPS base URL、精确 model ID 和 timeout 可来自启动目录中被 Git 忽略的 `.env` 或进程环境；只读取四个 `BANK_CONFIG_COMPILER_LLM_*` 白名单变量，进程环境优先，非敏感项可由 CLI 覆盖。API key 不提供 CLI 参数，attempt ID 始终显式传入。secret 和 endpoint 原文不得落入 artifact、日志、测试 fixture 或版本库。
-- 使用官方 OpenAI Python SDK 的最小流式 Chat Completions 子集与 JSON object response mode，并请求最终 usage 分块；每个 subcall 仅在 `finish_reason=stop`、usage、完整 JSON 与 segment contract 均通过后进入下一步，流中断或截断不得发布部分 Draft。SDK 自动重试固定关闭，attempt 顺序 fail-fast、不 resume；失败后由操作者以新的 attempt ID 从第一段显式重跑。
+- 使用官方 OpenAI Python SDK 的最小流式 Chat Completions 子集与 JSON object response mode，并请求最终 usage 分块；每个 subcall 仅在 `finish_reason=stop`、usage、完整 JSON 与 segment contract 均通过后进入下一步，流中断或截断不得发布部分 Draft。同一个 timeout 同时配置 SDK 逐次 I/O timeout 和从 stream create 到聚合完成的物理 subcall 绝对墙钟期限；后者触发时关闭当前 stream 或尚在 create 的 client，并以稳定错误类型 fail closed。SDK 自动重试固定关闭，attempt 顺序 fail-fast、不 resume；失败后由操作者以新的 attempt ID 从第一段显式重跑。
 - DocIR 先完整返回 Interface/Envelope，再以一个联合 messages outline 同时盘点 ASSEMBLY/PARSE，最后按方向和默认最多 16 字段的连续批次返回详情；字段批次可由 DocIR CLI 正整数参数覆盖。代码严格校验每段与 exact outline 覆盖，合并为内部 `docir-extraction/v1` 后确定性生成既有 Markdown wire 和 Review Notes。segment、outline、extraction 均不落盘、不成为公开 IR 或 trusted-chain artifact，语义与证据仍由 Human Review 判断。
 - Golden 只保留为开发 fixture、历史批准样例和确定性 trusted-chain regression；不新增 Golden evaluator，不对真实 DocIR candidate 自动给出语义通过结论。
 - 成功 attempt 保存 `draft-provider-call-result/v2`；DocIR 请求、流、segment 或 merge 失败保存 `draft-provider-failure-result/v2`，并按 sequence/segment 分别保存已有内容的完整/部分响应。其他 artifact 仍记录一个 `complete-artifact` call；失败证据不是 Draft、Review、Final 或 trusted-chain artifact。
@@ -479,7 +479,7 @@ Phase0 不实现 UI、JSON 银行报文、目标系统 Import JSON/API、Excel �
 
 1. **实现候选已完成，待 Commit 8A 验证/提交。** 新增真实 `DraftProvider` adapter、显式 context 和 CLI/runtime 配置入口，将 Chat API 响应转换为严格 `draft-provider-response/v1`；保留现有 Draft/Validator/workspace publication 边界。
 2. **实现候选已完成，待 Commit 8A 验证/提交。** 以注入 fake client 覆盖 SDK 构造、请求构造、认证缺失、不安全配置、截断/无效响应、response envelope 错误和日志脱敏；自动化测试不需要真实 API key 或网络。
-3. **v7 单响应完整性问题已形成有界分段实现，v12 首段 prompt 合同已获得真实正向证据。** `docir-012` 至 `docir-016` 依次暴露并收口 shape、职责、空值 Review 与 index/name 问题。`docir-017` 的 12-node Interface/Envelope 已通过 `trans` 边界、纯数字层级、十属性与 Review 门禁；随后联合 outline 没有返回可校验 response、usage 或 `finish_reason`，以 `ReadTimeout` 停止。下一步先调查 provider/SDK 流式 timeout，再决定是否发起全新 attempt。
+3. **v7 单响应完整性问题已形成有界分段实现，v12 首段 prompt 合同已获得真实正向证据，timeout 根因已完成离线处理。** `docir-012` 至 `docir-016` 依次暴露并收口 shape、职责、空值 Review 与 index/name 问题。`docir-017` 的 12-node Interface/Envelope 已通过 `trans` 边界、纯数字层级、十属性与 Review 门禁；随后联合 outline 没有返回可校验 response、usage 或 `finish_reason`，以 `ReadTimeout` 停止。原 scalar SDK timeout 只形成逐次 I/O 上限，未约束持续分块的总墙钟时间；物理 subcall watchdog 已用离线 fake client 覆盖 create、stream、提前 ReadTimeout 与正常完成路径。下一步须另获授权后以全新 attempt ID 从第一段验证。
 4. 用该 Final DocIR 执行真实 SchemaIR Draft、Draft validation、Human Review、Final candidate 和 Final validation；然后分别执行两方向 Standard 和 Template，遵守每个上游 Final gate。
 5. 对由真实 Draft 经 Review 形成的两条 Final trusted chain 执行 `check --profile phase0`，再各生成一份 Configuration Workbook；保存不含 secret 的运行证据、artifact hash、reviewer、时间、provider/model 标识和验证结果。
 
@@ -515,6 +515,14 @@ Phase0 不实现 UI、JSON 银行报文、目标系统 Import JSON/API、Excel �
 - Completion signal：默认 batch size 16 和显式正整数覆盖均闭合；联合 outline exact coverage、失败停止、全量重跑语义、成功/失败有序 evidence、其他 artifact 单调用兼容均有自动化证据；没有真实 artifact 或旧 workspace 变更。
 - Verification：DocIR/provider/evidence/CLI 专项 pytest、完整 pytest、build、diff/BOM/secret 检查和 docs-sync。
 - Next starts when：本 commit 完成且用户另行明确授权真实 attempt；真实 candidate 的准确内容 hash 获得批准后，才能冻结 Final DocIR 并进入 Commit 8B。
+
+#### Commit 8A4：物理 subcall 绝对期限
+
+- Scope：复用现有 timeout 作为 SDK 逐次 I/O timeout 与单个物理 subcall 的绝对墙钟期限；期限覆盖 stream create 与完整迭代，触发时关闭当前资源并以稳定 `ProviderCallDeadlineExceeded` fail closed。保持 prompt、Validator、公开 provider/v2 evidence contract、无 retry/resume 与 attempt 原子性不变。
+- Files：`bank_config_compiler/openai_chat_provider.py`、provider/CLI tests、README、ADR-0014、Phase0 需求/设计/计划。
+- Completion signal：离线 fake client 证明 create 阻塞、持续非内容分块都在期限后停止；提前 SDK `ReadTimeout` 仍保留原分类，期限内完整流保持成功；失败详情和结构化日志只增加非敏感 elapsed/chunk count 诊断。
+- Verification：provider/CLI 专项 pytest、warnings-as-errors 完整 pytest、build、docs-sync、diff/BOM/secret 检查。
+- Next starts when：本 commit 完成且用户另行明确授权真实 attempt；必须使用新 attempt ID 从第一段开始，禁止复用 `docir-017` 成功前缀。
 
 #### Commit 8B：真实 LLM 验收证据
 
@@ -702,7 +710,7 @@ Phase0 不实现 UI、JSON 银行报文、目标系统 Import JSON/API、Excel �
 
 ### 8.3 Phase0-PoC 最终门禁
 
-**状态：IN PROGRESS。P0-T3 与 P0-T4 的完成标志已由实现和自动化 regression 覆盖；P0-T5 adapter、严格流式调用、direct extraction、确定性 renderer/review notes、DocIR 有界分段与 attempt v2 evidence 已完成离线实现。v12 的 `docir-017` Interface/Envelope 已通过全部机械门禁；联合 outline 因 `ReadTimeout` 原子停止，失败 evidence 已保留且未发布部分 Draft。当前没有可冻结真实 DocIR，Human Review-to-Workbook 验收仍未完成；下一步先调查 transport，而不是继续修改 prompt 或盲目增大 timeout。**
+**状态：IN PROGRESS。P0-T3 与 P0-T4 的完成标志已由实现和自动化 regression 覆盖；P0-T5 adapter、严格流式调用、direct extraction、确定性 renderer/review notes、DocIR 有界分段与 attempt v2 evidence 已完成离线实现。v12 的 `docir-017` Interface/Envelope 已通过全部机械门禁；联合 outline 因 `ReadTimeout` 原子停止，失败 evidence 已保留且未发布部分 Draft。原 timeout 缺少物理 subcall 绝对墙钟期限的根因已完成离线处理；当前没有可冻结真实 DocIR，Human Review-to-Workbook 验收仍未完成。下一步须另获真实调用授权，并以新 attempt ID 从第一段验证；不得修改 prompt/Validator、resume 或复用 `docir-017` 成功前缀。**
 
 - P0-T3 完成门禁全部通过。
 - 四类 deterministic Draft generator 可运行，通过同一 provider contract 产生合法 Draft，且不能生成 Final 或绕过 Human Review/Validator。

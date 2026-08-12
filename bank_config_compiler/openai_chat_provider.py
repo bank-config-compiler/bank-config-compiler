@@ -7,6 +7,8 @@ import math
 import re
 from dataclasses import dataclass, replace
 from datetime import datetime
+from threading import Event, Lock, Timer
+from time import monotonic
 from typing import Any
 from urllib.parse import urlsplit, urlunsplit
 
@@ -84,6 +86,8 @@ class _StreamCollectionError(Exception):
         response_model: str | None,
         usage: Any | None,
         finish_reason: str | None,
+        parsed_chunk_count: int,
+        content_chunk_count: int,
     ) -> None:
         super().__init__(detail)
         self.detail = detail
@@ -93,6 +97,73 @@ class _StreamCollectionError(Exception):
         self.response_model = response_model
         self.usage = usage
         self.finish_reason = finish_reason
+        self.parsed_chunk_count = parsed_chunk_count
+        self.content_chunk_count = content_chunk_count
+
+
+class ProviderCallDeadlineExceeded(TimeoutError):
+    """A physical provider subcall exceeded its absolute wall-clock deadline."""
+
+
+class _CallDeadlineWatchdog:
+    # httpx 的标量 timeout 是逐次 I/O 空闲上限；同步 stream 阻塞读取时只能通过关闭资源落实总时限。
+    def __init__(self, timeout_seconds: float, initial_close_target: Any) -> None:
+        self.timeout_seconds = timeout_seconds
+        self._started_at = monotonic()
+        self._expired = Event()
+        self._lock = Lock()
+        self._finished = False
+        self._close_target = initial_close_target
+        self._timer = Timer(timeout_seconds, self._expire)
+        self._timer.daemon = True
+
+    @property
+    def expired(self) -> bool:
+        return self._expired.is_set()
+
+    @property
+    def elapsed_seconds(self) -> float:
+        return monotonic() - self._started_at
+
+    def start(self) -> None:
+        self._timer.start()
+
+    def bind_stream(self, stream: Any) -> None:
+        with self._lock:
+            self._close_target = stream
+            close_immediately = self._expired.is_set()
+        if close_immediately:
+            self._close(stream)
+
+    def finish(self) -> None:
+        with self._lock:
+            self._finished = True
+            self._close_target = None
+        self._timer.cancel()
+
+    def _expire(self) -> None:
+        with self._lock:
+            if self._finished:
+                return
+            self._expired.set()
+            close_target = self._close_target
+        self._close(close_target)
+
+    @staticmethod
+    def _close(target: Any) -> None:
+        close = getattr(target, "close", None)
+        if not callable(close):
+            return
+        try:
+            close()
+        except Exception as exc:  # pragma: no cover - defensive cleanup only
+            LOGGER.debug(
+                "Failed to close provider resource after deadline",
+                extra={
+                    "component": "openai_chat_provider",
+                    "error_type": type(exc).__name__,
+                },
+            )
 
 
 @dataclass(frozen=True, slots=True)
@@ -361,6 +432,7 @@ class OpenAIChatDraftProvider:
         )
         segment_contract_version = prompt.contract_version if prompt is not None else None
         started_at = _now()
+        deadline = _CallDeadlineWatchdog(self.timeout_seconds, self._client)
         LOGGER.debug(
             "Starting IR Draft provider subcall",
             extra={
@@ -373,46 +445,125 @@ class OpenAIChatDraftProvider:
                 "outcome": "started",
             },
         )
+        deadline.start()
         try:
-            stream = self._client.chat.completions.create(
-                model=self.model,
-                messages=build_chat_messages(request, context, docir_segment=prompt),
-                response_format={"type": "json_object"},
-                stream=True,
-                stream_options={"include_usage": True},
-            )
-        except Exception as exc:
-            detail = f"chat request failed: {type(exc).__name__}"
-            raise self._physical_call_error(
-                detail,
-                stage="request",
-                error_type=type(exc).__name__,
-                segment=segment,
-                started_at=started_at,
-                prompt_contract_version=prompt_contract_version,
-                segment_contract_version=segment_contract_version,
-            ) from exc
-        try:
-            content, response_model, response_id, usage, finish_reason = _collect_stream_response(
-                stream,
-                requested_model=self.model,
-            )
-        except _StreamCollectionError as exc:
-            raise self._physical_call_error(
-                exc.detail,
-                stage="stream",
-                error_type=exc.error_type,
-                segment=segment,
-                started_at=started_at,
-                response_text=exc.response_text,
-                response_complete=False,
-                response_model=exc.response_model,
-                response_id=exc.response_id,
-                usage=exc.usage,
-                finish_reason=exc.finish_reason,
-                prompt_contract_version=prompt_contract_version,
-                segment_contract_version=segment_contract_version,
-            ) from exc
+            try:
+                stream = self._client.chat.completions.create(
+                    model=self.model,
+                    messages=build_chat_messages(request, context, docir_segment=prompt),
+                    response_format={"type": "json_object"},
+                    stream=True,
+                    stream_options={"include_usage": True},
+                )
+            except Exception as exc:
+                if deadline.expired:
+                    raise self._deadline_call_error(
+                        request,
+                        deadline=deadline,
+                        stage="request",
+                        segment=segment,
+                        started_at=started_at,
+                        parsed_chunk_count=0,
+                        content_chunk_count=0,
+                        prompt_contract_version=prompt_contract_version,
+                        segment_contract_version=segment_contract_version,
+                    ) from exc
+                detail = f"chat request failed: {type(exc).__name__}"
+                raise self._physical_call_error(
+                    detail,
+                    stage="request",
+                    error_type=type(exc).__name__,
+                    segment=segment,
+                    started_at=started_at,
+                    prompt_contract_version=prompt_contract_version,
+                    segment_contract_version=segment_contract_version,
+                ) from exc
+
+            deadline.bind_stream(stream)
+            if deadline.expired:
+                deadline_error = ProviderCallDeadlineExceeded(
+                    "provider stream became available after its absolute deadline"
+                )
+                raise self._deadline_call_error(
+                    request,
+                    deadline=deadline,
+                    stage="stream",
+                    segment=segment,
+                    started_at=started_at,
+                    parsed_chunk_count=0,
+                    content_chunk_count=0,
+                    prompt_contract_version=prompt_contract_version,
+                    segment_contract_version=segment_contract_version,
+                ) from deadline_error
+
+            try:
+                (
+                    content,
+                    response_model,
+                    response_id,
+                    usage,
+                    finish_reason,
+                    parsed_chunk_count,
+                    content_chunk_count,
+                ) = _collect_stream_response(
+                    stream,
+                    requested_model=self.model,
+                )
+                if deadline.expired:
+                    deadline_error = ProviderCallDeadlineExceeded(
+                        "provider stream completed after its absolute deadline"
+                    )
+                    raise self._deadline_call_error(
+                        request,
+                        deadline=deadline,
+                        stage="stream",
+                        segment=segment,
+                        started_at=started_at,
+                        parsed_chunk_count=parsed_chunk_count,
+                        content_chunk_count=content_chunk_count,
+                        response_text=content,
+                        response_model=response_model,
+                        response_id=response_id,
+                        usage=usage,
+                        finish_reason=finish_reason,
+                        prompt_contract_version=prompt_contract_version,
+                        segment_contract_version=segment_contract_version,
+                    ) from deadline_error
+            except _StreamCollectionError as exc:
+                if deadline.expired:
+                    raise self._deadline_call_error(
+                        request,
+                        deadline=deadline,
+                        stage="stream",
+                        segment=segment,
+                        started_at=started_at,
+                        parsed_chunk_count=exc.parsed_chunk_count,
+                        content_chunk_count=exc.content_chunk_count,
+                        response_text=exc.response_text,
+                        response_model=exc.response_model,
+                        response_id=exc.response_id,
+                        usage=exc.usage,
+                        finish_reason=exc.finish_reason,
+                        prompt_contract_version=prompt_contract_version,
+                        segment_contract_version=segment_contract_version,
+                    ) from exc
+                raise self._physical_call_error(
+                    exc.detail,
+                    stage="stream",
+                    error_type=exc.error_type,
+                    segment=segment,
+                    started_at=started_at,
+                    response_text=exc.response_text,
+                    response_complete=False,
+                    response_model=exc.response_model,
+                    response_id=exc.response_id,
+                    usage=exc.usage,
+                    finish_reason=exc.finish_reason,
+                    prompt_contract_version=prompt_contract_version,
+                    segment_contract_version=segment_contract_version,
+                ) from exc
+        finally:
+            deadline.finish()
         completed_at = _now()
         try:
             model_response = _strict_json_object(content, label="chat response content")
@@ -469,6 +620,64 @@ class OpenAIChatDraftProvider:
                 prompt_contract_version=prompt_contract_version,
                 segment_contract_version=segment_contract_version,
             ),
+        )
+
+    def _deadline_call_error(
+        self,
+        request: DraftGenerationRequest,
+        *,
+        deadline: _CallDeadlineWatchdog,
+        stage: str,
+        segment: str,
+        started_at: str,
+        parsed_chunk_count: int,
+        content_chunk_count: int,
+        prompt_contract_version: str,
+        segment_contract_version: str | None,
+        response_text: str | None = None,
+        response_model: str | None = None,
+        response_id: str | None = None,
+        usage: Any | None = None,
+        finish_reason: str | None = None,
+    ) -> _PhysicalCallError:
+        elapsed_seconds = deadline.elapsed_seconds
+        detail = (
+            "chat subcall exceeded its absolute deadline "
+            f"(timeout_seconds={self.timeout_seconds:g}, "
+            f"elapsed_seconds={elapsed_seconds:.3f}, "
+            f"parsed_chunks={parsed_chunk_count}, "
+            f"content_chunks={content_chunk_count})"
+        )
+        LOGGER.warning(
+            "IR Draft provider subcall deadline exceeded",
+            extra={
+                "component": "openai_chat_provider",
+                "task_id": request.task_id,
+                "artifact_kind": request.artifact_kind,
+                "attempt_id": self.attempt_id,
+                "segment": segment,
+                "requested_model": self.model,
+                "timeout_seconds": self.timeout_seconds,
+                "elapsed_seconds": elapsed_seconds,
+                "parsed_chunk_count": parsed_chunk_count,
+                "content_chunk_count": content_chunk_count,
+                "outcome": "deadline_exceeded",
+            },
+        )
+        return self._physical_call_error(
+            detail,
+            stage=stage,
+            error_type=ProviderCallDeadlineExceeded.__name__,
+            segment=segment,
+            started_at=started_at,
+            response_text=response_text,
+            response_complete=False,
+            response_model=response_model,
+            response_id=response_id,
+            usage=usage,
+            finish_reason=finish_reason,
+            prompt_contract_version=prompt_contract_version,
+            segment_contract_version=segment_contract_version,
         )
 
     def _physical_call_error(
@@ -682,17 +891,20 @@ def _collect_stream_response(
     stream: Any,
     *,
     requested_model: str,
-) -> tuple[str, str, str, Any, str]:
+) -> tuple[str, str, str, Any, str, int, int]:
     content_parts: list[str] = []
     response_id: str | None = None
     response_model: str | None = None
     usage: Any | None = None
     finished = False
     finish_reason: str | None = None
+    parsed_chunk_count = 0
+    content_chunk_count = 0
 
     # 分块内容只有在 stop、usage 与完整 JSON 都验证后才会交给发布层，避免中断响应泄漏为草稿。
     try:
         for chunk in stream:
+            parsed_chunk_count += 1
             chunk_id = _optional_string(getattr(chunk, "id", None))
             if chunk_id is None:
                 raise DraftGenerationError("chat stream chunk is missing its response ID")
@@ -736,6 +948,7 @@ def _collect_stream_response(
                 raise DraftGenerationError("chat stream content delta must be text")
             if delta_content:
                 content_parts.append(delta_content)
+                content_chunk_count += 1
 
             choice_finish_reason = getattr(choice, "finish_reason", None)
             if choice_finish_reason is None:
@@ -760,6 +973,8 @@ def _collect_stream_response(
             response_model=response_model,
             usage=usage,
             finish_reason=finish_reason,
+            parsed_chunk_count=parsed_chunk_count,
+            content_chunk_count=content_chunk_count,
         ) from exc
     except Exception as exc:
         raise _StreamCollectionError(
@@ -770,8 +985,18 @@ def _collect_stream_response(
             response_model=response_model,
             usage=usage,
             finish_reason=finish_reason,
+            parsed_chunk_count=parsed_chunk_count,
+            content_chunk_count=content_chunk_count,
         ) from exc
-    return "".join(content_parts), response_model, response_id, usage, finish_reason
+    return (
+        "".join(content_parts),
+        response_model,
+        response_id,
+        usage,
+        finish_reason,
+        parsed_chunk_count,
+        content_chunk_count,
+    )
 
 
 def build_chat_messages(

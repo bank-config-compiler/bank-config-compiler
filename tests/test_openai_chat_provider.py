@@ -3,8 +3,10 @@ from __future__ import annotations
 import json
 import logging
 import sys
+from threading import Event
 from types import SimpleNamespace
 
+import httpx
 import pytest
 
 import bank_config_compiler.openai_chat_provider as openai_chat_provider
@@ -112,6 +114,37 @@ class InterruptedStream:
     def __iter__(self):
         yield chat_chunk('{"artifact":"SECRET-BANK-PAYLOAD')
         raise TimeoutError("SECRET-BANK-PAYLOAD")
+
+
+class NonContentStreamUntilClosed:
+    def __init__(self) -> None:
+        self.closed = Event()
+
+    def __iter__(self):
+        for _ in range(300):
+            yield chat_chunk()
+            if self.closed.wait(0.01):
+                raise RuntimeError("stream closed by deadline watchdog")
+        raise RuntimeError("stream self-terminated after test safety timeout")
+
+    def close(self) -> None:
+        self.closed.set()
+
+
+class BlockingCreateClient:
+    def __init__(self) -> None:
+        self.closed = Event()
+        self.calls: list[dict] = []
+        self.chat = SimpleNamespace(completions=self)
+
+    def create(self, **kwargs: object) -> object:
+        self.calls.append(kwargs)
+        if self.closed.wait(3.0):
+            raise RuntimeError("client closed by deadline watchdog")
+        raise RuntimeError("client self-terminated after test safety timeout")
+
+    def close(self) -> None:
+        self.closed.set()
 
 
 def model_metadata(key: str, value: str, review_note: str = "") -> dict[str, str]:
@@ -411,6 +444,141 @@ def test_openai_chat_provider_preserves_prior_calls_when_a_later_stream_fails() 
     assert evidence.calls[2].response_text == '{"artifact":"SECRET-BANK-PAYLOAD'
 
 
+def test_openai_chat_provider_enforces_absolute_deadline_on_non_content_stream(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    segments = docir_segment_responses(assembly_count=2, parse_count=2)
+    stalled_stream = NonContentStreamUntilClosed()
+    client = QueuedFakeClient(
+        [
+            chat_stream(json.dumps(segments[0], ensure_ascii=False)),
+            stalled_stream,
+            chat_stream(json.dumps(segments[2], ensure_ascii=False)),
+        ]
+    )
+    provider = OpenAIChatDraftProvider(
+        api_key="test-key",
+        base_url="https://example.invalid/v1",
+        model="qwen-test-snapshot",
+        attempt_id="docir-018",
+        timeout_seconds=1,
+        client=client,
+    )
+
+    with caplog.at_level(logging.WARNING), pytest.raises(
+        DraftProviderDiagnosticError,
+        match="absolute deadline",
+    ) as caught:
+        provider.generate(
+            DraftGenerationRequest(
+                task_id="phase0-test",
+                artifact_kind="docir",
+                source_hash="sha256:" + "1" * 64,
+            ),
+            DraftGenerationContext(
+                source_content="# Raw bank document\n",
+                source_content_type="text/markdown",
+            ),
+        )
+
+    evidence = caught.value.evidence
+    assert evidence is not None
+    assert len(client.completions.calls) == 2
+    assert stalled_stream.closed.is_set()
+    assert evidence.failure_stage == "stream"
+    assert evidence.failed_segment == "messages-outline"
+    assert evidence.error_type == "ProviderCallDeadlineExceeded"
+    assert "timeout_seconds=1" in evidence.failure_detail
+    assert "parsed_chunks=" in evidence.failure_detail
+    assert "content_chunks=0" in evidence.failure_detail
+    assert evidence.response_text is None
+    assert evidence.calls[0].response_text == json.dumps(segments[0], ensure_ascii=False)
+    assert evidence.calls[1].metadata.response_id == "chatcmpl-test"
+    deadline_record = next(
+        record
+        for record in caplog.records
+        if record.getMessage() == "IR Draft provider subcall deadline exceeded"
+    )
+    assert deadline_record.task_id == "phase0-test"
+    assert deadline_record.segment == "messages-outline"
+    assert deadline_record.timeout_seconds == 1.0
+    assert deadline_record.parsed_chunk_count > 0
+    assert deadline_record.content_chunk_count == 0
+
+
+def test_openai_chat_provider_deadline_includes_stream_creation() -> None:
+    client = BlockingCreateClient()
+    provider = OpenAIChatDraftProvider(
+        api_key="test-key",
+        base_url="https://example.invalid/v1",
+        model="qwen-test-snapshot",
+        attempt_id="docir-018",
+        timeout_seconds=1,
+        client=client,
+    )
+
+    with pytest.raises(
+        DraftProviderDiagnosticError,
+        match="absolute deadline",
+    ) as caught:
+        provider.generate(
+            DraftGenerationRequest(
+                task_id="phase0-test",
+                artifact_kind="docir",
+                source_hash="sha256:" + "1" * 64,
+            ),
+            DraftGenerationContext(
+                source_content="# Raw bank document\n",
+                source_content_type="text/markdown",
+            ),
+        )
+
+    evidence = caught.value.evidence
+    assert evidence is not None
+    assert len(client.calls) == 1
+    assert client.closed.is_set()
+    assert evidence.failure_stage == "request"
+    assert evidence.failed_segment == "interface-envelope"
+    assert evidence.error_type == "ProviderCallDeadlineExceeded"
+    assert "parsed_chunks=0" in evidence.failure_detail
+    assert "content_chunks=0" in evidence.failure_detail
+
+
+def test_openai_chat_provider_preserves_early_read_timeout_classification() -> None:
+    class EarlyReadTimeoutStream:
+        def __iter__(self):
+            yield chat_chunk()
+            raise httpx.ReadTimeout("offline early read timeout")
+
+    provider = OpenAIChatDraftProvider(
+        api_key="test-key",
+        base_url="https://example.invalid/v1",
+        model="qwen-test-snapshot",
+        attempt_id="docir-018",
+        timeout_seconds=600,
+        client=FakeClient(EarlyReadTimeoutStream()),
+    )
+
+    with pytest.raises(DraftProviderDiagnosticError, match="ReadTimeout") as caught:
+        provider.generate(
+            DraftGenerationRequest(
+                task_id="phase0-test",
+                artifact_kind="docir",
+                source_hash="sha256:" + "1" * 64,
+            ),
+            DraftGenerationContext(
+                source_content="# Raw bank document\n",
+                source_content_type="text/markdown",
+            ),
+        )
+
+    evidence = caught.value.evidence
+    assert evidence is not None
+    assert evidence.failure_stage == "stream"
+    assert evidence.error_type == "ReadTimeout"
+    assert "absolute deadline" not in evidence.failure_detail
+
+
 def test_openai_chat_provider_records_merge_failure_after_all_subcalls(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -501,6 +669,36 @@ def test_openai_chat_provider_uses_explicit_context_and_returns_v1_envelope() ->
         messages = call["messages"]
         assert "# Raw bank document" in messages[1]["content"]
         assert "Final" not in messages[1]["content"]
+
+
+def test_openai_chat_provider_allows_complete_streams_before_absolute_deadline() -> None:
+    provider = OpenAIChatDraftProvider(
+        api_key="test-key",
+        base_url="https://example.invalid/v1",
+        model="qwen-test-snapshot",
+        attempt_id="docir-018",
+        timeout_seconds=1,
+        client=queued_docir_client(assembly_count=2, parse_count=2),
+    )
+
+    result = provider.generate(
+        DraftGenerationRequest(
+            task_id="phase0-test",
+            artifact_kind="docir",
+            source_hash="sha256:" + "1" * 64,
+        ),
+        DraftGenerationContext(
+            source_content="# Raw bank document\n",
+            source_content_type="text/markdown",
+        ),
+    )
+
+    assert [call.segment for call in result.metadata.calls] == [
+        "interface-envelope",
+        "messages-outline",
+        "assembly-fields-001",
+        "parse-fields-001",
+    ]
 
 
 def test_docir_prompt_requests_structured_extraction_and_preserves_source_scope() -> None:
