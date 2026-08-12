@@ -30,7 +30,7 @@ Phase0 要验证的不是“LLM 一次输出完全合格的严格 IR”，而是
 DocIR candidate 必须提供无歧义、有序、可遍历的 Envelope、ASSEMBLY、PARSE 语义树。节点必须具有 XML 名称和 element/attribute 类型；attribute 不得有 children，同父同名不得重复。
 
 - 根、父子关系、兄弟顺序或完整 detail coverage 缺失，或者出现多父、孤儿、环等结构歧义：hard failure，不发布 Draft。
-- 结构树完整但 required/type/multiplicity 等语义属性缺失：代码以契约允许的空值和固定 Review marker 物化，发布 Invalid Draft。
+- 结构树完整但 required/type/multiplicity 等语义属性缺失或使用不受支持的值：代码不得猜测修正；缺失值直接留空，不受支持的值确定性降为空值，并注入固定 Review marker，发布 Invalid Draft。模型原值只保留在临时 attempt evidence，供诊断而不进入 trusted chain。
 - 结构自洽不代表对 raw-doc 完整；Validator 不承担无法由确定性输入证明的来源完整性判断。
 
 ### 字段职责

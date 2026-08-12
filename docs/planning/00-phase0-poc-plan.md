@@ -4,7 +4,7 @@
 
 **In Progress。P0-T5 离线实现已完成，等待真实 DocIR 与 Human Gate；P0-T6 runtime 已离线实现，但真实下游链受 Final DocIR 阻塞。**
 
-P0-T3 trusted chain 与 P0-T4 deterministic Draft-to-Workbook closure 已完成。ADR-0015 已接受 candidate → deterministic materialization → Invalid/Reviewable Draft → Human Gate 的六类 Draft 共同策略。`docir-019` 是旧 fail-fast 语义下的最后一个真实 attempt；其临时 workspace 不是阻塞证据。新的离线实现完成门禁后，`docir-020` 仍须单独授权。
+P0-T3 trusted chain 与 P0-T4 deterministic Draft-to-Workbook closure 已完成。ADR-0015 已接受 candidate → deterministic materialization → Invalid/Reviewable Draft → Human Gate 的六类 Draft 共同策略。`docir-020` 已获授权并完成五个真实 subcall，但修复前因 `multiplicity: "[]"` 在 merge validation 被归为 hard failure，未发布 Draft且不得复用。代码现已将不受支持的业务语义值确定性降为空值并进入 Invalid Draft；`docir-020` response 离线重放为 49 fields、67 ERROR，只证明修复后的可物化性，不替代新的真实 attempt 或 Human Gate。
 
 ## 1. 目标与可信边界
 
@@ -50,7 +50,7 @@ P0-T5 Done 不代表 Phase0 Done，也不授权进入 Phase1 planning。
 
 ### 3.2 完成标志
 
-- [x] hard failure 不发布 Draft；可物化语义缺失发布 Invalid Draft并返回 `3`。
+- [x] hard failure 不发布 Draft；可物化语义缺失或值不受支持时以空值和 Review marker 发布 Invalid Draft并返回 `3`。
 - [x] DocIR Validator 聚合 issues，并绑定当前 Markdown bytes hash。
 - [x] attempt ID 不可覆盖；Generation Result 保持初始 lineage，不随 Human 编辑改写。
 - [x] `validate-draft` 原子刷新 result/notes，不修改 Draft。
@@ -101,7 +101,7 @@ git diff --check
 
 ## 7. 当前阻塞
 
-- P0-T5 真实 Final DocIR 需要用户单独授权一次新的 provider attempt，并对准确内容执行 Human 修改、重验和 approval。
+- P0-T5 真实 Final DocIR 仍需要用户单独授权 `docir-020` 之后的新 provider attempt，并对准确内容执行 Human 修改、重验和 approval；失败 attempt 与离线重放均不得复用为 generation lineage。
 - P0-T6 的每一层均受前一层 Human-approved Final 阻塞。
 - Phase0 Done 仍受五份下游真实 Final、双方向 `check --profile phase0` 和 Workbook 验收阻塞。
 

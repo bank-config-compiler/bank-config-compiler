@@ -228,6 +228,34 @@ def test_missing_semantic_values_are_materialized_with_review_marker_and_invalid
     }
 
 
+@pytest.mark.parametrize(
+    ("property_name", "invalid_value"),
+    [
+        ("multiplicity", "[]"),
+        ("type", "Integer"),
+        ("required", "UNKNOWN"),
+    ],
+)
+def test_invalid_semantic_value_is_materialized_as_missing_for_human_review(
+    property_name: str,
+    invalid_value: str,
+) -> None:
+    candidate = semantic_candidate()
+    candidate["parse"]["nodes"][0][property_name] = invalid_value
+
+    extraction = materialize_docir_semantic_candidate(candidate)
+    field = extraction["parse"]["fields"][0]
+    markdown = render_docir_extraction(extraction)
+    result = validate_docir_markdown(markdown)
+
+    assert field[property_name] == ""
+    assert UNKNOWN_REVIEW_MARKER in field["review"]
+    assert result["status"] == "failed"
+    assert "DOCIR_SEMANTIC_VALUE_MISSING" in {
+        item["code"] for item in result["issues"]
+    }
+
+
 def test_markdown_validator_aggregates_independent_wire_errors() -> None:
     markdown = render_docir_extraction(
         materialize_docir_semantic_candidate(semantic_candidate())

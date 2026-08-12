@@ -439,6 +439,18 @@ def _normalized_semantics(value: dict[str, Any], *, label: str) -> dict[str, str
         name: _require_string(value.get(name, ""), label=f"{label}.{name}")
         for name in _SEMANTIC_NODE_PROPERTIES
     }
+    # 非法业务语义不影响树的可物化性；拒绝该候选值并留空，交给 Validator/Human Gate，
+    # 而不是把模型的格式错误升级为结构 hard failure 或擅自修正成业务事实。
+    try:
+        _validate_multiplicity(
+            semantics["multiplicity"], label=f"{label}.multiplicity"
+        )
+    except DocIRDraftError:
+        semantics["multiplicity"] = ""
+    if semantics["type"] not in _FIELD_TYPES:
+        semantics["type"] = ""
+    if semantics["required"] not in _REQUIRED_VALUES:
+        semantics["required"] = ""
     if (
         not semantics["multiplicity"]
         or not semantics["type"]
@@ -583,17 +595,7 @@ def _materialize_semantic_node(
     if node_kind == "XML_ATTRIBUTE" and children:
         raise DocIRDraftError(f"{label} attribute nodes cannot have children")
 
-    semantics = {
-        name: _require_string(node.get(name, ""), label=f"{label}.{name}")
-        for name in _SEMANTIC_NODE_PROPERTIES
-    }
-    if (
-        not semantics["multiplicity"]
-        or not semantics["type"]
-        or not semantics["required"]
-    ) and UNKNOWN_REVIEW_MARKER not in semantics["review"]:
-        prefix = f"{semantics['review']}；" if semantics["review"] else ""
-        semantics["review"] = f"{prefix}{UNKNOWN_REVIEW_MARKER}"
+    semantics = _normalized_semantics(node, label=label)
     field = {"index": index, "item": item, **semantics}
     fields.append(_validated_field(field, root_index=index.split(".", 1)[0], label=label))
 
