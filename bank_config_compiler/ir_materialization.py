@@ -357,8 +357,15 @@ def _docir_field_structure(
         paths[index] = path
         child_counts[parent_path] += 1
         multiplicity = cells[3]
-        minimum, maximum = _occurs(multiplicity)
-        required = minimum is not None and minimum >= 1
+        _, maximum = _occurs(multiplicity)
+        maximum = 1 if maximum is None else maximum
+        required_value = cells[5]
+        if required_value not in {"Y", "N", "C"}:
+            raise DraftGenerationError(
+                f"Final DocIR field {index} Required must be Y, N or C"
+            )
+        required = required_value == "Y"
+        minimum = 1 if required else 0
         multiple = maximum == "n" or (
             isinstance(maximum, int) and maximum > 1
         )
@@ -436,9 +443,7 @@ def _occurs(value: str) -> tuple[int | None, int | str | None]:
     return int(match.group(1)), maximum
 
 
-def _schema_occurs(minimum: int | None, maximum: int | str | None) -> str:
-    if minimum is None or maximum is None:
-        return "0..n"
+def _schema_occurs(minimum: int, maximum: int | str) -> str:
     return f"{minimum}..{maximum}"
 
 

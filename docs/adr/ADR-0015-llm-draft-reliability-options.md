@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted. 本 ADR 修订 ADR-0012 的真实验证执行边界、ADR-0013 的确定性生成职责和 ADR-0014 的 fail-fast 语义；未被本 ADR 明确修改的约束继续有效。
+Accepted. 本 ADR 修订 ADR-0012 的真实验证执行边界、ADR-0013 的确定性生成职责和 ADR-0014 的 fail-fast 语义；其中 DocIR Type、Multiplicity 与 Required 的职责已由 ADR-0016 局部 supersede，其他约束继续有效。
 
 ## Date
 

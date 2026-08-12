@@ -375,7 +375,7 @@ def test_openai_chat_provider_segments_docir_with_default_bounded_batches() -> N
     assert result.metadata.total_tokens == 150
     for call in client.completions.calls:
         assert "# Raw bank document" in call["messages"][1]["content"]
-        assert "Prompt contract: draft-prompt/v13" in call["messages"][1]["content"]
+        assert "Prompt contract: draft-prompt/v14" in call["messages"][1]["content"]
     envelope = json.loads(result.response_text)
     assert envelope["contractVersion"] == "draft-provider-response/v1"
     assert "| 2.26 |" in envelope["artifactContent"]
@@ -697,7 +697,7 @@ def test_openai_chat_provider_uses_explicit_context_and_returns_v1_envelope() ->
     envelope = json.loads(result.response_text)
     assert envelope["contractVersion"] == "draft-provider-response/v1"
     assert envelope["artifactKind"] == "docir"
-    assert "| 2.1 |  | 　`request1` | [1..1] | String | Y |" in envelope["artifactContent"]
+    assert "| 2.1 |  | 　`request1` |  | String | Y |" in envelope["artifactContent"]
     assert "## 固定检查清单" in envelope["reviewNotes"]
     assert "Envelope.Metadata[Root Path]: derived path" in envelope["reviewNotes"]
     assert "ASSEMBLY.Metadata[Root Path]: derived path" in envelope["reviewNotes"]
@@ -769,7 +769,7 @@ def test_docir_prompt_requests_structured_extraction_and_preserves_source_scope(
     system_prompt = messages[0]["content"]
     user_prompt = messages[1]["content"]
     normalized_system_prompt = " ".join(system_prompt.split())
-    assert "Prompt contract: draft-prompt/v13" in user_prompt
+    assert "Prompt contract: draft-prompt/v14" in user_prompt
     assert "Segment: interface-envelope" in user_prompt
     assert "docir-interface-envelope-tree-segment/v1" in system_prompt
     assert "`contractVersion`, `interface`, `sourceContext`, `envelope`" in system_prompt
@@ -780,11 +780,14 @@ def test_docir_prompt_requests_structured_extraction_and_preserves_source_scope(
     assert "separate review-notes" in system_prompt
     assert "Do not emit Markdown" in system_prompt
     assert "XML item name" in system_prompt
-    assert "`[1..1]`" in system_prompt
-    assert "`[0..1]`" in system_prompt
     assert "`[0..1000]`" in system_prompt
-    for field_type in ("`String`", "`Boolean`", "`Date`", "`Decimal`", "`Object`"):
+    assert "`[0..1]`" not in system_prompt
+    for field_type in ("`Boolean`", "`Date`", "`Decimal`"):
         assert field_type in system_prompt
+    assert "default String" in system_prompt
+    assert "repeated Object" in system_prompt
+    assert "`Node`" not in system_prompt
+    assert "`List`" not in system_prompt
     for required_value in ("`Y`", "`N`", "`C`"):
         assert required_value in system_prompt
     assert "maximum without a minimum" in normalized_system_prompt
@@ -853,6 +856,9 @@ def test_docir_segment_prompts_keep_stage_responsibilities_separate() -> None:
     assert "Do not return `assembly`, `parse`, message metadata or conditions" in interface_system
     assert "Omitted semantic properties mean unknown" in interface_system
     assert "materializer injects the fixed Review marker" in interface_system
+    assert "Only return `multiplicity` for a source-supported repeated Object" in interface_system
+    assert "Omit `type` for Object and default String fields" in interface_system
+    assert "Do not infer `required` from XML examples" in interface_system
     assert "assembly/parse: Message Name" not in interface_system
     assert "Conditions contain only" not in interface_system
 

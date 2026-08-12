@@ -87,16 +87,18 @@ Raw doc 仍表示受控输入源。本次 `b2e0061` 样例以人工修正后的 
 
 | Index | Or | Message Item | Mult. | Type | Required | 说明 | 前置机校验点/格式 | 接口平台校验点 | Review |
 |---|---|---|---|---|---|---|---|---|---|
-| 2 |  | `trn-b2e0061-rq` | [1..1] | Object | Y | 转账交易请求 |  |  | 交易包装节点。 |
-| 2.1 |  | 　`ceitinfo` | [0..1] | String | N | 数字签名 |  | 该标签由前置机自动添加，企业无需上送 | 是否进入可配置字段需确认。 |
-| 2.2 |  | 　`transtype` | [0..1] | String | N | 交易类型 | 不超过1位数字；可空 | 1 委托待授权；2 授权退回修改；非空只能为1或2 |  |
-| 2.3 |  | 　`b2e0061-rq` | [1..1000] | Node | Y | 转账请求内容 | 1–1000笔 |  | 每次出现表示一个重复交易元素。 |
-| 2.3.1 |  | 　　`insid` | [1..1] | String | Y | 指令ID；客户端唯一标识 | 非空字符串；长度1-32 | 客户号下不能重复；不支持中文 |  |
+| 2 |  | `trn-b2e0061-rq` |  | Object | Y | 转账交易请求 |  |  | 交易包装节点。 |
+| 2.1 |  | 　`ceitinfo` |  | String | N | 数字签名 |  | 该标签由前置机自动添加，企业无需上送 | 是否进入可配置字段需确认。 |
+| 2.2 |  | 　`transtype` |  | String | N | 交易类型 | 不超过1位数字；可空 | 1 委托待授权；2 授权退回修改；非空只能为1或2 |  |
+| 2.3 |  | 　`b2e0061-rq` | [1..1000] | Object | Y | 转账请求内容 | 1–1000笔 |  | 每次出现表示一个重复交易元素。 |
+| 2.3.1 |  | 　　`insid` |  | String | Y | 指令ID；客户端唯一标识 | 非空字符串；长度1-32 | 客户号下不能重复；不支持中文 |  |
 ```
 
 `Message Item` 存 XML item name，不带尖括号；XML attribute 使用 `@version` 形式。DocIR 字段主表不展示完整 `path`，避免人工 review 表过宽；完整 path 属于 SchemaIR 字段对象。`Index` 是结构编号而不是行号：同级递增最后一段，子节点追加一段，例如 `2.3` 的子节点从 `2.3.1` 开始；`Message Item` 前的缩进必须与 `Index` 层级一致。
 
-Draft 中的 `Mult.`、`Type` 或 `Required` 如果无法从原文结构或明确措辞直接得到，对应单元格必须留空，并在 `Review` 标记“原文未说明，待人工确认”；不能为了填满表格静默推断。Human Review 可以基于明确证据补全候选，但必须保留推导说明。
+DocIR `Type` 只使用 `Object/String/Boolean/Date/Decimal`：有 children 的节点及 `trans` 由代码物化为 `Object`，普通 leaf/attribute 默认 `String`，只有原文明示时保留 `Boolean/Date/Decimal`。`Mult.` 只描述重复 `Object`；新生成的标量和非重复 `Object` 留空，历史 `[0..1]/[1..1]` wire 继续兼容。DocIR 不使用 `Node` 或 `List`；重复 Object 到 Standard `Node` 的映射属于下游，`List` 只属于 PARSE target。
+
+`Required` 只按原文明示的必输/非空、可选/可空、条件必填填写 `Y/N/C`。缺少可靠证据时必须留空，并在 `Review` 标记“原文未说明，待人工确认”；不能从字段表或 XML 示例猜测。SchemaIR 投影以 Required 决定 occurs minimum，以 `Mult.` 决定 maximum；二者冲突时保留 Review WARNING。
 
 ### 2.5 Review 要点
 
@@ -110,7 +112,7 @@ Draft 中的 `Mult.`、`Type` 或 `Required` 如果无法从原文结构或明�
 
 真实 `openai-chat` provider 不要求模型直接排版上述 Markdown，也不要求模型生成 index/path/level。一个 DocIR attempt 先提取 Interface/Source Context 与 Envelope 有序 semantic tree，再提取联合 ASSEMBLY/PARSE message tree；编排层按前序遍历为树节点分配内部 selector，最后只让有界 detail subcall 返回匹配 selector 的语义字段。默认每个详情批次最多 16 个字段；所有 subcall 都携带同一 raw-doc。各 segment 校验后合并为内部 `docir-semantic-candidate/v1`，代码从固定 section root `1/2/3`、父子结构和兄弟顺序确定性分配 index，并生成章节、表头、U+3000 层级缩进、Markdown escaping 与 Human Review Notes。
 
-segment 与内部 semantic candidate 只存在于 provider 信任边界和临时 attempt evidence 中，不是新的公开 IR，也不进入 SchemaIR 或 Final trusted chain。代码从无歧义有序树分配 index、固定 wire 和 Review marker；结构无法物化时 fail closed。缺失或不符合 DocIR wire contract 的 multiplicity/type/required 候选统一物化为空值并注入 Review marker，不尝试猜测正确值，因此公开结果作为 Invalid Draft 进入 Human Gate；原始非法值只留在 attempt evidence。renderer/Validator 只保证机械 wire，不判断银行事实是否完整；语义正确性仍由 DocIR Human Review 对准确 Markdown hash 确认。详见 ADR-0013、ADR-0014、ADR-0015。
+segment 与内部 semantic candidate 只存在于 provider 信任边界和临时 attempt evidence 中，不是新的公开 IR，也不进入 SchemaIR 或 Final trusted chain。代码从无歧义有序树分配 index、固定 wire、Type 和非重复 `Mult.`；结构无法物化时 fail closed。非法 multiplicity 降为空并保留 blocking Review marker，Type 冲突按结构规范化并保留 Review WARNING；Required 缺失或不受支持仍留空并注入固定 marker，公开结果作为 Invalid Draft 进入 Human Gate。原始非法值只留在 attempt evidence。renderer/Validator 只保证机械 wire，不判断银行事实是否完整；语义正确性仍由 DocIR Human Review 对准确 Markdown hash 确认。详见 ADR-0013、ADR-0014、ADR-0015、ADR-0016。
 
 ## 3. SchemaIR
 

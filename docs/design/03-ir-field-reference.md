@@ -31,8 +31,8 @@ Draft. P0-T2 expected DocIR / SchemaIR remains a historical Review baseline; the
 | `Index` | 面向人工 review 的结构编号，例如 `2`、`2.1`、`2.1.1`；同级递增最后一段，子节点追加一段。 |
 | `Or` | 表达原文中的互斥选择关系；无互斥关系时留空。 |
 | `Message Item` | XML item name，不带尖括号；attribute 使用 `@version`。可用缩进表达父子层级。 |
-| `Mult.` | 出现次数，例如 `[1..1]`、`[0..1]`、`[0..1000]`。 |
-| `Type` | 面向人阅读的候选类型，例如 `String`、`Object`、`Decimal`。 |
+| `Mult.` | 只描述重复 `Object`，例如 `[0..1000]`；新生成的非重复字段留空，历史 `[0..1]/[1..1]` 继续兼容。 |
+| `Type` | DocIR 类型只允许 `Object/String/Boolean/Date/Decimal`；容器由代码派生 `Object`，普通 leaf/attribute 默认 `String`。 |
 | `Required` | `Y`、`N` 或 `C`。`C` 表示条件必填。 |
 | `说明` | 字段业务说明，保留 raw doc 中的中文含义。 |
 | `前置机校验点/格式` | raw doc 中前置机侧的格式或校验说明。 |
@@ -41,9 +41,11 @@ Draft. P0-T2 expected DocIR / SchemaIR remains a historical Review baseline; the
 
 DocIR 主表不展示完整 `Path`，避免人工 review 时被长路径淹没。完整 path 由 SchemaIR 表达；DocIR 必须通过 `Index`、`Message Item` 缩进和 review 信息保留足够层级线索。`Index` 不是展示行号，不能用连续行号跨越层级；例如 `2.3.4` 的子节点应编号为 `2.3.4.1`，而不是后续行号 `2.17`。DocIR 不负责把复杂条件转换为 DSL。
 
-真实 provider 的模型响应不直接承载本表 Markdown。内部 `docir-semantic-candidate/v1` 保存有序 XML element/attribute 树和语义属性，不保存由模型选择的 index/path/level；代码按固定 section root 与当前父子/兄弟顺序分配 Index，再确定性添加 U+3000、代码标记和固定列。candidate 只存在于临时 attempt evidence，不改变本页定义的公开 DocIR wire，也不能作为 SchemaIR 输入。
+真实 provider 的模型响应不直接承载本表 Markdown。内部 `docir-semantic-candidate/v1` 保存有序 XML element/attribute 树和语义属性，不保存由模型选择的 index/path/level；代码按固定 section root 与当前父子/兄弟顺序分配 Index，并从树规范化 Type、非重复 Mult.、U+3000、代码标记和固定列。candidate 只存在于临时 attempt evidence，不改变本页定义的公开 DocIR wire，也不能作为 SchemaIR 输入。
 
-Draft 无法从原文直接确认 `Mult.`、`Type` 或 `Required` 时，对应单元格留空，并在 `Review` 标记“原文未说明，待人工确认”。空值表示待 Review，不是默认 `N`、`String` 或 `[0..1]`。
+有 children 的节点和固定 `trans` 交接容器为 `Object`；普通 leaf/attribute 为 `String`，原文明示时可覆盖为 `Boolean/Date/Decimal`。只有重复 Object 填写 `Mult.`；空 Mult. 规范表示 maximum `1`，而不是 `0..n`。DocIR 不包含 Standard `Node` 或 Parse target `List`。
+
+Draft 无法从原文直接确认 `Required` 时，该单元格留空，并在 `Review` 标记“原文未说明，待人工确认”。空 Required 表示待 Review，不能默认 `Y/N`。SchemaIR 的 `required` 与 occurs minimum 由 `Y/N/C` 确定，occurs maximum 由 `Mult.` 确定；显式 lower bound 与 Required 冲突时产生 Review WARNING，但投影以 Required 为准。
 
 ## 3. SchemaIR 顶层字段
 

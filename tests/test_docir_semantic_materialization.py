@@ -151,7 +151,7 @@ def test_semantic_tree_materializes_canonical_indexes_and_stable_bytes() -> None
     first = materialize_docir_semantic_candidate(candidate)
     second = materialize_docir_semantic_candidate(deepcopy(candidate))
 
-    assert DOCIR_MATERIALIZER_CONTRACT == "docir-semantic-materializer/v1"
+    assert DOCIR_MATERIALIZER_CONTRACT == "docir-semantic-materializer/v2"
     assert [row["index"] for row in first["envelope"]["fields"]] == [
         "1",
         "1.1",
@@ -205,11 +205,12 @@ def test_semantic_tree_rejects_ambiguous_or_incomplete_structure(
         materialize_docir_semantic_candidate(candidate)
 
 
-def test_missing_semantic_values_are_materialized_with_review_marker_and_invalid() -> None:
+def test_missing_required_is_the_only_default_semantic_blocker() -> None:
     candidate = semantic_candidate()
     node = candidate["parse"]["nodes"][0]["children"][0]
     node.pop("required")
     node["multiplicity"] = ""
+    node.pop("type")
     node["review"] = "来源仅展示示例。"
 
     extraction = materialize_docir_semantic_candidate(candidate)
@@ -219,40 +220,91 @@ def test_missing_semantic_values_are_materialized_with_review_marker_and_invalid
 
     assert field["required"] == ""
     assert field["multiplicity"] == ""
+    assert field["type"] == "String"
     assert field["review"] == f"来源仅展示示例。；{UNKNOWN_REVIEW_MARKER}"
     assert result["contractVersion"] == "docir-validation-result/v1"
     assert result["status"] == "failed"
-    assert result["summary"]["errorCount"] == 2
+    assert result["summary"]["errorCount"] == 1
     assert {item["code"] for item in result["issues"]} == {
         "DOCIR_SEMANTIC_VALUE_MISSING"
     }
 
 
-@pytest.mark.parametrize(
-    ("property_name", "invalid_value"),
-    [
-        ("multiplicity", "[]"),
-        ("type", "Integer"),
-        ("required", "UNKNOWN"),
-    ],
-)
-def test_invalid_semantic_value_is_materialized_as_missing_for_human_review(
-    property_name: str,
-    invalid_value: str,
-) -> None:
+def test_type_is_derived_from_tree_and_explicit_scalar_semantics() -> None:
     candidate = semantic_candidate()
-    candidate["parse"]["nodes"][0][property_name] = invalid_value
+    root = candidate["envelope"]["nodes"][0]
+    container = root["children"][1]
+    attribute = root["children"][0]
+    leaf = container["children"][0]
+    root.pop("type")
+    container["type"] = "String"
+    attribute.pop("type")
+    leaf["type"] = "Date"
+
+    extraction = materialize_docir_semantic_candidate(candidate)
+    fields = {field["item"]: field for field in extraction["envelope"]["fields"]}
+    result = validate_docir_markdown(render_docir_extraction(extraction))
+
+    assert fields["bocb2e"]["type"] == "Object"
+    assert fields["head"]["type"] == "Object"
+    assert fields["@version"]["type"] == "String"
+    assert fields["requestId"]["type"] == "Date"
+    assert "候选 Type 与结构规范不一致，已按规范物化，待人工复核" in fields["head"]["review"]
+    assert result["summary"]["errorCount"] == 0
+    assert result["summary"]["warningCount"] == 1
+    assert {issue["code"] for issue in result["issues"]} == {
+        "DOCIR_TYPE_NORMALIZED"
+    }
+
+
+def test_non_repeating_multiplicity_is_blank_but_repeated_object_is_preserved() -> None:
+    candidate = semantic_candidate()
+    candidate["envelope"]["nodes"][0]["multiplicity"] = "[1..1]"
+    candidate["parse"]["nodes"][0].update(
+        multiplicity="[0..1000]",
+        required="N",
+    )
+
+    extraction = materialize_docir_semantic_candidate(candidate)
+    envelope_root = extraction["envelope"]["fields"][0]
+    parse_root = extraction["parse"]["fields"][0]
+    result = validate_docir_markdown(render_docir_extraction(extraction))
+
+    assert envelope_root["multiplicity"] == ""
+    assert parse_root["multiplicity"] == "[0..1000]"
+    assert result["summary"]["errorCount"] == 0
+
+
+def test_invalid_multiplicity_remains_distinct_from_valid_blank() -> None:
+    candidate = semantic_candidate()
+    candidate["parse"]["nodes"][0]["multiplicity"] = "[]"
 
     extraction = materialize_docir_semantic_candidate(candidate)
     field = extraction["parse"]["fields"][0]
     markdown = render_docir_extraction(extraction)
     result = validate_docir_markdown(markdown)
 
-    assert field[property_name] == ""
+    assert field["multiplicity"] == ""
+    assert "候选 Mult. 不符合规范，已留空，待人工确认" in field["review"]
+    assert result["status"] == "failed"
+    assert {item["code"] for item in result["issues"]} == {
+        "DOCIR_MULTIPLICITY_REJECTED"
+    }
+
+
+def test_invalid_required_remains_a_missing_human_decision() -> None:
+    candidate = semantic_candidate()
+    candidate["parse"]["nodes"][0]["required"] = "UNKNOWN"
+
+    extraction = materialize_docir_semantic_candidate(candidate)
+    field = extraction["parse"]["fields"][0]
+    result = validate_docir_markdown(render_docir_extraction(extraction))
+
+    assert field["required"] == ""
     assert UNKNOWN_REVIEW_MARKER in field["review"]
     assert result["status"] == "failed"
-    assert "DOCIR_SEMANTIC_VALUE_MISSING" in {
-        item["code"] for item in result["issues"]
+    assert {item["code"] for item in result["issues"]} == {
+        "DOCIR_SEMANTIC_VALUE_MISSING"
     }
 
 

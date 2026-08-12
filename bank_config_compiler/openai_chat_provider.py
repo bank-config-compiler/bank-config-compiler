@@ -42,7 +42,7 @@ from .draft_generation import (
 
 
 PROMPT_CONTRACT_VERSION = "draft-prompt/v8"
-DOCIR_PROMPT_CONTRACT_VERSION = "draft-prompt/v13"
+DOCIR_PROMPT_CONTRACT_VERSION = "draft-prompt/v14"
 DEFAULT_DOCIR_FIELD_BATCH_SIZE = 16
 JSON_IR_MODEL_RESPONSE_PROPERTIES = {"artifact", "reviewNotes"}
 ATTEMPT_ID_PATTERN = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$")
@@ -1138,12 +1138,15 @@ even when SOURCE_DATA shows transaction children below it. Do not include transa
 request or response roots, any descendants of `trans`, or any fields owned by ASSEMBLY or PARSE.
 Do not return `assembly`, `parse`, message metadata or conditions.
 
-`multiplicity` is omitted, empty, or bracketed such as `[1..1]`, `[0..1]` or `[0..1000]`. `type` is omitted, empty,
-or exactly `String`, `Boolean`, `Date`, `Decimal` or `Object`. `required` is empty or exactly `Y`,
-`N` or `C`. Do not invent omitted values. The materializer injects the fixed Review marker for
-missing `multiplicity`, `type` or `required`. When a metadata value is not explicit, leave it empty
-and include `原文未说明，待人工确认` in its `reviewNote`. A maximum without a minimum does not
-support inventing the minimum.
+Only return `multiplicity` for a source-supported repeated Object, using a bracketed range such as
+`[0..1000]`; omit it for scalars and non-repeating Objects. Omit `type` for Object and default String
+fields. Return `Boolean`, `Date` or `Decimal` only when SOURCE_DATA explicitly supports that scalar
+semantic; numeric codes, account identifiers and enumeration codes remain default String fields.
+Return `required` only for explicit evidence: `Y` for required/non-empty, `N` for optional/empty, and
+`C` for conditional required. Do not infer `required` from XML examples, table presence or model
+knowledge. Do not invent omitted values. The materializer injects the fixed Review marker for missing
+`required`. When a metadata value is not explicit, leave it empty and include `原文未说明，待人工确认`
+in its `reviewNote`. A maximum without a minimum does not support inventing the minimum.
 """.strip()
     elif prompt.segment == "messages-outline":
         segment_contract = f"""
@@ -1205,9 +1208,13 @@ reorder or change selectors. Do not return `item`, `nodeKind`, `index`, metadata
 
 Each field requires only `selector`; it may contain semantic string properties `or`, `multiplicity`,
 `type`, `required`, `description`, `preValidation`, `platformValidation`, `review`. Omitted semantic
-properties mean unknown. `multiplicity` is empty or bracketed, `type` is empty or one of `String`,
-`Boolean`, `Date`, `Decimal`, `Object`, and `required` is empty or one of `Y`, `N`, `C`. Do not invent
-missing semantics; the materializer injects the fixed Review marker. A maximum without a minimum does
+properties mean unknown. Only return `multiplicity` for a source-supported repeated Object, using a
+bracketed range; omit it for scalars and non-repeating Objects. Omit `type` for Object and default
+String fields; return only source-explicit `Boolean`, `Date` or `Decimal`. Numeric codes, account
+identifiers and enumeration codes remain default String fields. Return `required` only for explicit
+required/non-empty (`Y`), optional/empty (`N`) or conditional-required (`C`) evidence. Do not infer
+`required` from XML examples, table presence or model knowledge. Do not invent missing semantics; the
+materializer injects the fixed Review marker for missing `required`. A maximum without a minimum does
 not support inventing the minimum.
 """.strip()
     return f"""

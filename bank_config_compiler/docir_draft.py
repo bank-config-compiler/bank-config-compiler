@@ -8,7 +8,7 @@ from typing import Any
 
 DOCIR_EXTRACTION_CONTRACT = "docir-extraction/v1"
 DOCIR_SEMANTIC_CANDIDATE_CONTRACT = "docir-semantic-candidate/v1"
-DOCIR_MATERIALIZER_CONTRACT = "docir-semantic-materializer/v1"
+DOCIR_MATERIALIZER_CONTRACT = "docir-semantic-materializer/v2"
 DOCIR_VALIDATION_RESULT_CONTRACT = "docir-validation-result/v1"
 INTERFACE_ENVELOPE_SEGMENT_CONTRACT = "docir-interface-envelope-segment/v1"
 MESSAGES_OUTLINE_SEGMENT_CONTRACT = "docir-messages-outline-segment/v1"
@@ -22,6 +22,8 @@ FIELDS_HEADER = (
     "前置机校验点/格式 | 接口平台校验点 | Review |"
 )
 UNKNOWN_REVIEW_MARKER = "原文未说明，待人工确认"
+REJECTED_MULTIPLICITY_REVIEW_MARKER = "候选 Mult. 不符合规范，已留空，待人工确认"
+NORMALIZED_TYPE_REVIEW_MARKER = "候选 Type 与结构规范不一致，已按规范物化，待人工复核"
 _FIXED_REVIEW_CHECKLIST = (
     "核对 Interface、Envelope、ASSEMBLY、PARSE 的字段和父子层级是否完整忠实于 raw-doc。",
     "核对 Source Context 的适用范围，确认通用 XML 示例或其他交易代码未污染目标交易字段。",
@@ -285,7 +287,7 @@ def validate_docir_semantic_field_details_segment(
             raise DocIRDraftError(
                 "DocIR field-semantics fields do not exactly cover target selectors"
             )
-        fields.append({"selector": selector, **_normalized_semantics(row, label=label)})
+        fields.append({"selector": selector, **_semantic_strings(row, label=label)})
     return {
         "contractVersion": SEMANTIC_FIELD_DETAILS_SEGMENT_CONTRACT,
         "direction": direction,
@@ -425,7 +427,15 @@ def _normalize_external_semantic_tree(
             "children": normalized_children,
         }
         if include_semantics:
-            normalized.update(_normalized_semantics(node, label=node_label))
+            normalized.update(
+                _normalized_semantics(
+                    node,
+                    label=node_label,
+                    item=item,
+                    node_kind=node_kind,
+                    has_children=bool(normalized_children),
+                )
+            )
         return normalized
 
     root = normalize(value[0], suffix="1", node_label=f"{label}[0]")
@@ -434,31 +444,87 @@ def _normalize_external_semantic_tree(
     return [root]
 
 
-def _normalized_semantics(value: dict[str, Any], *, label: str) -> dict[str, str]:
-    semantics = {
+def _semantic_strings(value: dict[str, Any], *, label: str) -> dict[str, str]:
+    return {
         name: _require_string(value.get(name, ""), label=f"{label}.{name}")
         for name in _SEMANTIC_NODE_PROPERTIES
     }
-    # 非法业务语义不影响树的可物化性；拒绝该候选值并留空，交给 Validator/Human Gate，
-    # 而不是把模型的格式错误升级为结构 hard failure 或擅自修正成业务事实。
-    try:
-        _validate_multiplicity(
-            semantics["multiplicity"], label=f"{label}.multiplicity"
+
+
+def _normalized_semantics(
+    value: dict[str, Any],
+    *,
+    label: str,
+    item: str,
+    node_kind: str,
+    has_children: bool,
+) -> dict[str, str]:
+    semantics = _semantic_strings(value, label=label)
+    candidate_type = semantics["type"]
+    canonical_type = _canonical_docir_type(
+        candidate_type,
+        item=item,
+        node_kind=node_kind,
+        has_children=has_children,
+    )
+    if candidate_type and candidate_type != canonical_type:
+        semantics["review"] = _append_review_marker(
+            semantics["review"], NORMALIZED_TYPE_REVIEW_MARKER
         )
+    semantics["type"] = canonical_type
+
+    # Mult. 只承载重复 Object；非重复范围被规范化为空。非法值保留专用 marker，
+    # 使 Validator 能区分“无需填写”和“模型给出了不可接受的候选”。
+    multiplicity = semantics["multiplicity"]
+    try:
+        _validate_multiplicity(multiplicity, label=f"{label}.multiplicity")
     except DocIRDraftError:
         semantics["multiplicity"] = ""
-    if semantics["type"] not in _FIELD_TYPES:
-        semantics["type"] = ""
+        semantics["review"] = _append_review_marker(
+            semantics["review"], REJECTED_MULTIPLICITY_REVIEW_MARKER
+        )
+    else:
+        maximum = _multiplicity_bounds(multiplicity)[1]
+        repeated = maximum == "*" or isinstance(maximum, int) and maximum > 1
+        if repeated and canonical_type != "Object":
+            semantics["multiplicity"] = ""
+            semantics["review"] = _append_review_marker(
+                semantics["review"], REJECTED_MULTIPLICITY_REVIEW_MARKER
+            )
+        elif not repeated:
+            semantics["multiplicity"] = ""
+
     if semantics["required"] not in _REQUIRED_VALUES:
         semantics["required"] = ""
-    if (
-        not semantics["multiplicity"]
-        or not semantics["type"]
-        or not semantics["required"]
-    ) and UNKNOWN_REVIEW_MARKER not in semantics["review"]:
-        prefix = f"{semantics['review']}；" if semantics["review"] else ""
-        semantics["review"] = f"{prefix}{UNKNOWN_REVIEW_MARKER}"
+    if not semantics["required"]:
+        semantics["review"] = _append_review_marker(
+            semantics["review"], UNKNOWN_REVIEW_MARKER
+        )
     return semantics
+
+
+def _canonical_docir_type(
+    candidate_type: str,
+    *,
+    item: str,
+    node_kind: str,
+    has_children: bool,
+) -> str:
+    if has_children or item == "trans":
+        return "Object"
+    if node_kind in _SEMANTIC_NODE_KINDS and candidate_type in {
+        "Boolean",
+        "Date",
+        "Decimal",
+    }:
+        return candidate_type
+    return "String"
+
+
+def _append_review_marker(review: str, marker: str) -> str:
+    if marker in review:
+        return review
+    return f"{review}；{marker}" if review else marker
 
 
 def _attach_semantics(
@@ -595,7 +661,13 @@ def _materialize_semantic_node(
     if node_kind == "XML_ATTRIBUTE" and children:
         raise DocIRDraftError(f"{label} attribute nodes cannot have children")
 
-    semantics = _normalized_semantics(node, label=label)
+    semantics = _normalized_semantics(
+        node,
+        label=label,
+        item=item,
+        node_kind=node_kind,
+        has_children=bool(children),
+    )
     field = {"index": index, "item": item, **semantics}
     fields.append(_validated_field(field, root_index=index.split(".", 1)[0], label=label))
 
@@ -980,11 +1052,18 @@ def validate_docir_markdown(content: Any) -> dict[str, Any]:
     issues: list[dict[str, Any]] = []
     lines = content.splitlines()
 
-    def add(code: str, path: str | None, message: str) -> None:
+    def add(
+        code: str,
+        path: str | None,
+        message: str,
+        *,
+        severity: str = "ERROR",
+        blocking: bool | None = None,
+    ) -> None:
         issues.append(
             {
-                "severity": "ERROR",
-                "blocking": True,
+                "severity": severity,
+                "blocking": severity == "ERROR" if blocking is None else blocking,
                 "code": code,
                 "path": path,
                 "message": message,
@@ -1198,8 +1277,10 @@ def _collect_rendered_field_issues(
                     f"DocIR {section_label} Message Item is invalid for {index}",
                 )
 
+        multiplicity_bounds: tuple[int | None, int | str | None] = (None, None)
         try:
             _validate_multiplicity(row[3], label=f"DocIR {section_label} multiplicity")
+            multiplicity_bounds = _multiplicity_bounds(row[3])
         except DocIRDraftError as exc:
             add("DOCIR_MULTIPLICITY", path, str(exc))
         if row[4] not in _FIELD_TYPES:
@@ -1214,22 +1295,78 @@ def _collect_rendered_field_issues(
                 path,
                 f"DocIR {section_label} Required wire value is invalid",
             )
-        for column, value in (
-            ("multiplicity", row[3]),
-            ("type", row[4]),
-            ("required", row[5]),
-        ):
-            if not value:
+
+        item = (
+            item_cell[len(expected_prefix) + 1 : -1]
+            if item_valid
+            else ""
+        )
+        has_children = any(
+            other[0].startswith(f"{index}.") for other in rows if other is not row
+        )
+        if row[4] in _FIELD_TYPES:
+            if (has_children or item == "trans") and row[4] != "Object":
                 add(
-                    "DOCIR_SEMANTIC_VALUE_MISSING",
+                    "DOCIR_TYPE_STRUCTURE",
                     path,
-                    f"DocIR {section_label} {index} {column} requires Human confirmation",
+                    f"DocIR {section_label} {index} container Type must be Object",
                 )
-        if (not row[3] or not row[4] or not row[5]) and UNKNOWN_REVIEW_MARKER not in row[9]:
+            elif not has_children and item != "trans" and row[4] not in {
+                "String",
+                "Boolean",
+                "Date",
+                "Decimal",
+            }:
+                add(
+                    "DOCIR_TYPE_STRUCTURE",
+                    path,
+                    f"DocIR {section_label} {index} leaf Type must be a scalar DocIR type",
+                )
+
+        minimum, maximum = multiplicity_bounds
+        repeated = maximum == "*" or isinstance(maximum, int) and maximum > 1
+        if repeated and row[4] != "Object":
+            add(
+                "DOCIR_MULTIPLICITY_TYPE",
+                path,
+                f"DocIR {section_label} {index} repeated Mult. requires Object Type",
+            )
+        if minimum is not None and row[5] in {"Y", "N", "C"}:
+            required_minimum = 1 if row[5] == "Y" else 0
+            if minimum != required_minimum:
+                add(
+                    "DOCIR_REQUIRED_MULTIPLICITY_CONFLICT",
+                    path,
+                    f"DocIR {section_label} {index} Required conflicts with Mult. lower bound",
+                    severity="WARNING",
+                    blocking=False,
+                )
+
+        if not row[5]:
+            add(
+                "DOCIR_SEMANTIC_VALUE_MISSING",
+                path,
+                f"DocIR {section_label} {index} required requires Human confirmation",
+            )
+        if not row[5] and UNKNOWN_REVIEW_MARKER not in row[9]:
             add(
                 "DOCIR_REVIEW_MARKER_MISSING",
                 path,
-                f"DocIR {section_label} {index} missing semantic values require the fixed Review marker",
+                f"DocIR {section_label} {index} missing Required requires the fixed Review marker",
+            )
+        if REJECTED_MULTIPLICITY_REVIEW_MARKER in row[9]:
+            add(
+                "DOCIR_MULTIPLICITY_REJECTED",
+                path,
+                f"DocIR {section_label} {index} has a rejected multiplicity candidate",
+            )
+        if NORMALIZED_TYPE_REVIEW_MARKER in row[9]:
+            add(
+                "DOCIR_TYPE_NORMALIZED",
+                path,
+                f"DocIR {section_label} {index} Type was normalized and requires Human review",
+                severity="WARNING",
+                blocking=False,
             )
 
 
@@ -1359,11 +1496,9 @@ def _validated_field(item: Any, *, root_index: str, label: str) -> dict[str, str
         raise DocIRDraftError(f"{label}.type uses an unsupported DocIR wire value")
     if field["required"] not in _REQUIRED_VALUES:
         raise DocIRDraftError(f"{label}.required uses an unsupported DocIR wire value")
-    if (
-        not field["multiplicity"] or not field["type"] or not field["required"]
-    ) and UNKNOWN_REVIEW_MARKER not in field["review"]:
+    if not field["required"] and UNKNOWN_REVIEW_MARKER not in field["review"]:
         raise DocIRDraftError(
-            f"{label}.review must contain {UNKNOWN_REVIEW_MARKER} when a wire value is empty"
+            f"{label}.review must contain {UNKNOWN_REVIEW_MARKER} when Required is empty"
         )
     return field
 
@@ -1498,6 +1633,16 @@ def _validate_multiplicity(value: str, *, label: str) -> None:
     maximum = match.group(2)
     if maximum != "*" and minimum > int(maximum):
         raise DocIRDraftError(f"{label} minimum must not exceed maximum")
+
+
+def _multiplicity_bounds(value: str) -> tuple[int | None, int | str | None]:
+    if not value:
+        return None, None
+    match = _MULTIPLICITY_PATTERN.fullmatch(value)
+    if match is None:
+        return None, None
+    maximum: int | str = "*" if match.group(2) == "*" else int(match.group(2))
+    return int(match.group(1)), maximum
 
 
 def _render_metadata(rows: list[dict[str, str]]) -> str:

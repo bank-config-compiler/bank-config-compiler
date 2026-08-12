@@ -14,6 +14,7 @@ from bank_config_compiler.ir_materialization import (
     materialize_schemair_candidate,
     materialize_standard_candidate,
     materialize_template_candidate,
+    parse_final_docir_structure,
 )
 from bank_config_compiler.schemair_validator import validate_schemair
 
@@ -96,6 +97,32 @@ def test_schemair_materializer_rejects_missing_docir_tree_coverage() -> None:
             schema_version="v1",
             interface_code="b2e0061",
         )
+
+
+def test_docir_required_and_blank_multiplicity_determine_schema_occurs() -> None:
+    docir = (
+        ROOT / "samples/draft-generation/b2eboc-b2e0061/docir-final.md"
+    ).read_text(encoding="utf-8")
+    docir = docir.replace(
+        "| 1.1 |  | 　`@version` | [0..1] | String | N |",
+        "| 1.1 |  | 　`@version` |  | String | N |",
+    ).replace(
+        "| 2 |  | `trn-b2e0061-rq` | [1..1] | Object | Y |",
+        "| 2 |  | `trn-b2e0061-rq` | [0..1000] | Object | Y |",
+    )
+
+    structure = parse_final_docir_structure(docir)
+    envelope_version = next(
+        field for field in structure["envelope"]["fields"] if field["fieldName"] == "@version"
+    )
+    assembly_root = structure["assembly"]["fields"][0]
+
+    assert envelope_version["required"] is False
+    assert envelope_version["multiple"] is False
+    assert envelope_version["occurs"] == "0..1"
+    assert assembly_root["required"] is True
+    assert assembly_root["multiple"] is True
+    assert assembly_root["occurs"] == "1..1000"
 
 
 def test_standard_materializer_projects_paths_sequence_and_xml_keys() -> None:

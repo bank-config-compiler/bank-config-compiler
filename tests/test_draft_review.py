@@ -76,7 +76,7 @@ def test_validate_current_docir_atomically_replaces_hash_bound_result_and_notes(
     ) == result
     notes = (workspace / "docir-review-notes.md").read_text(encoding="utf-8")
     assert draft_hash in notes
-    assert "Validator 未发现 ERROR 或 WARNING" in notes
+    assert "DOCIR_REQUIRED_MULTIPLICITY_CONFLICT" in notes
 
 
 def test_validation_result_is_published_after_review_notes(
@@ -368,7 +368,7 @@ def test_interactive_approval_displays_identity_summary_and_full_hash(
     assert exit_code == 0
     assert "taskId=phase0-docir-review" in output
     assert "interfaceCode=b2e0061" in output
-    assert "Validation summary: ERROR=0, WARNING=0, INFO=0" in output
+    assert "Validation summary: ERROR=0, WARNING=1, INFO=0" in output
     assert f"Content hash: {expected_hash}" in output
 
 

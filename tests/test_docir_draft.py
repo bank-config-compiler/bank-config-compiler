@@ -12,6 +12,7 @@ from bank_config_compiler.docir_draft import (
     render_docir_review_notes,
     validate_docir_field_details_segment,
     validate_docir_interface_envelope_segment,
+    validate_docir_markdown,
     validate_docir_messages_outline_segment,
     validate_docir_markdown_wire,
 )
@@ -129,6 +130,40 @@ def test_render_docir_extraction_produces_deterministic_frozen_markdown_wire() -
     assert "Path | Tag" not in rendered
     assert rendered.endswith("\n")
     validate_docir_markdown_wire(rendered)
+
+
+def test_historical_non_repeating_ranges_remain_valid() -> None:
+    result = validate_docir_markdown(render_docir_extraction(docir_extraction()))
+
+    assert result["summary"]["errorCount"] == 0
+
+
+def test_markdown_validator_rejects_type_that_conflicts_with_tree() -> None:
+    rendered = render_docir_extraction(docir_extraction())
+    rendered = rendered.replace(
+        "| 3.1 |  | 　`status` | [1..1] | Object | Y |",
+        "| 3.1 |  | 　`status` | [1..1] | String | Y |",
+    )
+
+    result = validate_docir_markdown(rendered)
+
+    assert "DOCIR_TYPE_STRUCTURE" in {issue["code"] for issue in result["issues"]}
+
+
+def test_required_and_explicit_lower_bound_conflict_is_a_warning() -> None:
+    rendered = render_docir_extraction(docir_extraction())
+    rendered = rendered.replace(
+        "| 1.1 |  | 　`@version` | [0..1] | String | N |",
+        "| 1.1 |  | 　`@version` | [1..1] | String | N |",
+    )
+
+    result = validate_docir_markdown(rendered)
+
+    assert result["summary"]["errorCount"] == 0
+    assert result["summary"]["warningCount"] == 1
+    assert {issue["code"] for issue in result["issues"]} == {
+        "DOCIR_REQUIRED_MULTIPLICITY_CONFLICT"
+    }
 
 
 @pytest.mark.parametrize(
