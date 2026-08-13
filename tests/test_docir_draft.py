@@ -64,7 +64,7 @@ def docir_extraction() -> dict:
                 metadata("Envelope Name", "bocb2e"),
             ],
             "fields": [
-                field("1", "bocb2e", multiplicity="[1..1]", field_type="Object", required="Y"),
+                field("1", "bocb2e", multiplicity="[1..1]", field_type="Object", required=""),
                 field(
                     "1.1",
                     "@version",
@@ -82,7 +82,7 @@ def docir_extraction() -> dict:
                 metadata("Message Name", "test-rq"),
             ],
             "fields": [
-                field("2", "trn-test-rq", multiplicity="[1..1]", field_type="Object", required="Y"),
+                field("2", "trn-test-rq", multiplicity="[1..1]", field_type="Object", required=""),
                 field("2.1", "request", multiplicity="[1..1]", field_type="String", required="Y"),
             ],
             "conditions": ["仅保留来源明确的请求条件。"],
@@ -95,8 +95,8 @@ def docir_extraction() -> dict:
                 metadata("Message Name", "test-rs"),
             ],
             "fields": [
-                field("3", "trn-test-rs", multiplicity="[1..1]", field_type="Object", required="Y"),
-                field("3.1", "status", multiplicity="[1..1]", field_type="Object", required="Y"),
+                field("3", "trn-test-rs", multiplicity="[1..1]", field_type="Object", required=""),
+                field("3.1", "status", multiplicity="[1..1]", field_type="Object", required=""),
                 field("3.1.1", "code", multiplicity="[1..1]", field_type="String", required="Y"),
             ],
             "conditions": ["响应状态码来自来源文档。"],
@@ -139,7 +139,7 @@ def test_historical_non_repeating_ranges_remain_valid() -> None:
 def test_markdown_validator_rejects_type_that_conflicts_with_tree() -> None:
     rendered = render_docir_extraction(docir_extraction())
     rendered = rendered.replace(
-        "| 3.1 |  | 　`status` | [1..1] | Object | Y |",
+        "| 3.1 |  | 　`status` | [1..1] | Object |  |",
         "| 3.1 |  | 　`status` | [1..1] | String | Y |",
     )
 
@@ -199,7 +199,7 @@ def test_render_docir_extraction_requires_review_when_wire_value_is_unknown() ->
     response_field["required"] = ""
     response_field["review"] = ""
 
-    with pytest.raises(DocIRDraftError, match="原文未说明，待人工确认"):
+    with pytest.raises(DocIRDraftError, match="Required 原文未说明，待人工确认"):
         render_docir_extraction(extraction)
 
 

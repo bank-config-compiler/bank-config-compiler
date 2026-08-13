@@ -8,7 +8,7 @@ from typing import Any
 
 DOCIR_EXTRACTION_CONTRACT = "docir-extraction/v2"
 DOCIR_SEMANTIC_CANDIDATE_CONTRACT = "docir-semantic-candidate/v2"
-DOCIR_MATERIALIZER_CONTRACT = "docir-semantic-materializer/v3"
+DOCIR_MATERIALIZER_CONTRACT = "docir-semantic-materializer/v4"
 DOCIR_VALIDATION_RESULT_CONTRACT = "docir-validation-result/v1"
 INTERFACE_ENVELOPE_SEGMENT_CONTRACT = "docir-interface-envelope-segment/v2"
 MESSAGES_OUTLINE_SEGMENT_CONTRACT = "docir-messages-outline-segment/v1"
@@ -23,6 +23,7 @@ LEGACY_FIELDS_HEADER = (
     "前置机校验点/格式 | 接口平台校验点 | Review |"
 )
 UNKNOWN_REVIEW_MARKER = "原文未说明，待人工确认"
+REQUIRED_UNKNOWN_REVIEW_MARKER = "Required 原文未说明，待人工确认"
 REJECTED_MULTIPLICITY_REVIEW_MARKER = "候选 Mult. 不符合规范，已留空，待人工确认"
 NORMALIZED_TYPE_REVIEW_MARKER = "候选 Type 与结构规范不一致，已按规范物化，待人工复核"
 _FIXED_REVIEW_CHECKLIST = (
@@ -526,11 +527,15 @@ def _normalized_semantics(
         elif not repeated:
             semantics["multiplicity"] = ""
 
-    if semantics["required"] not in _REQUIRED_VALUES:
+    if canonical_type == "Object":
+        # Object 只是结构容器，没有独立字段值；其出现性在 SchemaIR 阶段单独审查，
+        # 不能从子叶子的 Required 反推，也不能在 DocIR 中伪装成字段必填性。
         semantics["required"] = ""
-    if not semantics["required"]:
+    elif semantics["required"] not in _REQUIRED_VALUES:
+        semantics["required"] = ""
+    if canonical_type != "Object" and not semantics["required"]:
         semantics["review"] = _append_review_marker(
-            semantics["review"], UNKNOWN_REVIEW_MARKER
+            semantics["review"], REQUIRED_UNKNOWN_REVIEW_MARKER
         )
     return semantics
 
@@ -1401,6 +1406,8 @@ def _collect_rendered_field_issues(
                     f"DocIR {section_label} Message Item is invalid for {index}",
                 )
 
+        item = item_cell[len(expected_prefix) + 1 : -1] if item_valid else ""
+
         multiplicity_bounds: tuple[int | None, int | str | None] = (None, None)
         try:
             _validate_multiplicity(row[3], label=f"DocIR {section_label} multiplicity")
@@ -1417,14 +1424,10 @@ def _collect_rendered_field_issues(
             add(
                 "DOCIR_REQUIRED",
                 path,
-                f"DocIR {section_label} Required wire value is invalid",
+                f"DocIR {section_label} {index} Required wire value is invalid; "
+                f"item={item or '<invalid>'}; Required={row[5] or '<empty>'}",
             )
 
-        item = (
-            item_cell[len(expected_prefix) + 1 : -1]
-            if item_valid
-            else ""
-        )
         has_children = any(
             other[0].startswith(f"{index}.") for other in rows if other is not row
         )
@@ -1466,8 +1469,15 @@ def _collect_rendered_field_issues(
                     blocking=False,
                 )
 
+        is_object = row[4] == "Object"
         evidence = _required_evidence(row[6], row[7])
-        if not row[5]:
+        if is_object and row[5]:
+            add(
+                "DOCIR_OBJECT_REQUIRED_NOT_APPLICABLE",
+                path,
+                f"DocIR {section_label} {index} Object Required must be empty",
+            )
+        elif not is_object and not row[5]:
             add(
                 "DOCIR_SEMANTIC_VALUE_MISSING",
                 path,
@@ -1478,7 +1488,7 @@ def _collect_rendered_field_issues(
                     prefix="Required 值未确定，需要 Human 根据当前字段证据确认 Y/N/C。",
                 ),
             )
-        elif evidence[0] is not None and row[5] != evidence[0]:
+        elif not is_object and evidence[0] is not None and row[5] != evidence[0]:
             add(
                 "DOCIR_REQUIRED_EVIDENCE_CONFLICT",
                 path,
@@ -1489,7 +1499,7 @@ def _collect_rendered_field_issues(
                     prefix=f"Required 与当前字段明确证据冲突；证据支持 {evidence[0]}。",
                 ),
             )
-        if evidence[1]:
+        if not is_object and evidence[1]:
             add(
                 "DOCIR_REQUIRED_EVIDENCE_AMBIGUOUS",
                 path,
@@ -1502,11 +1512,15 @@ def _collect_rendered_field_issues(
                 severity="WARNING",
                 blocking=False,
             )
-        if not row[5] and UNKNOWN_REVIEW_MARKER not in row[8]:
+        if (
+            not is_object
+            and not row[5]
+            and REQUIRED_UNKNOWN_REVIEW_MARKER not in row[8]
+        ):
             add(
                 "DOCIR_REVIEW_MARKER_MISSING",
                 path,
-                f"DocIR {section_label} {index} missing Required requires the fixed Review marker",
+                f"DocIR {section_label} {index} missing Required requires the explicit Review marker",
             )
         if REJECTED_MULTIPLICITY_REVIEW_MARKER in row[8]:
             add(
@@ -1706,9 +1720,15 @@ def _validated_field(item: Any, *, root_index: str, label: str) -> dict[str, str
         raise DocIRDraftError(f"{label}.type uses an unsupported DocIR wire value")
     if field["required"] not in _REQUIRED_VALUES:
         raise DocIRDraftError(f"{label}.required uses an unsupported DocIR wire value")
-    if not field["required"] and UNKNOWN_REVIEW_MARKER not in field["review"]:
+    if field["type"] == "Object" and field["required"]:
+        raise DocIRDraftError(f"{label}.required must be empty for Object")
+    if (
+        field["type"] != "Object"
+        and not field["required"]
+        and REQUIRED_UNKNOWN_REVIEW_MARKER not in field["review"]
+    ):
         raise DocIRDraftError(
-            f"{label}.review must contain {UNKNOWN_REVIEW_MARKER} when Required is empty"
+            f"{label}.review must contain {REQUIRED_UNKNOWN_REVIEW_MARKER} when Required is empty"
         )
     return field
 

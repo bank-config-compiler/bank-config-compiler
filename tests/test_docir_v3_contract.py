@@ -207,6 +207,23 @@ def test_missing_required_preserves_conditional_evidence() -> None:
     assert "当收款行联行号为空时，此项为必填" in issue["message"]
 
 
+def test_invalid_required_issue_preserves_item_and_current_value() -> None:
+    markdown = render_docir_extraction(
+        materialize_docir_semantic_candidate(_candidate())
+    ).replace(
+        "| 2.1 |  | \u3000`account` |  | String | Y |",
+        "| 2.1 |  | \u3000`account` |  | String | 不需要 |",
+    )
+
+    result = validate_docir_markdown(markdown)
+
+    issue = next(
+        item for item in result["issues"] if item["code"] == "DOCIR_REQUIRED"
+    )
+    assert "item=account" in issue["message"]
+    assert "Required=不需要" in issue["message"]
+
+
 def test_required_evidence_examples_do_not_create_false_conflicts() -> None:
     cases = [
         ("C", "可空字符串0-70位", "当收款行联行号为空时，此项为必填"),

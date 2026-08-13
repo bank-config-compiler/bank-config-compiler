@@ -374,7 +374,7 @@ def test_openai_chat_provider_segments_docir_with_default_bounded_batches() -> N
     assert result.metadata.total_tokens == 150
     for call in client.completions.calls:
         assert "# Raw bank document" in call["messages"][1]["content"]
-        assert "Prompt contract: draft-prompt/v15" in call["messages"][1]["content"]
+        assert "Prompt contract: draft-prompt/v16" in call["messages"][1]["content"]
     envelope = json.loads(result.response_text)
     assert envelope["contractVersion"] == "draft-provider-response/v1"
     assert "| 2.26 |" in envelope["artifactContent"]
@@ -768,7 +768,7 @@ def test_docir_prompt_requests_structured_extraction_and_preserves_source_scope(
     system_prompt = messages[0]["content"]
     user_prompt = messages[1]["content"]
     normalized_system_prompt = " ".join(system_prompt.split())
-    assert "Prompt contract: draft-prompt/v15" in user_prompt
+    assert "Prompt contract: draft-prompt/v16" in user_prompt
     assert "Segment: interface-envelope" in user_prompt
     assert "docir-interface-envelope-tree-segment/v2" in system_prompt
     assert "`contractVersion`, `interface`, `sourceContext`, `envelope`" in system_prompt
@@ -854,7 +854,7 @@ def test_docir_segment_prompts_keep_stage_responsibilities_separate() -> None:
     assert "Child array order" in interface_system
     assert "Do not return `assembly`, `parse`, message metadata or conditions" in interface_system
     assert "Omitted semantic properties mean unknown" in interface_system
-    assert "materializer injects the fixed Review marker" in interface_system
+    assert "Required 原文未说明，待人工确认" in interface_system
     assert "Only return `multiplicity` for a source-supported repeated Object" in interface_system
     assert "Omit `type` for Object and default String fields" in interface_system
     assert "Do not infer `required` from XML examples" in interface_system

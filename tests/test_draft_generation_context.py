@@ -168,7 +168,7 @@ def test_publish_segmented_docir_records_ordered_subcalls(tmp_path: Path) -> Non
                     started_at=f"2026-08-11T10:00:0{sequence}+08:00",
                     completed_at=f"2026-08-11T10:00:0{sequence + 1}+08:00",
                     finish_reason="stop",
-                    prompt_contract_version="draft-prompt/v8",
+                    prompt_contract_version="draft-prompt/v9",
                     segment_contract_version=contract,
                 )
                 for sequence, (segment, contract, digit) in enumerate(
@@ -200,7 +200,7 @@ def test_publish_segmented_docir_records_ordered_subcalls(tmp_path: Path) -> Non
                     started_at=calls[0].started_at,
                     completed_at=calls[-1].completed_at,
                     endpoint_fingerprint="sha256:" + "3" * 64,
-                    prompt_contract_version="draft-prompt/v8",
+                    prompt_contract_version="draft-prompt/v9",
                     calls=calls,
                     docir_field_batch_size=16,
                 ),

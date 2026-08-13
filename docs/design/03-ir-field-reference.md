@@ -33,7 +33,7 @@ Draft. P0-T2 expected DocIR / SchemaIR remains a historical Review baseline; the
 | `Message Item` | XML item name，不带尖括号；attribute 使用 `@version`。可用缩进表达父子层级。 |
 | `Mult.` | 只描述重复 `Object`，例如 `[0..1000]`；新生成的非重复字段留空，历史 `[0..1]/[1..1]` 继续兼容。 |
 | `Type` | DocIR 类型只允许 `Object/String/Boolean/Date/Decimal`；容器由代码派生 `Object`，普通 leaf/attribute 默认 `String`。 |
-| `Required` | `Y`、`N` 或 `C`。`C` 表示条件必填。 |
+| `Required` | 标量使用 `Y`、`N` 或 `C`，`C` 表示条件必填；`Object` 固定留空（N/A）。 |
 | `说明` | 字段业务说明，保留 raw doc 中的中文含义。 |
 | `校验点` | raw doc 中与当前字段有关的格式、长度、枚举、条件和业务校验；按来源顺序完整保留，不固化特定银行的栏目分类。 |
 | `Review` | 不确定、冲突、推导说明和人工 review 提醒。 |
@@ -44,7 +44,7 @@ DocIR 主表不展示完整 `Path`，避免人工 review 时被长路径淹没�
 
 有 children 的节点和固定 `trans` 交接容器为 `Object`；普通 leaf/attribute 为 `String`，原文明示时可覆盖为 `Boolean/Date/Decimal`。只有重复 Object 填写 `Mult.`；空 Mult. 规范表示 maximum `1`，而不是 `0..n`。DocIR 不包含 Standard `Node` 或 Parse target `List`。
 
-Draft 无法从原文直接确认 `Required` 时，该单元格留空，并在 `Review` 标记“原文未说明，待人工确认”。空 Required 表示待 Review，不能默认 `Y/N`。代码只对当前 Draft 已有的 `说明`、`校验点` 和 Conditions 做证据一致性门禁：明显冲突为 ERROR，可能涉及其他字段为 WARNING，不自动填值。SchemaIR 的 `required` 与 occurs minimum 由 Human 确认后的 `Y/N/C` 确定，occurs maximum 由 `Mult.` 确定。
+标量无法从原文直接确认 `Required` 时，该单元格留空，并在 `Review` 标记“Required 原文未说明，待人工确认”。标量空 Required 表示待 Review，不能默认 `Y/N`。Object 不存在独立字段值，其 Required 固定留空（N/A），不产生缺失 marker，也不从叶子 Required 反推容器出现性。代码只对当前 Draft 已有的标量 `说明`、`校验点` 和 Conditions 做证据一致性门禁：明显冲突为 ERROR，可能涉及其他字段为 WARNING，不自动填值。SchemaIR 标量的 `required` 与 occurs minimum 由 Human 确认后的 DocIR `Y/N/C` 确定；SchemaIR Object `required` 由该层 candidate/Human 独立确认；occurs maximum 由 DocIR `Mult.` 锁定。
 
 ## 3. SchemaIR 顶层字段
 

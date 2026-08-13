@@ -27,7 +27,7 @@ IR 是 Intermediate Representation（中间表示）。它把来源不同、结�
 
 | 产物 | 更容易理解的名称 | 回答的问题 | 内容边界 | 可信状态 |
 |---|---|---|---|---|
-| `DocIR` | 结构化文档稿 | 银行文档写了什么？ | 章节、字段表、示例、条件、冲突、原文证据和不确定项。 | LLM 生成 Draft，人工确认后成为 Final DocIR。 |
+| `DocIR` | 结构化文档稿 | 银行文档写了什么？ | 章节、字段表、示例、条件、冲突、原文证据和不确定项；标量 Required 使用 Y/N/C，Object Required 为 N/A。 | LLM 生成 Draft，人工确认后成为 Final DocIR。 |
 | `SchemaIR` | 标准化报文模型 | 银行 XML 报文是什么结构？ | element、attribute、方向级 XML encoding、完整 path、父子层级、原始类型、必填、长度、出现次数和银行约束。 | LLM 生成 Draft，经 SchemaIR Validator 和人工 Review 后成为 Final SchemaIR。 |
 | `InterfaceStandardIR` | 接口标准模型 | 目标系统应如何定义这个方向的银行报文字段格式和层级？ | 目标系统字段名称、描述、路径、基础/条件必填、长度、非法字符、XML 内键、正则、数据类型和顺序。 | LLM 生成 Draft，经 Standard Validator 和人工 Review 后成为 Final InterfaceStandardIR。 |
 | `InterfaceTemplateIR` | 接口模板模型 | 当前模板如何连接银行标准字段与系统字段并进行取值和处理？ | 方向性 source/target、字段与 XML 内键取值表达式、处理策略、规则依据、ASSEMBLY omission 和人工结论。 | LLM 生成 Draft，经 Template Validator 和人工 Review 后成为 Final InterfaceTemplateIR。 |

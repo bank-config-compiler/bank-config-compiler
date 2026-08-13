@@ -485,7 +485,7 @@ def test_generate_docir_failure_publishes_partial_provider_evidence(
                     started_at=f"2026-08-11T10:00:0{sequence}+08:00",
                     completed_at=f"2026-08-11T10:00:0{sequence + 1}+08:00",
                     finish_reason="stop",
-                    prompt_contract_version="draft-prompt/v8",
+                    prompt_contract_version="draft-prompt/v9",
                     segment_contract_version=contract,
                 )
                 for sequence, (segment, contract, response) in enumerate(
@@ -514,7 +514,7 @@ def test_generate_docir_failure_publishes_partial_provider_evidence(
                 response_id="chatcmpl-test",
                 started_at="2026-08-11T10:00:00+08:00",
                 completed_at="2026-08-11T10:01:00+08:00",
-                prompt_contract_version="draft-prompt/v8",
+                prompt_contract_version="draft-prompt/v9",
                 segment_contract_version="docir-field-details-segment/v2",
             )
             raise DraftProviderDiagnosticError(
@@ -530,7 +530,7 @@ def test_generate_docir_failure_publishes_partial_provider_evidence(
                         started_at="2026-08-11T10:00:00+08:00",
                         completed_at="2026-08-11T10:01:00+08:00",
                         endpoint_fingerprint="sha256:" + "a" * 64,
-                        prompt_contract_version="draft-prompt/v8",
+                        prompt_contract_version="draft-prompt/v9",
                         calls=completed_calls + (failed_call,),
                         docir_field_batch_size=16,
                     ),
@@ -705,7 +705,7 @@ def test_schemair_provider_failure_consumes_attempt_before_retry(
                         started_at="2026-08-12T10:00:00+08:00",
                         completed_at="2026-08-12T10:00:01+08:00",
                         endpoint_fingerprint="sha256:" + "a" * 64,
-                        prompt_contract_version="draft-prompt/v8",
+                        prompt_contract_version="draft-prompt/v9",
                     ),
                     failure_stage="request",
                     failure_detail="chat request failed: TimeoutError",
@@ -791,7 +791,7 @@ def test_schemair_materialization_failure_saves_candidate_and_consumes_attempt(
                     started_at="2026-08-12T10:00:00+08:00",
                     completed_at="2026-08-12T10:00:01+08:00",
                     endpoint_fingerprint="sha256:" + "a" * 64,
-                    prompt_contract_version="draft-prompt/v8",
+                    prompt_contract_version="draft-prompt/v9",
                 ),
             )
 

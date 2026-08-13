@@ -107,8 +107,8 @@ def test_docir_required_and_blank_multiplicity_determine_schema_occurs() -> None
         "| 1.1 |  | 　`@version` | [0..1] | String | N |",
         "| 1.1 |  | 　`@version` |  | String | N |",
     ).replace(
-        "| 2 |  | `trn-b2e0061-rq` | [1..1] | Object | Y |",
-        "| 2 |  | `trn-b2e0061-rq` | [0..1000] | Object | Y |",
+        "| 2 |  | `trn-b2e0061-rq` | [1..1] | Object |  |",
+        "| 2 |  | `trn-b2e0061-rq` | [0..1000] | Object |  |",
     )
 
     structure = parse_final_docir_structure(docir)
@@ -120,9 +120,40 @@ def test_docir_required_and_blank_multiplicity_determine_schema_occurs() -> None
     assert envelope_version["required"] is False
     assert envelope_version["multiple"] is False
     assert envelope_version["occurs"] == "0..1"
-    assert assembly_root["required"] is True
+    assert "required" not in assembly_root
     assert assembly_root["multiple"] is True
-    assert assembly_root["occurs"] == "1..1000"
+    assert "occurs" not in assembly_root
+
+
+def test_schemair_object_occurrence_uses_candidate_not_required_leaf() -> None:
+    candidate = _schema_candidate_with_docir_lang()
+    candidate["envelope"]["fields"][0]["required"] = False
+    candidate["envelope"]["fields"][0]["occurs"] = "1..1"
+    docir = (
+        ROOT / "samples/draft-generation/b2eboc-b2e0061/docir-final.md"
+    ).read_text(encoding="utf-8")
+    docir = docir.replace(
+        "| 1 |  | `bocb2e` | [1..1] | Object | Y |",
+        "| 1 |  | `bocb2e` | [1..1] | Object |  |",
+    )
+
+    materialized = materialize_schemair_candidate(
+        candidate,
+        docir_final=docir,
+        schema_id="b2eboc-b2e0061-schema",
+        schema_version="v1",
+        interface_code="b2e0061",
+    )
+
+    root = materialized["envelope"]["fields"][0]
+    required_child = next(
+        field
+        for field in materialized["envelope"]["fields"]
+        if field["fieldName"] == "termid"
+    )
+    assert root["required"] is False
+    assert root["occurs"] == "0..1"
+    assert required_child["required"] is True
 
 
 def test_standard_materializer_projects_paths_sequence_and_xml_keys() -> None:

@@ -7,7 +7,7 @@ import pytest
 from bank_config_compiler.docir_draft import (
     DOCIR_MATERIALIZER_CONTRACT,
     DocIRDraftError,
-    UNKNOWN_REVIEW_MARKER,
+    REQUIRED_UNKNOWN_REVIEW_MARKER,
     materialize_docir_semantic_candidate,
     render_docir_extraction,
     validate_docir_markdown,
@@ -150,7 +150,7 @@ def test_semantic_tree_materializes_canonical_indexes_and_stable_bytes() -> None
     first = materialize_docir_semantic_candidate(candidate)
     second = materialize_docir_semantic_candidate(deepcopy(candidate))
 
-    assert DOCIR_MATERIALIZER_CONTRACT == "docir-semantic-materializer/v3"
+    assert DOCIR_MATERIALIZER_CONTRACT == "docir-semantic-materializer/v4"
     assert [row["index"] for row in first["envelope"]["fields"]] == [
         "1",
         "1.1",
@@ -220,13 +220,28 @@ def test_missing_required_is_the_only_default_semantic_blocker() -> None:
     assert field["required"] == ""
     assert field["multiplicity"] == ""
     assert field["type"] == "String"
-    assert field["review"] == f"来源仅展示示例。；{UNKNOWN_REVIEW_MARKER}"
+    assert field["review"] == f"来源仅展示示例。；{REQUIRED_UNKNOWN_REVIEW_MARKER}"
     assert result["contractVersion"] == "docir-validation-result/v1"
     assert result["status"] == "failed"
     assert result["summary"]["errorCount"] == 1
     assert {item["code"] for item in result["issues"]} == {
         "DOCIR_SEMANTIC_VALUE_MISSING"
     }
+
+
+def test_object_required_is_not_applicable_and_does_not_add_review_marker() -> None:
+    candidate = semantic_candidate()
+    root = candidate["envelope"]["nodes"][0]
+    root.pop("required")
+
+    extraction = materialize_docir_semantic_candidate(candidate)
+    field = extraction["envelope"]["fields"][0]
+    result = validate_docir_markdown(render_docir_extraction(extraction))
+
+    assert field["type"] == "Object"
+    assert field["required"] == ""
+    assert REQUIRED_UNKNOWN_REVIEW_MARKER not in field["review"]
+    assert result["summary"]["errorCount"] == 0
 
 
 def test_type_is_derived_from_tree_and_explicit_scalar_semantics() -> None:
@@ -291,7 +306,7 @@ def test_invalid_multiplicity_remains_distinct_from_valid_blank() -> None:
     }
 
 
-def test_invalid_required_remains_a_missing_human_decision() -> None:
+def test_invalid_object_required_is_normalized_to_not_applicable() -> None:
     candidate = semantic_candidate()
     candidate["parse"]["nodes"][0]["required"] = "UNKNOWN"
 
@@ -299,12 +314,10 @@ def test_invalid_required_remains_a_missing_human_decision() -> None:
     field = extraction["parse"]["fields"][0]
     result = validate_docir_markdown(render_docir_extraction(extraction))
 
+    assert field["type"] == "Object"
     assert field["required"] == ""
-    assert UNKNOWN_REVIEW_MARKER in field["review"]
-    assert result["status"] == "failed"
-    assert {item["code"] for item in result["issues"]} == {
-        "DOCIR_SEMANTIC_VALUE_MISSING"
-    }
+    assert REQUIRED_UNKNOWN_REVIEW_MARKER not in field["review"]
+    assert result["status"] == "passed"
 
 
 def test_markdown_validator_aggregates_independent_wire_errors() -> None:

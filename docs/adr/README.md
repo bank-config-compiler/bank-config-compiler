@@ -29,3 +29,4 @@ ADR 只记录已经形成工程约束或需要被反复解释的选择。尚未�
 - `ADR-0015-llm-draft-reliability-options.md`：六类 Draft 采用内部 semantic candidate、确定性物化、Invalid/Reviewable Draft、重新校验和 hash-bound Human approval；Phase0 不采用 LLM correction，P0-T5/P0-T6 分开验收。
 - `ADR-0016-docir-type-multiplicity-required-semantics.md`：DocIR Type 由 XML 树规范化、Mult. 只描述重复 Object、Required 缺证据继续阻塞；局部 supersede ADR-0015 的 DocIR 语义职责边界。
 - `ADR-0017-docir-nine-column-required-evidence-gate.md`：DocIR Fields 迁移为九列，合并校验点；Required 只接受同一 candidate/Draft 中的证据门禁，Review Notes 不额外调用 LLM，并拒绝旧十列运行时输入。
+- `ADR-0018-docir-object-required-not-applicable.md`：DocIR Object Required 固定为空且不从叶子反推；Object 出现性转由 SchemaIR candidate 与 Human Gate 确认，标量缺失使用明确 Required marker。

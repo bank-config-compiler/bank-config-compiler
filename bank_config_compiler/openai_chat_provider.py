@@ -41,8 +41,8 @@ from .draft_generation import (
 )
 
 
-PROMPT_CONTRACT_VERSION = "draft-prompt/v8"
-DOCIR_PROMPT_CONTRACT_VERSION = "draft-prompt/v15"
+PROMPT_CONTRACT_VERSION = "draft-prompt/v9"
+DOCIR_PROMPT_CONTRACT_VERSION = "draft-prompt/v16"
 DEFAULT_DOCIR_FIELD_BATCH_SIZE = 16
 JSON_IR_MODEL_RESPONSE_PROPERTIES = {"artifact", "reviewNotes"}
 ATTEMPT_ID_PATTERN = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$")
@@ -53,11 +53,13 @@ _ARTIFACT_INSTRUCTIONS = {
     "schemair": """
 Return a SchemaIR semantic candidate containing `envelope` and both ordered `messages`.
 Do not choose artifact identity, version, lifecycle, interface identity, field path, parent path,
-level, node kind, occurs, required, multiple or hasChildren; the materializer locks or derives them
-from the exact Final DocIR. Keep one `fieldName` per candidate field so the materializer can prove
-preorder coverage. Propose only non-derivable XML encoding, descriptions, format/length, conditions,
-evidence, confidence and uncertainty. Preserve unsupported or conflicting facts as reviewable
-uncertainty; never resolve them from model knowledge.
+level, node kind, scalar occurs/required, multiple or hasChildren; the materializer locks or derives
+them from the exact Final DocIR. DocIR Object Required is not applicable, so propose each Object
+field's SchemaIR `required` boolean independently for Human Review; do not infer it from required
+leaf descendants. Keep one `fieldName` per candidate field so the materializer can prove preorder
+coverage. Propose only non-derivable XML encoding, descriptions, format/length, conditions, evidence,
+confidence and uncertainty. Preserve unsupported or conflicting facts as reviewable uncertainty;
+never resolve them from model knowledge.
 """.strip(),
     "standard": """
 Return an InterfaceStandardIR semantic candidate with one field per Final SchemaIR XML element and
@@ -1143,14 +1145,16 @@ Only return `multiplicity` for a source-supported repeated Object, using a brack
 fields. Return `Boolean`, `Date` or `Decimal` only when SOURCE_DATA explicitly supports that scalar
 semantic; numeric codes, account identifiers and enumeration codes remain default String fields.
 Put all source format, length, enumeration, conditional and business validation text in `validation`.
-Return `required` only for explicit evidence about the current field: `Y` for required/non-empty, `N`
+For Object nodes omit `required`; Object Required is not applicable in DocIR and must not be inferred
+from descendant leaves. For scalar nodes return `required` only for explicit evidence about the current
+field: `Y` for required/non-empty, `N`
 for optional/empty, and `C` when the current field is normally optional but required under a stated
 condition. `可空字符串` supports `N`; `非空字符串` supports `Y`; `可空` together with `当...时此项必填`
 supports `C`. Text such as `若不为空则检查格式` still supports `N`, not `C`. If the current field text
 requires a different field to be supplied, preserve that rule in `validation` or message `conditions`
 but do not change the current field's `required`. Do not infer `required` from XML examples, table
-presence or model knowledge. Do not invent omitted values. The materializer injects the fixed Review
-marker for missing `required`. When a metadata value is not explicit, leave it empty and include
+presence or model knowledge. Do not invent omitted values. The materializer injects the explicit
+`Required 原文未说明，待人工确认` Review marker for a scalar missing `required`. When a metadata value is not explicit, leave it empty and include
 `原文未说明，待人工确认` in its `reviewNote`. A maximum without a minimum does not support inventing
 the minimum.
 """.strip()
@@ -1218,14 +1222,17 @@ properties mean unknown. Only return `multiplicity` for a source-supported repea
 bracketed range; omit it for scalars and non-repeating Objects. Omit `type` for Object and default
 String fields; return only source-explicit `Boolean`, `Date` or `Decimal`. Numeric codes, account
 identifiers and enumeration codes remain default String fields. Put all source format, length,
-enumeration, conditional and business validation text in `validation`. Return `required` only for
-explicit evidence about the current field: required/non-empty (`Y`), optional/empty (`N`) or
+enumeration, conditional and business validation text in `validation`. For Object nodes omit
+`required`; Object Required is not applicable in DocIR and must not be inferred from descendant
+leaves. For scalar nodes return `required` only for explicit evidence about the current field:
+required/non-empty (`Y`), optional/empty (`N`) or
 conditional-required (`C`). `可空字符串` supports `N`; `非空字符串` supports `Y`; `可空` together with
 `当...时此项必填` supports `C`. `若不为空则检查格式` remains `N`, not `C`. A requirement to supply a
 different field must be preserved in `validation` or message `conditions` and must not change the
 current field's `required`. Do not infer `required` from XML examples, table presence or model
-knowledge. Do not invent missing semantics; the materializer injects the fixed Review marker for
-missing `required`. A maximum without a minimum does not support inventing the minimum.
+knowledge. Do not invent missing semantics; the materializer injects the explicit
+`Required 原文未说明，待人工确认` Review marker for a scalar missing `required`. A maximum without a
+minimum does not support inventing the minimum.
 """.strip()
     return f"""
 You extract exactly one requested segment of a Bank Config Compiler DocIR candidate for Human Review.

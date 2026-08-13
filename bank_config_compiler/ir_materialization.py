@@ -7,11 +7,11 @@ from typing import Any
 
 from .artifact_validation import content_hash
 from .configuration_rules import RulePackage
-from .docir_draft import FIELDS_HEADER, METADATA_HEADER, UNKNOWN_REVIEW_MARKER
+from .docir_draft import FIELDS_HEADER, METADATA_HEADER
 from .draft_generation import DraftGenerationError
 
 
-SCHEMAIR_MATERIALIZER_CONTRACT = "schemair-materializer/v1"
+SCHEMAIR_MATERIALIZER_CONTRACT = "schemair-materializer/v2"
 STANDARD_MATERIALIZER_CONTRACT = "interface-standard-materializer/v1"
 TEMPLATE_MATERIALIZER_CONTRACT = "interface-template-materializer/v1"
 
@@ -311,7 +311,21 @@ def _materialize_schema_fields(
             raise DraftGenerationError(
                 f"{label}[{position}] fieldName does not match Final DocIR preorder"
             )
-        supplied.update(derived)
+        derived = dict(derived)
+        maximum = derived.pop("_maximumOccurs")
+        if derived["dataType"] == "object":
+            # DocIR 的 Object.Required 是 N/A；容器出现性属于 SchemaIR 的独立语义，
+            # 不能从内部必填叶子反推，但 maximum 仍必须受 Final DocIR Mult. 约束。
+            required = supplied.get("required")
+            if not isinstance(required, bool):
+                raise DraftGenerationError(
+                    f"{label}[{position}] Object required must be proposed as a boolean"
+                )
+            supplied.update(derived)
+            supplied["required"] = required
+            supplied["occurs"] = _schema_occurs(1 if required else 0, maximum)
+        else:
+            supplied.update(derived)
         result.append(supplied)
     return result
 
@@ -359,18 +373,21 @@ def _docir_field_structure(
         multiplicity = cells[3]
         _, maximum = _occurs(multiplicity)
         maximum = 1 if maximum is None else maximum
+        data_type = _SCHEMA_DATA_TYPES.get(cells[4], "string")
         required_value = cells[5]
-        if required_value not in {"Y", "N", "C"}:
+        if data_type == "object":
+            if required_value:
+                raise DraftGenerationError(
+                    f"Final DocIR Object field {index} Required must be empty"
+                )
+        elif required_value not in {"Y", "N", "C"}:
             raise DraftGenerationError(
-                f"Final DocIR field {index} Required must be Y, N or C"
+                f"Final DocIR scalar field {index} Required must be Y, N or C"
             )
-        required = required_value == "Y"
-        minimum = 1 if required else 0
         multiple = maximum == "n" or (
             isinstance(maximum, int) and maximum > 1
         )
-        fields.append(
-            {
+        field = {
                 "path": path,
                 "fieldName": item,
                 "parentPath": parent_path,
@@ -378,13 +395,16 @@ def _docir_field_structure(
                 "nodeKind": (
                     "XML_ATTRIBUTE" if item.startswith("@") else "XML_ELEMENT"
                 ),
-                "dataType": _SCHEMA_DATA_TYPES.get(cells[4], "string"),
-                "required": required,
+                "dataType": data_type,
                 "multiple": multiple,
-                "occurs": _schema_occurs(minimum, maximum),
                 "hasChildren": False,
+                "_maximumOccurs": maximum,
             }
-        )
+        if data_type != "object":
+            required = required_value == "Y"
+            field["required"] = required
+            field["occurs"] = _schema_occurs(1 if required else 0, maximum)
+        fields.append(field)
     paths_with_children = {field["parentPath"] for field in fields}
     for field in fields:
         field["hasChildren"] = field["path"] in paths_with_children
