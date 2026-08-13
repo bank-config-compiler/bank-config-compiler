@@ -4,7 +4,7 @@
 
 **In Progress。P0-T5 离线实现已完成，等待真实 DocIR 与 Human Gate；P0-T6 runtime 已离线实现，但真实下游链受 Final DocIR 阻塞。**
 
-P0-T3 trusted chain 与 P0-T4 deterministic Draft-to-Workbook closure 已完成。ADR-0015 已接受 candidate → deterministic materialization → Invalid/Reviewable Draft → Human Gate 的六类 Draft 共同策略，ADR-0016/0017 收敛 DocIR Type、非重复 Multiplicity、九列 contract、Required 证据门禁与确定性 Review Notes，ADR-0018 将 Object Required 明确为 N/A。`docir-020` 是未发布 Draft 的历史失败 attempt；`docir-021` 与 `docir-022` 均为不可复用的真实 attempt。前者保留历史 evidence；后者的根工作 Draft 已迁移并重新校验，仍需完成标量 Required 与跨字段歧义的 Human Gate。
+P0-T3 trusted chain 与 P0-T4 deterministic Draft-to-Workbook closure 已完成。ADR-0015 已接受 candidate → deterministic materialization → Invalid/Reviewable Draft → Human Gate 的六类 Draft 共同策略，ADR-0016/0017 收敛 DocIR Type、非重复 Multiplicity、九列 contract、Required 证据门禁与确定性 Review Notes，ADR-0018 将 Object Required 明确为 N/A，ADR-0019 将 Conditions 收窄为 raw doc 明确条件分支。`docir-020` 是未发布 Draft 的历史失败 attempt；`docir-021` 与 `docir-022` 均为不可复用的真实 attempt。前者保留历史 evidence；后者的根工作 Draft 已迁移并以零 ERROR、两个跨字段 WARNING 通过校验，仍需 Human 确认当前准确 bytes 并 approval。
 
 ## 1. 目标与可信边界
 
@@ -55,7 +55,7 @@ P0-T5 Done 不代表 Phase0 Done，也不授权进入 Phase1 planning。
 - [x] attempt ID 不可覆盖；Generation Result 保持初始 lineage，不随 Human 编辑改写。
 - [x] `validate-draft` 原子刷新 result/notes，不修改 Draft。
 - [x] `approve-draft` 交互模式无需手输 hash；非交互模式必须显式提供 expected hash。
-- [x] `draft-prompt/v16` 与 `docir-semantic-materializer/v4` 规范化 Type/非重复 Mult.，采用九列 Fields contract；Object Required=N/A，标量 Required 缺证据为 ERROR。
+- [x] `draft-prompt/v17` 与 `docir-semantic-materializer/v4` 规范化 Type/非重复 Mult.，采用九列 Fields contract；Object Required=N/A，标量 Required 缺证据为 ERROR，Conditions 只接受明确条件分支。
 - [x] `docir-021` candidate 只读离线重放为 49 fields、15 ERROR；未改写其真实 Draft、validation 或 lineage。
 - [x] Review Notes 由当前 attempt candidate/Draft 与 Validation Result 确定性生成，生成期间不发起额外 LLM 调用。
 - [ ] 一份真实 DocIR 完成 candidate → Draft → Human edit → validate → approval → Final。
@@ -84,6 +84,7 @@ SchemaIR、Standard、Template 的 semantic materializer、统一 validate/appro
 | 4A | ADR-0016、DocIR v14 prompt/v2 materializer 与 occurs 投影 | Type/Mult. 机械缺口消除，Required Gate 和历史 wire 回归通过 | 可单独授权 `docir-022` |
 | 4B | ADR-0017、九列 DocIR v3 contract、Required 证据门禁与 fixtures 迁移 | 十列输入 fail closed，Notes 保留原证据且不增加 provider 调用，trusted-chain regression 通过 | 可迁移 `docir-022` 当前工作 Draft |
 | 4C | ADR-0018、DocIR v4 Object Required=N/A 与 SchemaIR v2 materializer | Object 不再产生虚假 Required Gate；标量 marker 明确；SchemaIR Object 出现性独立审查 | 可继续 `docir-022` 标量 Human Gate |
+| 4D | ADR-0019、DocIR v17 Prompt 与 Conditions Validator | 最大笔数、格式、唯一性和一般校验不再污染 Conditions；明确条件分支与无条件占位符回归通过 | 可继续 `docir-022` Conditions Human Gate |
 | 5 | 非敏感 P0-T5 真实验收摘要 | 真实 Final DocIR 与 approval evidence 确认 | P0-T6 开始 |
 | 6 | SchemaIR 闭环 | 真实 Final SchemaIR | Standard 开始 |
 | 7 | 两个 Standard 闭环 | 两个真实 Final Standard | Template 开始 |
@@ -107,7 +108,7 @@ git diff --check
 
 ## 7. 当前阻塞
 
-- P0-T5 真实 Final DocIR 仍需 Human 处理已迁移的 `docir-022` 当前工作 Draft中的未确认标量 Required 和跨字段歧义，并完成重验和 approval；Object Required 固定为空且不参与该门禁。准确 issue 数量与证据以当前 hash-bound Validation Result/Review Notes 为准。`docir-020`、`docir-021` 与离线重放均不得复用为 generation lineage，`docir-022` attempt evidence 不得改写。
+- P0-T5 真实 Final DocIR 当前只受 `docir-022` Human approval 阻塞：工作 Draft 已通过校验，两个非阻塞 WARNING 均指向“中行 18 位收款账户必须上送 `toibkn`”的跨字段归属。Human 仍需对照 raw doc 确认当前 Conditions 与准确 hash；Object Required 固定为空且不参与门禁。`docir-020`、`docir-021` 与离线重放均不得复用为 generation lineage，`docir-022` attempt evidence 不得改写。
 - P0-T6 的每一层均受前一层 Human-approved Final 阻塞。
 - Phase0 Done 仍受五份下游真实 Final、双方向 `check --profile phase0` 和 Workbook 验收阻塞。
 

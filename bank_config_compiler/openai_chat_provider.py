@@ -42,7 +42,7 @@ from .draft_generation import (
 
 
 PROMPT_CONTRACT_VERSION = "draft-prompt/v9"
-DOCIR_PROMPT_CONTRACT_VERSION = "draft-prompt/v16"
+DOCIR_PROMPT_CONTRACT_VERSION = "draft-prompt/v17"
 DEFAULT_DOCIR_FIELD_BATCH_SIZE = 16
 JSON_IR_MODEL_RESPONSE_PROPERTIES = {"artifact", "reviewNotes"}
 ATTEMPT_ID_PATTERN = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$")
@@ -1196,8 +1196,13 @@ fields or `trans`. Do not return semantic detail properties: `or`, `multiplicity
 `required`, `description`, `validation` or `review`. Do not return
 `interface`, `sourceContext` or `envelope`.
 
-Conditions contain only source-supported rules for their matching direction. Use the single item
-`原文未提供可确认条件。` only when none are supported.
+Conditions contain only explicit source-written branches with a predicate and consequence, such as
+`当/如果/若 A 时/则 B` or an equivalent `if ... then ... else ...` rule. Do not copy field format,
+length, enumeration, uniqueness, maximum-count, required/optional or ordinary business validation
+into Conditions; keep those facts in the matching field detail. For example, a request container's
+`不超过1000笔` and an `insid` length/uniqueness rule are not Conditions. Preserve only the branch
+itself instead of surrounding non-conditional validation. Use the single item
+`原文未提供可确认条件。` only when the source has no explicit branch for that direction.
 """.strip()
     else:
         segment_contract = f"""

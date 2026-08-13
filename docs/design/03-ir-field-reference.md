@@ -46,6 +46,8 @@ DocIR 主表不展示完整 `Path`，避免人工 review 时被长路径淹没�
 
 标量无法从原文直接确认 `Required` 时，该单元格留空，并在 `Review` 标记“Required 原文未说明，待人工确认”。标量空 Required 表示待 Review，不能默认 `Y/N`。Object 不存在独立字段值，其 Required 固定留空（N/A），不产生缺失 marker，也不从叶子 Required 反推容器出现性。代码只对当前 Draft 已有的标量 `说明`、`校验点` 和 Conditions 做证据一致性门禁：明显冲突为 ERROR，可能涉及其他字段为 WARNING，不自动填值。SchemaIR 标量的 `required` 与 occurs minimum 由 Human 确认后的 DocIR `Y/N/C` 确定；SchemaIR Object `required` 由该层 candidate/Human 独立确认；occurs maximum 由 DocIR `Mult.` 锁定。
 
+两段 `Conditions` 只允许明确的条件分支，即当前文字必须表达条件谓词及其结果。`b2e0061-rq` 不超过 1000 笔属于 Object `Mult.`，`insid` 长度和唯一性属于字段 `校验点`，均不得进入 Conditions。某方向没有明确条件时使用“原文未提供可确认条件。”；该占位符不代表已确认业务规则。
+
 ## 3. SchemaIR 顶层字段
 
 | 字段 | 类型 | 含义 |

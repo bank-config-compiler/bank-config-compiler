@@ -214,7 +214,7 @@ def docir_model_artifact() -> dict:
                 model_metadata("Description", "请求报文"),
             ],
             "fields": [model_field("2", "test-rq"), model_field("2.1", "request")],
-            "conditions": ["仅保留来源明确的请求条件。"],
+            "conditions": ["原文未提供可确认条件。"],
         },
         "parse": {
             "metadata": [
@@ -224,7 +224,7 @@ def docir_model_artifact() -> dict:
                 model_metadata("Description", "响应报文"),
             ],
             "fields": [model_field("3", "test-rs"), model_field("3.1", "status")],
-            "conditions": ["仅保留来源明确的响应条件。"],
+            "conditions": ["原文未提供可确认条件。"],
         },
     }
 
@@ -374,7 +374,7 @@ def test_openai_chat_provider_segments_docir_with_default_bounded_batches() -> N
     assert result.metadata.total_tokens == 150
     for call in client.completions.calls:
         assert "# Raw bank document" in call["messages"][1]["content"]
-        assert "Prompt contract: draft-prompt/v16" in call["messages"][1]["content"]
+        assert "Prompt contract: draft-prompt/v17" in call["messages"][1]["content"]
     envelope = json.loads(result.response_text)
     assert envelope["contractVersion"] == "draft-provider-response/v1"
     assert "| 2.26 |" in envelope["artifactContent"]
@@ -768,7 +768,7 @@ def test_docir_prompt_requests_structured_extraction_and_preserves_source_scope(
     system_prompt = messages[0]["content"]
     user_prompt = messages[1]["content"]
     normalized_system_prompt = " ".join(system_prompt.split())
-    assert "Prompt contract: draft-prompt/v16" in user_prompt
+    assert "Prompt contract: draft-prompt/v17" in user_prompt
     assert "Segment: interface-envelope" in user_prompt
     assert "docir-interface-envelope-tree-segment/v2" in system_prompt
     assert "`contractVersion`, `interface`, `sourceContext`, `envelope`" in system_prompt
@@ -868,6 +868,9 @@ def test_docir_segment_prompts_keep_stage_responsibilities_separate() -> None:
     assert "Do not include shared Envelope nodes" in outline_system
     assert "semantic string properties" not in outline_system
     assert "interface: Interface Code" not in outline_system
+    assert "explicit source-written branches" in outline_system
+    assert "`不超过1000笔`" in outline_system
+    assert "an `insid` length/uniqueness rule are not Conditions" in outline_system
 
     assert "The validated semantic selector" in detail_system
     assert '\"direction\": \"ASSEMBLY\"' in detail_system

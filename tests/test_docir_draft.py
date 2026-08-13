@@ -85,7 +85,7 @@ def docir_extraction() -> dict:
                 field("2", "trn-test-rq", multiplicity="[1..1]", field_type="Object", required=""),
                 field("2.1", "request", multiplicity="[1..1]", field_type="String", required="Y"),
             ],
-            "conditions": ["仅保留来源明确的请求条件。"],
+            "conditions": ["原文未提供可确认条件。"],
         },
         "parse": {
             "metadata": [
@@ -99,7 +99,7 @@ def docir_extraction() -> dict:
                 field("3.1", "status", multiplicity="[1..1]", field_type="Object", required=""),
                 field("3.1.1", "code", multiplicity="[1..1]", field_type="String", required="Y"),
             ],
-            "conditions": ["响应状态码来自来源文档。"],
+            "conditions": ["原文未提供可确认条件。"],
         },
     }
 
@@ -124,7 +124,7 @@ def test_render_docir_extraction_produces_deterministic_frozen_markdown_wire() -
     assert "| Interface Code | b2e9999 | source title |" in rendered
     assert "| 1.1 |  | 　`@version` | [0..1] | String | N |" in rendered
     assert "| 3.1.1 |  | 　　`code` | [1..1] | String | Y |" in rendered
-    assert "## Conditions\n\n- 仅保留来源明确的请求条件。" in rendered
+    assert "## Conditions\n\n- 原文未提供可确认条件。" in rendered
     assert "Path | Tag" not in rendered
     assert rendered.endswith("\n")
     validate_docir_markdown_wire(rendered)
@@ -248,7 +248,7 @@ def test_render_docir_review_notes_is_deterministic_and_preserves_locations() ->
         "- 核对 Interface、Envelope、ASSEMBLY、PARSE 的字段和父子层级是否完整忠实于 raw-doc。\n"
         "- 核对 Source Context 的适用范围，确认通用 XML 示例或其他交易代码未污染目标交易字段。\n"
         "- 核对所有冲突、空值和“原文未说明”项均已显式保留，未被模型静默推断。\n"
-        "- 核对 ASSEMBLY 与 PARSE Conditions 是否完整且仅包含 raw-doc 支持的条件。\n\n"
+            "- 核对 ASSEMBLY 与 PARSE Conditions 是否完整且仅包含 raw-doc 明确表达的条件分支。\n\n"
         "## 提取项\n\n"
         "- Interface.Metadata[Interface Code]: source title\n"
         "- Interface.Metadata[Interface Name]: source title\n"

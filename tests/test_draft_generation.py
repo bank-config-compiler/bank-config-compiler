@@ -456,7 +456,7 @@ def test_fixture_provider_rejects_path_escape(tmp_path: Path) -> None:
 
 def test_reviewed_final_docir_matches_the_approved_candidate() -> None:
     fixture_root = REPO_ROOT / "samples/draft-generation/b2eboc-b2e0061"
-    approved_hash = "sha256:6e155c590aa09633106bac5193b9823ace66070d17a20c179f75eb6b8fbfe9a0"
+    approved_hash = "sha256:369b7fb62b1447226d404fe1e67e980933c8d1538a1635f7ef6b72454e16207b"
     draft_bytes = (fixture_root / "artifacts/docir-draft.md").read_bytes()
     final_bytes = (fixture_root / "docir-final.md").read_bytes()
 
@@ -509,7 +509,7 @@ def test_controlled_b2e0061_fixture_generates_all_six_drafts() -> None:
         schema_id="b2eboc-b2e0061-schema",
         schema_version="v1",
     )
-    assert docir.content_hash == "sha256:6e155c590aa09633106bac5193b9823ace66070d17a20c179f75eb6b8fbfe9a0"
+    assert docir.content_hash == "sha256:369b7fb62b1447226d404fe1e67e980933c8d1538a1635f7ef6b72454e16207b"
     assert schemair.validation_result["summary"]["errorCount"] >= 0
 
     expected = {

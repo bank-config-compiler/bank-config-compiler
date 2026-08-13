@@ -100,7 +100,7 @@ def semantic_candidate() -> dict:
                 _metadata("Root Path", "bocb2e/trans/trn-test-rq"),
                 _metadata("Description", "请求报文"),
             ],
-            "conditions": ["仅保留来源明确的请求条件。"],
+            "conditions": ["原文未提供可确认条件。"],
             "nodes": [
                 _node(
                     "assembly:1",
@@ -124,7 +124,7 @@ def semantic_candidate() -> dict:
                 _metadata("Root Path", "bocb2e/trans/trn-test-rs"),
                 _metadata("Description", "响应报文"),
             ],
-            "conditions": ["仅保留来源明确的响应条件。"],
+            "conditions": ["原文未提供可确认条件。"],
             "nodes": [
                 _node(
                     "parse:1",

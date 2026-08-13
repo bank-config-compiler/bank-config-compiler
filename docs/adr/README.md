@@ -30,3 +30,4 @@ ADR 只记录已经形成工程约束或需要被反复解释的选择。尚未�
 - `ADR-0016-docir-type-multiplicity-required-semantics.md`：DocIR Type 由 XML 树规范化、Mult. 只描述重复 Object、Required 缺证据继续阻塞；局部 supersede ADR-0015 的 DocIR 语义职责边界。
 - `ADR-0017-docir-nine-column-required-evidence-gate.md`：DocIR Fields 迁移为九列，合并校验点；Required 只接受同一 candidate/Draft 中的证据门禁，Review Notes 不额外调用 LLM，并拒绝旧十列运行时输入。
 - `ADR-0018-docir-object-required-not-applicable.md`：DocIR Object Required 固定为空且不从叶子反推；Object 出现性转由 SchemaIR candidate 与 Human Gate 确认，标量缺失使用明确 Required marker。
+- `ADR-0019-docir-explicit-condition-branches.md`：DocIR Conditions 只保留 raw doc 明确表达的条件分支；最大笔数、格式、唯一性和一般字段校验留在 Fields。

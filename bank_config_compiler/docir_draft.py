@@ -26,11 +26,12 @@ UNKNOWN_REVIEW_MARKER = "原文未说明，待人工确认"
 REQUIRED_UNKNOWN_REVIEW_MARKER = "Required 原文未说明，待人工确认"
 REJECTED_MULTIPLICITY_REVIEW_MARKER = "候选 Mult. 不符合规范，已留空，待人工确认"
 NORMALIZED_TYPE_REVIEW_MARKER = "候选 Type 与结构规范不一致，已按规范物化，待人工复核"
+NO_EXPLICIT_CONDITIONS = "原文未提供可确认条件。"
 _FIXED_REVIEW_CHECKLIST = (
     "核对 Interface、Envelope、ASSEMBLY、PARSE 的字段和父子层级是否完整忠实于 raw-doc。",
     "核对 Source Context 的适用范围，确认通用 XML 示例或其他交易代码未污染目标交易字段。",
     "核对所有冲突、空值和“原文未说明”项均已显式保留，未被模型静默推断。",
-    "核对 ASSEMBLY 与 PARSE Conditions 是否完整且仅包含 raw-doc 支持的条件。",
+    "核对 ASSEMBLY 与 PARSE Conditions 是否完整且仅包含 raw-doc 明确表达的条件分支。",
 )
 
 _TOP_PROPERTIES = {
@@ -93,6 +94,15 @@ _CONDITIONAL_REQUIRED_EVIDENCE = re.compile(
 )
 _POSSIBLE_CROSS_FIELD_REQUIREMENT = re.compile(
     r"必须上送|需要上送|应上送|\brequired\b|\bmust\b", re.IGNORECASE
+)
+# 这里只做保守的表达形式门禁，避免普通字段校验污染 Conditions；
+# 是否忠实来自 raw-doc 仍必须由 Human Review，代码不能据此创造或改写业务条件。
+_EXPLICIT_CONDITION_BRANCH = re.compile(
+    r"^(?:(?:如果|若|当|(?<!例)如|在)[^。；]{1,160}?(?:则|时|情况下|，)[^。；]+"
+    r"|[^，。；]{1,60}(?:为空|非空|不为空|为[^，。；]{1,40}|=[^，。；]{1,40})"
+    r"(?:时|则|表示)[^。；]+"
+    r"|\bif\b[^.;]{1,160}(?:\bthen\b|,)[^.;]+)(?:[。；.;]|$)",
+    re.IGNORECASE,
 )
 
 
@@ -1579,10 +1589,22 @@ def _collect_condition_evidence_issues(
     if "## Conditions" not in section_lines:
         return
     start = section_lines.index("## Conditions") + 1
-    for position, line in enumerate(section_lines[start:], start=1):
+    position = 0
+    for line in section_lines[start:]:
         if not line.startswith("- "):
             continue
+        position += 1
         evidence = line[2:]
+        if (
+            evidence != NO_EXPLICIT_CONDITIONS
+            and not _EXPLICIT_CONDITION_BRANCH.search(evidence)
+        ):
+            add(
+                "DOCIR_CONDITION_NOT_EXPLICIT_BRANCH",
+                f"{section_label}.Conditions[{position}]",
+                "Conditions 只允许 raw-doc 明确表达的条件分支；格式、长度、枚举、"
+                f"唯一性、最大笔数和普通业务校验必须保留在字段说明或校验点。 evidence: {evidence}",
+            )
         if _POSSIBLE_CROSS_FIELD_REQUIREMENT.search(evidence):
             add(
                 "DOCIR_REQUIRED_EVIDENCE_AMBIGUOUS",

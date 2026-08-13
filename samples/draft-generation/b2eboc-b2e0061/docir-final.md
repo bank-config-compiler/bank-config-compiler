@@ -103,7 +103,7 @@ BOCB2E 使用 HTTP POST 和 `application/xml` 内容。XML payload 包含一个 
 - `transtype` 为空表示普通转账；非空只能为 `1` 或 `2`。
 - `obssid` 在 `transtype=2` 时有效且非空。
 - `tobknm` 在 `toibkn` 为空时必填。
-- `trftime` 受 `trfdate` 是否为当日影响，并且看起来只允许整点。
+- 当 `trfdate` 为当日时，`trftime` 为当前时间后整点；当 `trfdate` 为当日后一个月内时，`trftime` 为整点。
 - `comacn` 为空时使用付款账户代替。
 
 # Message: PARSE
@@ -134,5 +134,4 @@ BOCB2E 使用 HTTP POST 和 `application/xml` 内容。XML payload 包含一个 
 
 ## Conditions
 
-- 报文级 `status` 与每条响应内 `status` 是两个不同层级下的重复 tag，必须由 SchemaIR path 区分。
-- 响应字段表未给出大部分字段长度和必填性，本 Review Golden sample 期望保留人工确认项。
+- 原文未提供可确认条件。

@@ -79,7 +79,7 @@ def _candidate() -> dict:
                 _metadata("Root Path", "trn-test-rq"),
                 _metadata("Description", "请求报文"),
             ],
-            "conditions": ["仅保留来源明确的请求条件。"],
+            "conditions": ["原文未提供可确认条件。"],
             "nodes": [
                 _node(
                     "assembly:1",
@@ -95,7 +95,7 @@ def _candidate() -> dict:
                 _metadata("Root Path", "trn-test-rs"),
                 _metadata("Description", "响应报文"),
             ],
-            "conditions": ["仅保留来源明确的响应条件。"],
+            "conditions": ["原文未提供可确认条件。"],
             "nodes": [
                 _node(
                     "parse:1",
@@ -260,3 +260,46 @@ def test_cross_field_requirement_is_reviewed_without_changing_current_required()
     codes = {issue["code"] for issue in result["issues"]}
     assert "DOCIR_REQUIRED_EVIDENCE_CONFLICT" not in codes
     assert "DOCIR_REQUIRED_EVIDENCE_AMBIGUOUS" in codes
+
+
+def test_conditions_reject_field_constraints_without_an_explicit_branch() -> None:
+    candidate = _candidate()
+    candidate["assembly"]["conditions"] = [
+        "b2e0061-rq 不超过1000笔",
+        "insid 非空字符串，长度1-32，客户号下不能重复",
+        "actacn 非空字符串1-35位，如果是中行账户且长度18位，则必须上送toibkn",
+    ]
+
+    result = validate_docir_markdown(
+        render_docir_extraction(materialize_docir_semantic_candidate(candidate))
+    )
+
+    issues = [
+        issue
+        for issue in result["issues"]
+        if issue["code"] == "DOCIR_CONDITION_NOT_EXPLICIT_BRANCH"
+    ]
+    assert [issue["path"] for issue in issues] == [
+        "ASSEMBLY.Conditions[1]",
+        "ASSEMBLY.Conditions[2]",
+        "ASSEMBLY.Conditions[3]",
+    ]
+
+
+def test_conditions_accept_explicit_branches_and_no_condition_marker() -> None:
+    candidate = _candidate()
+    candidate["assembly"]["conditions"] = [
+        "当 transtype=2 时，obssid 必须非空。",
+        "comacn 为空时使用付款账户，否则使用 comacn。",
+        "transtype 为空时表示普通转账；非空时只能为1或2。",
+        "if transtype=2, then obssid must be non-empty.",
+    ]
+    candidate["parse"]["conditions"] = ["原文未提供可确认条件。"]
+
+    result = validate_docir_markdown(
+        render_docir_extraction(materialize_docir_semantic_candidate(candidate))
+    )
+
+    assert "DOCIR_CONDITION_NOT_EXPLICIT_BRANCH" not in {
+        issue["code"] for issue in result["issues"]
+    }
