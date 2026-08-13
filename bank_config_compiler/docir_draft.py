@@ -1305,6 +1305,7 @@ def validate_docir_markdown(content: Any) -> dict[str, Any]:
             rows,
             root_index=root_index,
             section_label=section_label,
+            conditions=_condition_entries(section_lines),
             add=add,
         )
         _collect_condition_evidence_issues(
@@ -1347,6 +1348,7 @@ def _collect_rendered_field_issues(
     *,
     root_index: str,
     section_label: str,
+    conditions: list[str],
     add: Any,
 ) -> None:
     if not rows:
@@ -1480,7 +1482,11 @@ def _collect_rendered_field_issues(
                 )
 
         is_object = row[4] == "Object"
-        evidence = _required_evidence(row[6], row[7])
+        evidence = _required_evidence(
+            row[6],
+            row[7],
+            conditional_evidence=_conditional_required_evidence(item, conditions),
+        )
         if is_object and row[5]:
             add(
                 "DOCIR_OBJECT_REQUIRED_NOT_APPLICABLE",
@@ -1548,16 +1554,25 @@ def _collect_rendered_field_issues(
             )
 
 
-def _required_evidence(description: str, validation: str) -> tuple[str | None, bool, str]:
+def _required_evidence(
+    description: str,
+    validation: str,
+    *,
+    conditional_evidence: list[str] | None = None,
+) -> tuple[str | None, bool, str]:
     evidence_parts = []
     if description:
         evidence_parts.append(f"说明={description}")
     if validation:
         evidence_parts.append(f"校验点={validation}")
+    if conditional_evidence:
+        evidence_parts.extend(f"Conditions={item}" for item in conditional_evidence)
     evidence = "；".join(evidence_parts) or "<none>"
     text = "；".join(part for part in (description, validation) if part)
     optional = bool(_OPTIONAL_EVIDENCE.search(text))
-    conditional = bool(_CONDITIONAL_REQUIRED_EVIDENCE.search(text))
+    conditional = bool(conditional_evidence) or bool(
+        _CONDITIONAL_REQUIRED_EVIDENCE.search(text)
+    )
     direct_required = bool(_DIRECT_REQUIRED_EVIDENCE.search(text))
     cross_field = bool(_POSSIBLE_CROSS_FIELD_REQUIREMENT.search(text))
 
@@ -1581,6 +1596,64 @@ def _required_issue_message(
 ) -> str:
     value = required or "<empty>"
     return f"{prefix} item={item}; Required={value}; evidence: {evidence}"
+
+
+def _condition_entries(section_lines: list[str]) -> list[str]:
+    if "## Conditions" not in section_lines:
+        return []
+    start = section_lines.index("## Conditions") + 1
+    return [line[2:] for line in section_lines[start:] if line.startswith("- ")]
+
+
+def _conditional_required_evidence(item: str, conditions: list[str]) -> list[str]:
+    if not item:
+        return []
+    return [
+        condition
+        for condition in conditions
+        if condition != NO_EXPLICIT_CONDITIONS
+        and _condition_requires_item(condition, item)
+    ]
+
+
+def _condition_requires_item(condition: str, item: str) -> bool:
+    consequence = _condition_consequence(condition)
+    if not consequence:
+        return False
+
+    # 只在显式后件中按 XML item 精确匹配义务，避免把“当 toibkn 为空时”
+    # 这类谓词误判为 toibkn 自身条件必填；这里不承担通用自然语言推断。
+    escaped_item = re.escape(item)
+    item_token = rf"(?<![A-Za-z0-9_@.-]){escaped_item}(?![A-Za-z0-9_@.-])"
+    required_after_item = re.compile(
+        rf"{item_token}[^。；.;]{{0,32}}"
+        r"(?:必填|必输|必须上送|需要上送|应上送|不能为空|必须非空|"
+        r"\bmust\b|\brequired\b|\bnon-empty\b)",
+        re.IGNORECASE,
+    )
+    item_after_required = re.compile(
+        r"(?:必须上送|需要上送|应上送|\bmust\s+(?:send|provide)\b)\s*"
+        rf"{item_token}",
+        re.IGNORECASE,
+    )
+    return bool(
+        required_after_item.search(consequence)
+        or item_after_required.search(consequence)
+    )
+
+
+def _condition_consequence(condition: str) -> str:
+    if "则" in condition:
+        return condition.split("则", 1)[1]
+    for marker in ("时，", "时,", "情况下，", "情况下,"):
+        if marker in condition:
+            return condition.split(marker, 1)[1]
+    english_then = re.search(r"\bthen\b", condition, re.IGNORECASE)
+    if english_then:
+        return condition[english_then.end() :]
+    if re.match(r"^\s*if\b", condition, re.IGNORECASE) and "," in condition:
+        return condition.split(",", 1)[1]
+    return ""
 
 
 def _collect_condition_evidence_issues(

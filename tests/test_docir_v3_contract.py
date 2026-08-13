@@ -262,6 +262,46 @@ def test_cross_field_requirement_is_reviewed_without_changing_current_required()
     assert "DOCIR_REQUIRED_EVIDENCE_AMBIGUOUS" in codes
 
 
+def test_conditions_support_current_field_conditional_required() -> None:
+    candidate = _candidate()
+    candidate["assembly"]["nodes"][0]["children"][0].update(
+        required="C",
+        description="收款行联行号。可空。",
+        validation="",
+    )
+    candidate["assembly"]["conditions"] = [
+        "如果收款账户为中行账户且长度18位，则必须上送account。"
+    ]
+
+    result = validate_docir_markdown(
+        render_docir_extraction(materialize_docir_semantic_candidate(candidate))
+    )
+
+    assert "DOCIR_REQUIRED_EVIDENCE_CONFLICT" not in {
+        issue["code"] for issue in result["issues"]
+    }
+
+
+def test_condition_predicate_does_not_change_predicate_field_required() -> None:
+    candidate = _candidate()
+    candidate["assembly"]["nodes"][0]["children"][0].update(
+        required="N",
+        description="可空字符串",
+        validation="",
+    )
+    candidate["assembly"]["conditions"] = [
+        "当 account 为空时，bankName 必填。"
+    ]
+
+    result = validate_docir_markdown(
+        render_docir_extraction(materialize_docir_semantic_candidate(candidate))
+    )
+
+    assert "DOCIR_REQUIRED_EVIDENCE_CONFLICT" not in {
+        issue["code"] for issue in result["issues"]
+    }
+
+
 def test_conditions_reject_field_constraints_without_an_explicit_branch() -> None:
     candidate = _candidate()
     candidate["assembly"]["conditions"] = [
