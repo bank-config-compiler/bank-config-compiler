@@ -13,7 +13,7 @@ from typing import Any
 
 from .artifact_validation import content_hash
 from .configuration_rules import RulePackage
-from .docir_draft import validate_docir_markdown
+from .docir_draft import render_docir_validation_review_notes, validate_docir_markdown
 from .interface_standard_validator import validate_interface_standard
 from .interface_template_validator import validate_interface_template
 from .schemair_validator import validate_schemair
@@ -66,7 +66,17 @@ def validate_current_draft(
         standard_version=standard_version,
         rule_package=rule_package,
     )
-    notes = _render_validation_notes(result)
+    notes = (
+        render_docir_validation_review_notes(
+            draft_bytes.decode(
+                "utf-8-sig" if draft_bytes.startswith(b"\xef\xbb\xbf") else "utf-8",
+                errors="replace",
+            ),
+            result,
+        )
+        if artifact_kind == "docir"
+        else _render_validation_notes(result)
+    )
     _atomic_replace_set(
         {
             "notes": artifact_path(workspace, names["notes"]),

@@ -16,6 +16,7 @@ from .docir_draft import (
     DOCIR_MATERIALIZER_CONTRACT,
     materialize_docir_semantic_candidate,
     render_docir_extraction,
+    render_docir_validation_review_notes,
     validate_docir_markdown,
 )
 from .interface_standard_validator import validate_interface_standard
@@ -596,7 +597,13 @@ class FixtureDraftProvider:
         )
 
 
-def generate_docir_draft(*, raw_doc: str, provider: DraftProvider, task_id: str) -> GeneratedDraft:
+def generate_docir_draft(
+    *,
+    raw_doc: str,
+    provider: DraftProvider,
+    task_id: str,
+    interface_code: str | None = None,
+) -> GeneratedDraft:
     request = DraftGenerationRequest(
         task_id=task_id,
         artifact_kind="docir",
@@ -616,12 +623,18 @@ def generate_docir_draft(*, raw_doc: str, provider: DraftProvider, task_id: str)
     )
     if candidate_content is not None:
         candidate = _strict_json_object(candidate_content, label="DocIR semantic candidate")
-        materialized = render_docir_extraction(
+        provider_materialized = render_docir_extraction(
             materialize_docir_semantic_candidate(candidate)
         )
-        if materialized != artifact_content:
+        if provider_materialized != artifact_content:
             raise DraftGenerationError(
                 "provider DocIR artifact does not match deterministic candidate materialization"
+            )
+        if interface_code is not None:
+            artifact_content = render_docir_extraction(
+                materialize_docir_semantic_candidate(
+                    candidate, interface_code=interface_code
+                )
             )
         materializer_contract_version = (
             materializer_contract_version or DOCIR_MATERIALIZER_CONTRACT
@@ -629,6 +642,9 @@ def generate_docir_draft(*, raw_doc: str, provider: DraftProvider, task_id: str)
     _validate_docir_structure(artifact_content)
     draft_hash = _text_hash(artifact_content)
     validation_result = validate_docir_markdown(artifact_content)
+    review_notes = render_docir_validation_review_notes(
+        artifact_content, validation_result
+    )
     return _generated(
         request=request,
         provider=provider,

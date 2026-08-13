@@ -38,15 +38,14 @@ def field(
         "type": field_type,
         "required": required,
         "description": f"{item} description",
-        "preValidation": "source format",
-        "platformValidation": "platform check",
+        "validation": "source format\nplatform check",
         "review": "",
     }
 
 
 def docir_extraction() -> dict:
     return {
-        "contractVersion": "docir-extraction/v1",
+        "contractVersion": "docir-extraction/v2",
         "interface": {
             "metadata": [
                 metadata("Source Document", "raw-doc.md", "logical source"),
@@ -118,8 +117,7 @@ def test_render_docir_extraction_produces_deterministic_frozen_markdown_wire() -
     assert rendered.count("| Key | Value | Review Note |") == 4
     assert (
         rendered.count(
-            "| Index | Or | Message Item | Mult. | Type | Required | 说明 | "
-            "前置机校验点/格式 | 接口平台校验点 | Review |"
+            "| Index | Or | Message Item | Mult. | Type | Required | 说明 | 校验点 | Review |"
         )
         == 3
     )
@@ -275,7 +273,7 @@ def test_render_docir_review_notes_rejects_invalid_extraction() -> None:
 def segmented_extraction() -> tuple[dict, dict, list[dict], list[dict]]:
     extraction = docir_extraction()
     interface_envelope = {
-        "contractVersion": "docir-interface-envelope-segment/v1",
+        "contractVersion": "docir-interface-envelope-segment/v2",
         "interface": extraction["interface"],
         "sourceContext": extraction["sourceContext"],
         "envelope": extraction["envelope"],
@@ -301,7 +299,7 @@ def segmented_extraction() -> tuple[dict, dict, list[dict], list[dict]]:
     }
     assembly_details = [
         {
-            "contractVersion": "docir-field-details-segment/v1",
+            "contractVersion": "docir-field-details-segment/v2",
             "direction": "ASSEMBLY",
             "batchIndex": 1,
             "fields": extraction["assembly"]["fields"],
@@ -309,7 +307,7 @@ def segmented_extraction() -> tuple[dict, dict, list[dict], list[dict]]:
     ]
     parse_details = [
         {
-            "contractVersion": "docir-field-details-segment/v1",
+            "contractVersion": "docir-field-details-segment/v2",
             "direction": "PARSE",
             "batchIndex": 1,
             "fields": extraction["parse"]["fields"],

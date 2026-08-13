@@ -4,7 +4,7 @@
 
 候选来源均为仓库内已有的 review artifacts：DocIR 来自 Review Golden；SchemaIR、InterfaceStandardIR 和 InterfaceTemplateIR 来自对应 Human Review gate 前的历史 Draft。fixture manifest 显式绑定 task/interface、Schema identity 和 Standard identity；运行时仍会经过当前 materializer、Validator 与 lineage publication。它们用于证明 provider boundary、确定性投影和持久化路径，不新增银行业务事实。
 
-`deng` 已批准 DocIR candidate hash `sha256:31d7fc002ccc2b840f401206f54665e36771f2bb5502d480566defdff9ac7585`。`docir-final.md` 是 candidate 的逐字节冻结副本，`docir-final-review.md` 记录具名批准、时间、保留不确定性的结论和失效边界。
+`deng` 已批准九列 DocIR candidate hash `sha256:c45a6bbbf8cda12e0632d9b3b89f13e63645bf9ae1ea4ff9608b633be3573aa6`。`docir-final.md` 是 candidate 的逐字节冻结副本，`docir-final-review.md` 记录具名批准、时间、格式迁移、保留不确定性的结论和失效边界。
 
 ## Trust boundary
 

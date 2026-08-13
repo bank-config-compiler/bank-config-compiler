@@ -368,7 +368,7 @@ def test_interactive_approval_displays_identity_summary_and_full_hash(
     assert exit_code == 0
     assert "taskId=phase0-docir-review" in output
     assert "interfaceCode=b2e0061" in output
-    assert "Validation summary: ERROR=0, WARNING=1, INFO=0" in output
+    assert "Validation summary: ERROR=0, WARNING=2, INFO=0" in output
     assert f"Content hash: {expected_hash}" in output
 
 

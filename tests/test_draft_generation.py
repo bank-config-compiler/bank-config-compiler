@@ -141,6 +141,8 @@ def test_docir_generator_uses_provider_contract_and_binds_review_notes() -> None
     assert generated.validation_result["status"] == "passed"
     assert generated.content_hash.startswith("sha256:")
     assert f"Artifact content hash: `{generated.content_hash}`" in generated.review_notes
+    assert "## 显式 Review 证据" in generated.review_notes
+    assert notes.strip() not in generated.review_notes
     assert provider.requests == [generated.request]
 
 
@@ -454,7 +456,7 @@ def test_fixture_provider_rejects_path_escape(tmp_path: Path) -> None:
 
 def test_reviewed_final_docir_matches_the_approved_candidate() -> None:
     fixture_root = REPO_ROOT / "samples/draft-generation/b2eboc-b2e0061"
-    approved_hash = "sha256:31d7fc002ccc2b840f401206f54665e36771f2bb5502d480566defdff9ac7585"
+    approved_hash = "sha256:c45a6bbbf8cda12e0632d9b3b89f13e63645bf9ae1ea4ff9608b633be3573aa6"
     draft_bytes = (fixture_root / "artifacts/docir-draft.md").read_bytes()
     final_bytes = (fixture_root / "docir-final.md").read_bytes()
 
@@ -507,7 +509,7 @@ def test_controlled_b2e0061_fixture_generates_all_six_drafts() -> None:
         schema_id="b2eboc-b2e0061-schema",
         schema_version="v1",
     )
-    assert docir.content_hash == "sha256:31d7fc002ccc2b840f401206f54665e36771f2bb5502d480566defdff9ac7585"
+    assert docir.content_hash == "sha256:c45a6bbbf8cda12e0632d9b3b89f13e63645bf9ae1ea4ff9608b633be3573aa6"
     assert schemair.validation_result["summary"]["errorCount"] >= 0
 
     expected = {

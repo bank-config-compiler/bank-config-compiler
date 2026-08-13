@@ -6,18 +6,19 @@ from collections import Counter
 from typing import Any
 
 
-DOCIR_EXTRACTION_CONTRACT = "docir-extraction/v1"
-DOCIR_SEMANTIC_CANDIDATE_CONTRACT = "docir-semantic-candidate/v1"
-DOCIR_MATERIALIZER_CONTRACT = "docir-semantic-materializer/v2"
+DOCIR_EXTRACTION_CONTRACT = "docir-extraction/v2"
+DOCIR_SEMANTIC_CANDIDATE_CONTRACT = "docir-semantic-candidate/v2"
+DOCIR_MATERIALIZER_CONTRACT = "docir-semantic-materializer/v3"
 DOCIR_VALIDATION_RESULT_CONTRACT = "docir-validation-result/v1"
-INTERFACE_ENVELOPE_SEGMENT_CONTRACT = "docir-interface-envelope-segment/v1"
+INTERFACE_ENVELOPE_SEGMENT_CONTRACT = "docir-interface-envelope-segment/v2"
 MESSAGES_OUTLINE_SEGMENT_CONTRACT = "docir-messages-outline-segment/v1"
-FIELD_DETAILS_SEGMENT_CONTRACT = "docir-field-details-segment/v1"
-SEMANTIC_INTERFACE_ENVELOPE_SEGMENT_CONTRACT = "docir-interface-envelope-tree-segment/v1"
+FIELD_DETAILS_SEGMENT_CONTRACT = "docir-field-details-segment/v2"
+SEMANTIC_INTERFACE_ENVELOPE_SEGMENT_CONTRACT = "docir-interface-envelope-tree-segment/v2"
 SEMANTIC_MESSAGES_TREE_SEGMENT_CONTRACT = "docir-messages-tree-segment/v1"
-SEMANTIC_FIELD_DETAILS_SEGMENT_CONTRACT = "docir-field-semantics-segment/v1"
+SEMANTIC_FIELD_DETAILS_SEGMENT_CONTRACT = "docir-field-semantics-segment/v2"
 METADATA_HEADER = "| Key | Value | Review Note |"
-FIELDS_HEADER = (
+FIELDS_HEADER = "| Index | Or | Message Item | Mult. | Type | Required | 说明 | 校验点 | Review |"
+LEGACY_FIELDS_HEADER = (
     "| Index | Or | Message Item | Mult. | Type | Required | 说明 | "
     "前置机校验点/格式 | 接口平台校验点 | Review |"
 )
@@ -48,8 +49,7 @@ _FIELD_PROPERTIES = {
     "type",
     "required",
     "description",
-    "preValidation",
-    "platformValidation",
+    "validation",
     "review",
 }
 _SEMANTIC_NODE_PROPERTIES = _FIELD_PROPERTIES - {"index", "item"}
@@ -77,13 +77,31 @@ _REQUIRED_VALUES = {"", "Y", "N", "C"}
 _ITEM_PATTERN = re.compile(r"^@?[^\s<>`|]+$")
 _INDEX_SUFFIX_PATTERN = re.compile(r"^[1-9]\d*$")
 _MULTIPLICITY_PATTERN = re.compile(r"^\[(0|[1-9]\d*)\.\.(0|[1-9]\d*|\*)\]$")
+_OPTIONAL_EVIDENCE = re.compile(
+    r"可空(?:字符串|字符)?|可选|\boptional\b|\bnullable\b", re.IGNORECASE
+)
+_DIRECT_REQUIRED_EVIDENCE = re.compile(
+    r"非空(?:字符串|字符)?|(?:本字段|此项|该项)(?:为|是|需|需要|必须)?(?:必填|必输)"
+    r"|^\s*(?:必填|必输|mandatory|non-empty)\s*$",
+    re.IGNORECASE,
+)
+_CONDITIONAL_REQUIRED_EVIDENCE = re.compile(
+    r"(?:当|若|如果)[^。；]*(?:此项|该项|本字段)[^。；]*(?:必填|必输|必须上送|不能为空|非空)"
+    r"|(?<!非空)(?<!不为空)时[^。；]*(?:必填|必输|不能为空|且非空)",
+    re.IGNORECASE,
+)
+_POSSIBLE_CROSS_FIELD_REQUIREMENT = re.compile(
+    r"必须上送|需要上送|应上送|\brequired\b|\bmust\b", re.IGNORECASE
+)
 
 
 class DocIRDraftError(ValueError):
     """Raised when structured DocIR extraction or its rendered wire is invalid."""
 
 
-def materialize_docir_semantic_candidate(value: Any) -> dict[str, Any]:
+def materialize_docir_semantic_candidate(
+    value: Any, *, interface_code: str | None = None
+) -> dict[str, Any]:
     """Project one structurally unambiguous ordered semantic tree to DocIR wire fields."""
 
     candidate = _require_object(value, label="DocIR semantic candidate")
@@ -112,6 +130,8 @@ def materialize_docir_semantic_candidate(value: Any) -> dict[str, Any]:
             label="DocIR semantic candidate sourceContext",
         ),
     }
+    if interface_code is not None:
+        _lock_interface_code(extraction["interface"]["metadata"], interface_code)
     for section_name, root_index in (
         ("envelope", "1"),
         ("assembly", "2"),
@@ -123,6 +143,18 @@ def materialize_docir_semantic_candidate(value: Any) -> dict[str, Any]:
             root_index=root_index,
         )
     return _validated_extraction(extraction)
+
+
+def _lock_interface_code(metadata: list[dict[str, str]], interface_code: str) -> None:
+    if not isinstance(interface_code, str) or not interface_code:
+        raise DocIRDraftError("locked Interface Code must be a non-empty string")
+    for row in metadata:
+        if row["key"] == "Interface Code":
+            # Interface Code 属于 task identity；候选值及其不确定性不能覆盖可信请求身份。
+            row["value"] = interface_code
+            row["reviewNote"] = ""
+            return
+    raise DocIRDraftError("DocIR interface metadata is missing Interface Code")
 
 
 def validate_docir_interface_envelope_tree_segment(value: Any) -> dict[str, Any]:
@@ -989,6 +1021,83 @@ def render_docir_review_notes(value: Any) -> str:
     return "\n".join(parts) + "\n"
 
 
+def render_docir_validation_review_notes(
+    content: str, result: dict[str, Any]
+) -> str:
+    """Render hash-bound notes by copying only facts already present in this Draft/result."""
+
+    if not isinstance(content, str):
+        raise DocIRDraftError("DocIR Review Notes source must be text")
+    validated = result.get("validatedArtifact")
+    summary = result.get("summary")
+    issues = result.get("issues")
+    if not isinstance(validated, dict) or not isinstance(summary, dict):
+        raise DocIRDraftError("DocIR Review Notes require one Validation Result")
+    if not isinstance(issues, list):
+        raise DocIRDraftError("DocIR Review Notes issues must be an array")
+
+    parts = [
+        "# Draft Validation Review Notes",
+        "",
+        f"Content hash: `{validated.get('contentHash', '')}`",
+        "",
+        f"Status: `{result.get('status', '')}`",
+        "",
+        (
+            "Summary: "
+            f"ERROR={summary.get('errorCount', 0)}, "
+            f"WARNING={summary.get('warningCount', 0)}, "
+            f"INFO={summary.get('infoCount', 0)}"
+        ),
+        "",
+    ]
+    if issues:
+        parts.extend(["## Issues", ""])
+        for issue in issues:
+            location = f" `{issue.get('path')}`" if issue.get("path") else ""
+            parts.append(
+                f"- [{issue.get('severity')}] `{issue.get('code')}`{location}: "
+                f"{issue.get('message')}"
+            )
+    else:
+        parts.append("Validator 未发现 ERROR 或 WARNING。Human 仍需对照 raw-doc 审查语义完整性。")
+
+    explicit_reviews = _markdown_review_evidence(content)
+    if explicit_reviews:
+        parts.extend(["", "## 显式 Review 证据", ""])
+        parts.extend(f"- {item}" for item in explicit_reviews)
+    return "\n".join(parts) + "\n"
+
+
+def _markdown_review_evidence(content: str) -> list[str]:
+    evidence: list[str] = []
+    section = ""
+    table = ""
+    for line in content.splitlines():
+        if line.startswith("# "):
+            section = line[2:]
+            table = ""
+            continue
+        if line == METADATA_HEADER:
+            table = "metadata"
+            continue
+        if line == FIELDS_HEADER:
+            table = "fields"
+            continue
+        if not line.startswith("|") or line.startswith("|---"):
+            continue
+        try:
+            cells = _split_markdown_row(line)
+        except DocIRDraftError:
+            continue
+        if table == "metadata" and len(cells) == 3 and cells[2]:
+            evidence.append(f"{section}.Metadata[{cells[0]}]: {cells[2]}")
+        elif table == "fields" and len(cells) == 9 and cells[8]:
+            item = cells[2].lstrip("\u3000").strip("`")
+            evidence.append(f"{section}[{cells[0]} {item}]: {cells[8]}")
+    return evidence
+
+
 def validate_docir_markdown_wire(content: Any) -> None:
     if not isinstance(content, str) or not content:
         raise DocIRDraftError("DocIR Markdown wire must be non-empty text")
@@ -1006,6 +1115,10 @@ def validate_docir_markdown_wire(content: Any) -> None:
     ]
     if headings != expected_headings:
         raise DocIRDraftError("DocIR Markdown wire has invalid top-level heading order")
+    if LEGACY_FIELDS_HEADER in content:
+        raise DocIRDraftError(
+            "DocIR Markdown wire uses the unsupported legacy ten-column Fields contract"
+        )
     if content.count(METADATA_HEADER) != 4:
         raise DocIRDraftError("DocIR Markdown wire must contain four fixed Metadata headers")
     if content.count(FIELDS_HEADER) != 3:
@@ -1037,8 +1150,8 @@ def validate_docir_markdown_wire(content: Any) -> None:
                     break
                 continue
             cells = _split_markdown_row(line)
-            if len(cells) != 10:
-                raise DocIRDraftError(f"DocIR {heading} Fields row must have ten cells")
+            if len(cells) != 9:
+                raise DocIRDraftError(f"DocIR {heading} Fields row must have nine cells")
             rows.append(cells)
         _validate_rendered_field_rows(rows, root_index=root_index, label=heading)
 
@@ -1074,6 +1187,12 @@ def validate_docir_markdown(content: Any) -> dict[str, Any]:
         add("DOCIR_EMPTY", None, "DocIR Markdown wire must be non-empty text")
     if content.startswith("\ufeff"):
         add("DOCIR_UTF8_BOM", None, "DocIR Markdown wire must be UTF-8 without BOM")
+    if LEGACY_FIELDS_HEADER in content:
+        add(
+            "DOCIR_FIELDS_TABLE_CONTRACT",
+            None,
+            "DocIR Markdown wire uses the unsupported legacy ten-column Fields contract",
+        )
 
     headings = [line for line in lines if line.startswith("# ")]
     expected_headings = [
@@ -1158,11 +1277,11 @@ def validate_docir_markdown(content: Any) -> dict[str, Any]:
             except DocIRDraftError as exc:
                 add("DOCIR_FIELD_ROW_FORMAT", f"{section_label}.Fields", str(exc))
                 continue
-            if len(cells) != 10:
+            if len(cells) != 9:
                 add(
                     "DOCIR_FIELD_CELL_COUNT",
                     f"{section_label}.Fields",
-                    f"DocIR {section_label} Fields row must have ten cells",
+                    f"DocIR {section_label} Fields row must have nine cells",
                 )
                 continue
             rows.append(cells)
@@ -1170,6 +1289,11 @@ def validate_docir_markdown(content: Any) -> dict[str, Any]:
         _collect_rendered_field_issues(
             rows,
             root_index=root_index,
+            section_label=section_label,
+            add=add,
+        )
+        _collect_condition_evidence_issues(
+            section_lines,
             section_label=section_label,
             add=add,
         )
@@ -1342,29 +1466,115 @@ def _collect_rendered_field_issues(
                     blocking=False,
                 )
 
+        evidence = _required_evidence(row[6], row[7])
         if not row[5]:
             add(
                 "DOCIR_SEMANTIC_VALUE_MISSING",
                 path,
-                f"DocIR {section_label} {index} required requires Human confirmation",
+                _required_issue_message(
+                    item=item,
+                    required="",
+                    evidence=evidence[2],
+                    prefix="Required 值未确定，需要 Human 根据当前字段证据确认 Y/N/C。",
+                ),
             )
-        if not row[5] and UNKNOWN_REVIEW_MARKER not in row[9]:
+        elif evidence[0] is not None and row[5] != evidence[0]:
+            add(
+                "DOCIR_REQUIRED_EVIDENCE_CONFLICT",
+                path,
+                _required_issue_message(
+                    item=item,
+                    required=row[5],
+                    evidence=evidence[2],
+                    prefix=f"Required 与当前字段明确证据冲突；证据支持 {evidence[0]}。",
+                ),
+            )
+        if evidence[1]:
+            add(
+                "DOCIR_REQUIRED_EVIDENCE_AMBIGUOUS",
+                path,
+                _required_issue_message(
+                    item=item,
+                    required=row[5],
+                    evidence=evidence[2],
+                    prefix="Required 证据可能涉及其他字段，必须由 Human 确认约束对象。",
+                ),
+                severity="WARNING",
+                blocking=False,
+            )
+        if not row[5] and UNKNOWN_REVIEW_MARKER not in row[8]:
             add(
                 "DOCIR_REVIEW_MARKER_MISSING",
                 path,
                 f"DocIR {section_label} {index} missing Required requires the fixed Review marker",
             )
-        if REJECTED_MULTIPLICITY_REVIEW_MARKER in row[9]:
+        if REJECTED_MULTIPLICITY_REVIEW_MARKER in row[8]:
             add(
                 "DOCIR_MULTIPLICITY_REJECTED",
                 path,
                 f"DocIR {section_label} {index} has a rejected multiplicity candidate",
             )
-        if NORMALIZED_TYPE_REVIEW_MARKER in row[9]:
+        if NORMALIZED_TYPE_REVIEW_MARKER in row[8]:
             add(
                 "DOCIR_TYPE_NORMALIZED",
                 path,
                 f"DocIR {section_label} {index} Type was normalized and requires Human review",
+                severity="WARNING",
+                blocking=False,
+            )
+
+
+def _required_evidence(description: str, validation: str) -> tuple[str | None, bool, str]:
+    evidence_parts = []
+    if description:
+        evidence_parts.append(f"说明={description}")
+    if validation:
+        evidence_parts.append(f"校验点={validation}")
+    evidence = "；".join(evidence_parts) or "<none>"
+    text = "；".join(part for part in (description, validation) if part)
+    optional = bool(_OPTIONAL_EVIDENCE.search(text))
+    conditional = bool(_CONDITIONAL_REQUIRED_EVIDENCE.search(text))
+    direct_required = bool(_DIRECT_REQUIRED_EVIDENCE.search(text))
+    cross_field = bool(_POSSIBLE_CROSS_FIELD_REQUIREMENT.search(text))
+
+    # 关键词只用于发现候选结果与同一字段证据的明显矛盾。涉及条件或其他字段时，
+    # 代码保留原文并交给 Human，绝不把自然语言解析结果写回 Required。
+    if conditional:
+        expected = "C"
+    elif optional and direct_required:
+        expected = None
+    elif optional:
+        expected = "N"
+    elif direct_required:
+        expected = "Y"
+    else:
+        expected = None
+    return expected, cross_field, evidence
+
+
+def _required_issue_message(
+    *, item: str, required: str, evidence: str, prefix: str
+) -> str:
+    value = required or "<empty>"
+    return f"{prefix} item={item}; Required={value}; evidence: {evidence}"
+
+
+def _collect_condition_evidence_issues(
+    section_lines: list[str], *, section_label: str, add: Any
+) -> None:
+    if "## Conditions" not in section_lines:
+        return
+    start = section_lines.index("## Conditions") + 1
+    for position, line in enumerate(section_lines[start:], start=1):
+        if not line.startswith("- "):
+            continue
+        evidence = line[2:]
+        if _POSSIBLE_CROSS_FIELD_REQUIREMENT.search(evidence):
+            add(
+                "DOCIR_REQUIRED_EVIDENCE_AMBIGUOUS",
+                f"{section_label}.Conditions[{position}]",
+                "Required 证据可能涉及其他字段，必须由 Human 确认约束对象。 "
+                f"evidence: {evidence}",
                 severity="WARNING",
                 blocking=False,
             )
@@ -1656,7 +1866,7 @@ def _render_metadata(rows: list[dict[str, str]]) -> str:
 
 
 def _render_fields(rows: list[dict[str, str]]) -> str:
-    lines = [FIELDS_HEADER, "|---|---|---|---|---|---|---|---|---|---|"]
+    lines = [FIELDS_HEADER, "|---|---|---|---|---|---|---|---|---|"]
     for row in rows:
         indentation = "\u3000" * row["index"].count(".")
         item = f"{indentation}`{row['item']}`"
@@ -1668,8 +1878,7 @@ def _render_fields(rows: list[dict[str, str]]) -> str:
             row["type"],
             row["required"],
             row["description"],
-            row["preValidation"],
-            row["platformValidation"],
+            row["validation"],
             row["review"],
         )
         lines.append("| " + " | ".join(_table_cell(cell) for cell in cells) + " |")

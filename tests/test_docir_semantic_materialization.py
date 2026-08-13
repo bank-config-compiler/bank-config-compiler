@@ -38,15 +38,14 @@ def _node(
         "type": field_type,
         "required": required,
         "description": f"{item} description",
-        "preValidation": "",
-        "platformValidation": "",
+        "validation": "",
         "review": "",
     }
 
 
 def semantic_candidate() -> dict:
     return {
-        "contractVersion": "docir-semantic-candidate/v1",
+        "contractVersion": "docir-semantic-candidate/v2",
         "interface": {
             "metadata": [
                 _metadata("Interface Code", "b2e9999"),
@@ -151,7 +150,7 @@ def test_semantic_tree_materializes_canonical_indexes_and_stable_bytes() -> None
     first = materialize_docir_semantic_candidate(candidate)
     second = materialize_docir_semantic_candidate(deepcopy(candidate))
 
-    assert DOCIR_MATERIALIZER_CONTRACT == "docir-semantic-materializer/v2"
+    assert DOCIR_MATERIALIZER_CONTRACT == "docir-semantic-materializer/v3"
     assert [row["index"] for row in first["envelope"]["fields"]] == [
         "1",
         "1.1",

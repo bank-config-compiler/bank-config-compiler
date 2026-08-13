@@ -459,10 +459,10 @@ def test_generate_docir_failure_publishes_partial_provider_evidence(
     )
     bind_task(workspace)
     completed_responses = (
-        '{"contractVersion":"docir-interface-envelope-segment/v1"}',
+        '{"contractVersion":"docir-interface-envelope-segment/v2"}',
         '{"contractVersion":"docir-messages-outline-segment/v1"}',
     )
-    partial_response = '{"contractVersion":"docir-field-details-segment/v1"'
+    partial_response = '{"contractVersion":"docir-field-details-segment/v2"'
     partial_hash = "sha256:" + hashlib.sha256(partial_response.encode()).hexdigest()
 
     class FailingProvider:
@@ -492,7 +492,7 @@ def test_generate_docir_failure_publishes_partial_provider_evidence(
                     (
                         (
                             "interface-envelope",
-                            "docir-interface-envelope-segment/v1",
+                            "docir-interface-envelope-segment/v2",
                             completed_responses[0],
                         ),
                         (
@@ -515,7 +515,7 @@ def test_generate_docir_failure_publishes_partial_provider_evidence(
                 started_at="2026-08-11T10:00:00+08:00",
                 completed_at="2026-08-11T10:01:00+08:00",
                 prompt_contract_version="draft-prompt/v8",
-                segment_contract_version="docir-field-details-segment/v1",
+                segment_contract_version="docir-field-details-segment/v2",
             )
             raise DraftProviderDiagnosticError(
                 "chat stream failed: TimeoutError",

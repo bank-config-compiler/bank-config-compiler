@@ -13,7 +13,7 @@
     {
       "request": {
         "artifactKind": "schemair",
-        "sourceHash": "sha256:31d7fc002ccc2b840f401206f54665e36771f2bb5502d480566defdff9ac7585",
+        "sourceHash": "sha256:c45a6bbbf8cda12e0632d9b3b89f13e63645bf9ae1ea4ff9608b633be3573aa6",
         "schemaId": "b2eboc-b2e0061-schema",
         "schemaVersion": "v1"
       },

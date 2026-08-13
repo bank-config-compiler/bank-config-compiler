@@ -393,6 +393,7 @@ def _generate_draft(args: argparse.Namespace) -> tuple[Path, int]:
                 raw_doc=read_text_artifact(workspace, "raw-doc.md"),
                 provider=provider,
                 task_id=task_id,
+                interface_code=task["interfaceCode"],
             )
         elif args.draft_kind == "schemair":
             generated = generate_schemair_draft(

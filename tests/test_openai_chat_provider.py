@@ -160,8 +160,7 @@ def model_field(index: str, item: str) -> dict[str, str]:
         "type": "Object" if "." not in index else "String",
         "required": "Y",
         "description": f"{item} description",
-        "preValidation": "source format",
-        "platformValidation": "platform check",
+        "validation": "source format\nplatform check",
         "review": "",
     }
 
@@ -187,7 +186,7 @@ def model_semantics(field: dict[str, str], *, selector: str) -> dict[str, str]:
 
 def docir_model_artifact() -> dict:
     return {
-        "contractVersion": "docir-extraction/v1",
+        "contractVersion": "docir-extraction/v2",
         "interface": {
             "metadata": [
                 model_metadata("Interface Code", "b2e9999"),
@@ -252,7 +251,7 @@ def docir_segment_responses(
         ],
     ]
     interface_envelope = {
-        "contractVersion": "docir-interface-envelope-tree-segment/v1",
+        "contractVersion": "docir-interface-envelope-tree-segment/v2",
         "interface": extraction["interface"],
         "sourceContext": extraction["sourceContext"],
         "envelope": {
@@ -315,7 +314,7 @@ def docir_segment_responses(
         for start in range(0, len(semantics), batch_size):
             responses.append(
                 {
-                    "contractVersion": "docir-field-semantics-segment/v1",
+                    "contractVersion": "docir-field-semantics-segment/v2",
                     "direction": direction,
                     "batchIndex": start // batch_size + 1,
                     "fields": semantics[start : start + batch_size],
@@ -375,7 +374,7 @@ def test_openai_chat_provider_segments_docir_with_default_bounded_batches() -> N
     assert result.metadata.total_tokens == 150
     for call in client.completions.calls:
         assert "# Raw bank document" in call["messages"][1]["content"]
-        assert "Prompt contract: draft-prompt/v14" in call["messages"][1]["content"]
+        assert "Prompt contract: draft-prompt/v15" in call["messages"][1]["content"]
     envelope = json.loads(result.response_text)
     assert envelope["contractVersion"] == "draft-provider-response/v1"
     assert "| 2.26 |" in envelope["artifactContent"]
@@ -769,9 +768,9 @@ def test_docir_prompt_requests_structured_extraction_and_preserves_source_scope(
     system_prompt = messages[0]["content"]
     user_prompt = messages[1]["content"]
     normalized_system_prompt = " ".join(system_prompt.split())
-    assert "Prompt contract: draft-prompt/v14" in user_prompt
+    assert "Prompt contract: draft-prompt/v15" in user_prompt
     assert "Segment: interface-envelope" in user_prompt
-    assert "docir-interface-envelope-tree-segment/v1" in system_prompt
+    assert "docir-interface-envelope-tree-segment/v2" in system_prompt
     assert "`contractVersion`, `interface`, `sourceContext`, `envelope`" in system_prompt
     assert "`sourceContext` is a non-empty JSON array of non-empty strings" in system_prompt
     assert "complete shared Envelope structure" in system_prompt
@@ -818,7 +817,7 @@ def test_docir_segment_prompts_keep_stage_responsibilities_separate() -> None:
     )
     detail_prompt = openai_chat_provider._DocIRSegmentPrompt(
         segment="assembly-fields-001",
-        contract_version="docir-field-semantics-segment/v1",
+        contract_version="docir-field-semantics-segment/v2",
         direction="ASSEMBLY",
         batch_index=1,
         target_outline=[
@@ -953,7 +952,7 @@ def test_orchestration_reports_docir_extraction_validation_detail(
         attempt_id="docir-001",
         client=FakeClient(
             chat_stream(
-                json.dumps({"contractVersion": "docir-extraction/v1"})
+                json.dumps({"contractVersion": "docir-extraction/v2"})
             )
         ),
     )

@@ -334,8 +334,8 @@ def _docir_field_structure(
                 break
             continue
         cells = _split_row(line)
-        if len(cells) != 10:
-            raise DraftGenerationError("Final DocIR field row must contain ten cells")
+        if len(cells) != 9:
+            raise DraftGenerationError("Final DocIR field row must contain nine cells")
         rows.append(cells)
     paths: dict[str, str] = {}
     fields: list[dict[str, Any]] = []

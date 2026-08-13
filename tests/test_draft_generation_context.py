@@ -175,7 +175,7 @@ def test_publish_segmented_docir_records_ordered_subcalls(tmp_path: Path) -> Non
                     (
                         (
                             "interface-envelope",
-                            "docir-interface-envelope-segment/v1",
+                            "docir-interface-envelope-segment/v2",
                             "1",
                         ),
                         (
