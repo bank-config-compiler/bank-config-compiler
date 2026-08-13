@@ -45,7 +45,7 @@ LLM、Agent 或 workflow 可以生成 Draft，但不能替代 Validator、人工
 
 尚未完成：
 
-- P0-T5 的离线 runtime 与回归已经实现。`docir-020` 保留为未发布 Draft的历史失败 evidence；`docir-021` 与 `docir-022` 的 provider-attempt evidence 均不可改写。`docir-022` 当前工作 Draft 已迁移九列 contract，校验为 26 ERROR、2 WARNING，仍需 Human 修改、重验和 approval。当前仍没有本轮真实 Final DocIR、下游真实 Final chain 或双方向 Workbook；fixture、离线重放与历史 attempt 均不能替代这些 Gate。
+- P0-T5 的离线 runtime 与回归已经实现。`docir-020` 保留为未发布 Draft的历史失败 evidence；`docir-021` 与 `docir-022` 的 provider-attempt evidence 均不可改写。`docir-022` 当前工作 Draft 已迁移九列 contract并重新校验，仍有未确认 Required 与跨字段歧义需要 Human 修改、重验和 approval；准确 issue 数量以当前 workspace 结果为准。当前仍没有本轮真实 Final DocIR、下游真实 Final chain 或双方向 Workbook；fixture、离线重放与历史 attempt 均不能替代这些 Gate。
 
 `configuration-rules/v1` 与 v2 均已发布并冻结；v2 不改变其 27/207/14/5/6 catalog、Function String、Mapping/Replacement、字符长度默认 `STANDARD_1` 或业务 Condition 边界，只修订 Template Standard projection。现有 Final Standard 继续绑定 v1；Final InterfaceTemplateIR 精确绑定 v2。详细任务状态见 `docs/planning/00-phase0-poc-plan.md`。
 

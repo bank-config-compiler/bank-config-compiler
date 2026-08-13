@@ -4,7 +4,7 @@
 
 **In Progress。P0-T5 离线实现已完成，等待真实 DocIR 与 Human Gate；P0-T6 runtime 已离线实现，但真实下游链受 Final DocIR 阻塞。**
 
-P0-T3 trusted chain 与 P0-T4 deterministic Draft-to-Workbook closure 已完成。ADR-0015 已接受 candidate → deterministic materialization → Invalid/Reviewable Draft → Human Gate 的六类 Draft 共同策略，ADR-0016 将 DocIR Type 和非重复 Multiplicity 收归代码规范化，ADR-0017 将 DocIR 收敛为九列 contract，并规定 Required 证据门禁与 Review Notes 不得触发额外 LLM 调用。`docir-020` 是未发布 Draft 的历史失败 attempt；`docir-021` 与 `docir-022` 均为不可复用的真实 attempt。前者保留历史 evidence；后者的根工作 Draft 已迁移为九列并重新校验为 26 ERROR、2 WARNING，仍需 Human 修订、重验与 approval。
+P0-T3 trusted chain 与 P0-T4 deterministic Draft-to-Workbook closure 已完成。ADR-0015 已接受 candidate → deterministic materialization → Invalid/Reviewable Draft → Human Gate 的六类 Draft 共同策略，ADR-0016 将 DocIR Type 和非重复 Multiplicity 收归代码规范化，ADR-0017 将 DocIR 收敛为九列 contract，并规定 Required 证据门禁与 Review Notes 不得触发额外 LLM 调用。`docir-020` 是未发布 Draft 的历史失败 attempt；`docir-021` 与 `docir-022` 均为不可复用的真实 attempt。前者保留历史 evidence；后者的根工作 Draft 已迁移为九列并重新校验，仍有未确认 Required 与跨字段歧义需要 Human 处理。
 
 ## 1. 目标与可信边界
 
@@ -106,7 +106,7 @@ git diff --check
 
 ## 7. 当前阻塞
 
-- P0-T5 真实 Final DocIR 仍需 Human 处理已迁移的 `docir-022` 当前工作 Draft中的 25 个 Required 空值、1 个 Required 证据冲突和 2 个跨字段歧义 WARNING，并完成重验和 approval；`docir-020`、`docir-021` 与离线重放均不得复用为 generation lineage，`docir-022` attempt evidence 不得改写。
+- P0-T5 真实 Final DocIR 仍需 Human 处理已迁移的 `docir-022` 当前工作 Draft中的未确认 Required 和跨字段歧义，并完成重验和 approval；准确 issue 数量与证据以当前 hash-bound Validation Result/Review Notes 为准。`docir-020`、`docir-021` 与离线重放均不得复用为 generation lineage，`docir-022` attempt evidence 不得改写。
 - P0-T6 的每一层均受前一层 Human-approved Final 阻塞。
 - Phase0 Done 仍受五份下游真实 Final、双方向 `check --profile phase0` 和 Workbook 验收阻塞。
 
