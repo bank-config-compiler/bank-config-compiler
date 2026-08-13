@@ -2,7 +2,7 @@
 
 ## Status
 
-In Progress. P0-T3 trusted chain 与 P0-T4 deterministic Draft-to-Workbook closure 已完成。ADR-0015 接受的六类 Draft 确定性物化、Invalid/Reviewable Draft 和 hash-bound Human Gate 已完成离线实现；ADR-0016/0017 规定 DocIR Type、非重复 Mult.、九列格式与 Required 证据门禁，ADR-0018 将 Object Required 明确为 N/A，ADR-0019 将 Conditions 收窄为 raw doc 明确条件分支。`docir-022` 当前 Human working Draft 已按新边界迁移并以零 ERROR、两个跨字段 WARNING 通过校验，尚需 Human 确认当前准确 bytes 并 approval。P0-T6 runtime 已离线实现，但真实五类下游 IR、双方向 Workbook 和最终门禁受该 Final DocIR 阻塞。
+In Progress. P0-T3 trusted chain、P0-T4 deterministic Draft-to-Workbook closure 与 P0-T5 真实 DocIR Human Gate 已完成。`docir-022` 由 `deng` 批准的 Final DocIR hash 为 `sha256:180dadcc10fea5cf364c72e7b36d6d36aad3bfc24d3edd172138b24869042ae6`，Validation Result 为零 ERROR、两个已审阅的非阻塞跨字段 WARNING。P0-T6 runtime 已离线实现且已由该 Final DocIR 解锁；真实五类下游 IR、双方向 Workbook 和最终门禁尚未完成。
 
 ## 1. 阶段目标
 
@@ -40,12 +40,12 @@ LLM、Agent 或 workflow 可以生成 Draft，但不能替代 Validator、人工
 - `phase0-task/v1`、不可复用的 per-kind attempt evidence、`draft-generation-result/v1` 和 `generate-draft` 的 `0/2/3` 结果语义。
 - 内部 `docir-semantic-candidate/v2`、有序树 selector/detail coverage、确定性九列 DocIR v4 materializer、标量 Required 证据门禁、Object Required=N/A、聚合 Markdown Validator，以及六份 Draft 共用的 `validate-draft` / `approve-draft` Human Gate。
 - SchemaIR、Standard、Template semantic materializer：稳定身份由调用者显式提供；SchemaIR path、Standard path/sequence/XML Keys 和 ASSEMBLY Template Standard target 只从准确 Final 上游投影。
-- byte-identical Final DocIR、APPROVED Review 记录与 hash regression；九列、Object Required=N/A、Conditions 只含明确条件分支的基线获批 hash 为 `sha256:369b7fb62b1447226d404fe1e67e980933c8d1538a1635f7ef6b72454e16207b`，保留的冲突和不确定项不视为已确认业务事实。
+- byte-identical Final DocIR、APPROVED Review 记录与 hash regression；九列、Object Required=N/A、Conditions 只含明确条件分支的 fixture 基线获批 hash 为 `sha256:369b7fb62b1447226d404fe1e67e980933c8d1538a1635f7ef6b72454e16207b`。真实 `docir-022` Final DocIR hash 为 `sha256:180dadcc10fea5cf364c72e7b36d6d36aad3bfc24d3edd172138b24869042ae6`，由 `deng` 对准确 bytes 批准，两个非阻塞跨字段 WARNING 已审阅接受；保留的冲突和不确定项不自动成为业务事实。
 - 完整受控 Draft-to-Workbook regression：六份 Draft 均由 fixture provider 生成，测试显式装载已审核 Final fixtures 表达 Human Review，双方向 `phase0` check 与 Workbook 生成通过，结构化内容与 Golden 一致；缺少 Final 时下游生成 fail closed，runtime 与测试均不自动 promotion。
 
 尚未完成：
 
-- P0-T5 的离线 runtime 与回归已经实现。`docir-020` 保留为未发布 Draft的历史失败 evidence；`docir-021` 与 `docir-022` 的 provider-attempt evidence 均不可改写。`docir-022` 当前工作 Draft 已迁移九列、Object Required=N/A 和明确条件分支 contract；当前 Validation Result 为零 ERROR、两个跨字段 WARNING，仍需 Human 确认条件归属与准确 bytes 后 approval。当前仍没有本轮真实 Final DocIR、下游真实 Final chain 或双方向 Workbook；fixture、离线重放与历史 attempt 均不能替代这些 Gate。
+- P0-T6 尚未完成真实下游链：需要依次生成、校验并人工批准一份 SchemaIR、两个方向的 Standard 和两个方向的 Template，再完成双方向 `check --profile phase0` 与 Workbook 验收。fixture、离线重放与历史 attempt 均不能替代这些 Gate。
 
 `configuration-rules/v1` 与 v2 均已发布并冻结；v2 不改变其 27/207/14/5/6 catalog、Function String、Mapping/Replacement、字符长度默认 `STANDARD_1` 或业务 Condition 边界，只修订 Template Standard projection。现有 Final Standard 继续绑定 v1；Final InterfaceTemplateIR 精确绑定 v2。详细任务状态见 `docs/planning/00-phase0-poc-plan.md`。
 

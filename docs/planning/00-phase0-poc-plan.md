@@ -2,9 +2,9 @@
 
 ## Status
 
-**In Progress。P0-T5 离线实现已完成，等待真实 DocIR 与 Human Gate；P0-T6 runtime 已离线实现，但真实下游链受 Final DocIR 阻塞。**
+**In Progress。P0-T5 真实 DocIR Human Gate 已完成；P0-T6 runtime 已离线实现，真实 SchemaIR 是下一项执行 Gate。**
 
-P0-T3 trusted chain 与 P0-T4 deterministic Draft-to-Workbook closure 已完成。ADR-0015 已接受 candidate → deterministic materialization → Invalid/Reviewable Draft → Human Gate 的六类 Draft 共同策略，ADR-0016/0017 收敛 DocIR Type、非重复 Multiplicity、九列 contract、Required 证据门禁与确定性 Review Notes，ADR-0018 将 Object Required 明确为 N/A，ADR-0019 将 Conditions 收窄为 raw doc 明确条件分支。`docir-020` 是未发布 Draft 的历史失败 attempt；`docir-021` 与 `docir-022` 均为不可复用的真实 attempt。前者保留历史 evidence；后者的根工作 Draft 已迁移并以零 ERROR、两个跨字段 WARNING 通过校验，仍需 Human 确认当前准确 bytes 并 approval。
+P0-T3 trusted chain、P0-T4 deterministic Draft-to-Workbook closure 与 P0-T5 真实 DocIR Human Gate 已完成。`docir-020` 是未发布 Draft 的历史失败 attempt；`docir-021` 与 `docir-022` 均为不可复用的真实 attempt，其 evidence 保持 immutable。`docir-022` Final DocIR 已由 `deng` 对准确 bytes 批准，hash 为 `sha256:180dadcc10fea5cf364c72e7b36d6d36aad3bfc24d3edd172138b24869042ae6`，Validation Result 为零 ERROR、两个已审阅的非阻塞跨字段 WARNING。
 
 ## 1. 目标与可信边界
 
@@ -33,8 +33,8 @@ Raw Docs
 | P0-T2 Review Golden boundary | Done | 审查前 Golden byte-stable |
 | P0-T3 Trusted chain | Done | Final IR、Validator、规则和双方向 Workbook |
 | P0-T4 Draft generators | Done | provider-neutral fixture 六 Draft closure |
-| P0-T5 可信基础与真实 DocIR | In Progress | 公共 lineage/validation/approval 已离线实现；仍需一份真实 Final DocIR |
-| P0-T6 下游收割与 Phase0 收口 | Blocked | runtime 已离线实现；仍需五份下游真实 Final、双向 check/Workbook |
+| P0-T5 可信基础与真实 DocIR | Done | `docir-022` 真实 Final DocIR 已批准：`sha256:180dadcc10fea5cf364c72e7b36d6d36aad3bfc24d3edd172138b24869042ae6` |
+| P0-T6 下游收割与 Phase0 收口 | In Progress | runtime 已离线实现；仍需五份下游真实 Final、双向 check/Workbook |
 
 P0-T5 Done 不代表 Phase0 Done，也不授权进入 Phase1 planning。
 
@@ -58,7 +58,7 @@ P0-T5 Done 不代表 Phase0 Done，也不授权进入 Phase1 planning。
 - [x] `draft-prompt/v17` 与 `docir-semantic-materializer/v4` 规范化 Type/非重复 Mult.，采用九列 Fields contract；Object Required=N/A，标量 Required 缺证据为 ERROR，Conditions 只接受明确条件分支。
 - [x] `docir-021` candidate 只读离线重放为 49 fields、15 ERROR；未改写其真实 Draft、validation 或 lineage。
 - [x] Review Notes 由当前 attempt candidate/Draft 与 Validation Result 确定性生成，生成期间不发起额外 LLM 调用。
-- [ ] 一份真实 DocIR 完成 candidate → Draft → Human edit → validate → approval → Final。
+- [x] `docir-022` 完成 candidate → Draft → Human edit → validate → approval → Final；Final hash 为 `sha256:180dadcc10fea5cf364c72e7b36d6d36aad3bfc24d3edd172138b24869042ae6`。
 
 ## 4. P0-T6：下游收割与 Phase0 收口
 
@@ -108,7 +108,7 @@ git diff --check
 
 ## 7. 当前阻塞
 
-- P0-T5 真实 Final DocIR 当前只受 `docir-022` Human approval 阻塞：工作 Draft 已通过校验，两个非阻塞 WARNING 均指向“中行 18 位收款账户必须上送 `toibkn`”的跨字段归属。Human 仍需对照 raw doc 确认当前 Conditions 与准确 hash；Object Required 固定为空且不参与门禁。`docir-020`、`docir-021` 与离线重放均不得复用为 generation lineage，`docir-022` attempt evidence 不得改写。
+- P0-T5 已无阻塞；`docir-022` Final DocIR 与 approval evidence 已确认，attempt evidence 保持 immutable。P0-T6.1 可开始真实 SchemaIR generation，但必须使用该准确 Final DocIR 作为上游。
 - P0-T6 的每一层均受前一层 Human-approved Final 阻塞。
 - Phase0 Done 仍受五份下游真实 Final、双方向 `check --profile phase0` 和 Workbook 验收阻塞。
 
