@@ -800,6 +800,20 @@ def test_schemair_materialization_failure_saves_candidate_and_consumes_attempt(
     )
     schema["envelope"]["fields"].pop()
     candidate_text = json.dumps(schema, ensure_ascii=False)
+    review_notes = "# Review\n\nPending.\n"
+    raw_response_text = json.dumps(
+        {"artifact": schema, "reviewNotes": review_notes},
+        ensure_ascii=False,
+    )
+    provider_response_text = json.dumps(
+        {
+            "contractVersion": "draft-provider-response/v1",
+            "artifactKind": "schemair",
+            "artifactContent": candidate_text,
+            "reviewNotes": review_notes,
+        },
+        ensure_ascii=False,
+    )
 
     class InvalidCandidateProvider:
         name = "openai-chat"
@@ -812,23 +826,35 @@ def test_schemair_materialization_failure_saves_candidate_and_consumes_attempt(
         def generate(self, request, context):
             self.calls += 1
             return DraftProviderResult(
-                response_text=json.dumps(
-                    {
-                        "contractVersion": "draft-provider-response/v1",
-                        "artifactKind": "schemair",
-                        "artifactContent": candidate_text,
-                        "reviewNotes": "# Review\n\nPending.\n",
-                    },
-                    ensure_ascii=False,
-                ),
+                response_text=provider_response_text,
                 metadata=ProviderCallMetadata(
                     provider_name=self.name,
                     attempt_id=self.attempt_id,
                     requested_model=self.model,
+                    response_model=self.model,
+                    response_id="chatcmpl-schemair-materialization-failure",
                     started_at="2026-08-12T10:00:00+08:00",
                     completed_at="2026-08-12T10:00:01+08:00",
                     endpoint_fingerprint="sha256:" + "a" * 64,
                     prompt_contract_version="draft-prompt/v9",
+                    calls=(
+                        ProviderSubcallMetadata(
+                            segment="complete-artifact",
+                            outcome="succeeded",
+                            response_complete=True,
+                            response_content_hash=(
+                                "sha256:"
+                                + hashlib.sha256(raw_response_text.encode("utf-8")).hexdigest()
+                            ),
+                            requested_model=self.model,
+                            response_model=self.model,
+                            response_id="chatcmpl-schemair-materialization-failure",
+                            started_at="2026-08-12T10:00:00+08:00",
+                            completed_at="2026-08-12T10:00:01+08:00",
+                            finish_reason="stop",
+                            prompt_contract_version="draft-prompt/v9",
+                        ),
+                    ),
                 ),
             )
 
@@ -854,6 +880,9 @@ def test_schemair_materialization_failure_saves_candidate_and_consumes_attempt(
     assert summary["candidateContentHash"].startswith("sha256:")
     assert summary["calls"][0]["outcome"] == "succeeded"
     assert (attempt / "candidate.json").read_text(encoding="utf-8") == candidate_text
+    assert (
+        attempt / "response-001-complete-artifact.txt"
+    ).read_text(encoding="utf-8") == provider_response_text
     assert not (workspace / "schemair-draft.json").exists()
 
     with pytest.raises(DraftGenerationError, match="attempt ID.*already exists"):

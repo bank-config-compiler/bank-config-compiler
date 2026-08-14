@@ -909,30 +909,28 @@ def _post_provider_materialization_failure(
     error: DraftGenerationError,
 ) -> DraftProviderDiagnosticError:
     detail = f"{request.artifact_kind} candidate cannot be materialized: {error}"
-    calls = metadata.calls or (
-        ProviderSubcallMetadata(
-            segment="complete-artifact",
-            outcome="succeeded",
-            response_complete=True,
-            response_content_hash=_text_hash(response_text),
-            requested_model=metadata.requested_model,
-            response_model=metadata.response_model,
-            response_id=metadata.response_id,
-            prompt_tokens=metadata.prompt_tokens,
-            completion_tokens=metadata.completion_tokens,
-            total_tokens=metadata.total_tokens,
-            started_at=metadata.started_at,
-            completed_at=metadata.completed_at,
-            finish_reason="stop",
-            prompt_contract_version=metadata.prompt_contract_version,
-        ),
-    )
-    call_evidence = tuple(
+    # 此处的 response_text 是 canonical provider envelope，不是 metadata.calls
+    # 所引用的原始 chat 内容；为 envelope 单独建 evidence，避免把 hash 绑定到不同字节。
+    call_evidence = (
         ProviderFailureCallEvidence(
-            call,
-            response_text if index == len(calls) - 1 else None,
-        )
-        for index, call in enumerate(calls)
+            ProviderSubcallMetadata(
+                segment="complete-artifact",
+                outcome="succeeded",
+                response_complete=True,
+                response_content_hash=_text_hash(response_text),
+                requested_model=metadata.requested_model,
+                response_model=metadata.response_model,
+                response_id=metadata.response_id,
+                prompt_tokens=metadata.prompt_tokens,
+                completion_tokens=metadata.completion_tokens,
+                total_tokens=metadata.total_tokens,
+                started_at=metadata.started_at,
+                completed_at=metadata.completed_at,
+                finish_reason="stop",
+                prompt_contract_version=metadata.prompt_contract_version,
+            ),
+            response_text,
+        ),
     )
     return DraftProviderDiagnosticError(
         detail,
