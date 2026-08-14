@@ -61,6 +61,30 @@ def _workspace(tmp_path: Path) -> Path:
     return workspace
 
 
+def _bind_docir_approval(workspace: Path) -> None:
+    task = json.loads((workspace / "task.json").read_text(encoding="utf-8"))
+    final_hash = _hash((workspace / "docir-final.md").read_bytes())
+    (workspace / "docir-approval-result.json").write_text(
+        json.dumps(
+            {
+                "contractVersion": "draft-approval-result/v1",
+                "taskId": task["taskId"],
+                "interfaceCode": task["interfaceCode"],
+                "artifactKind": "docir",
+                "approvedDraftHash": final_hash,
+                "reviewer": "fixture-reviewer",
+                "reviewNote": "测试夹具中的 DocIR 已完成人工审核。",
+                "reviewedAt": "2026-08-12T10:00:00+08:00",
+                "finalArtifact": "docir-final.md",
+                "finalHash": final_hash,
+            },
+            ensure_ascii=False,
+        ),
+        encoding="utf-8",
+        newline="",
+    )
+
+
 def test_validate_current_docir_atomically_replaces_hash_bound_result_and_notes(
     tmp_path: Path,
 ) -> None:
@@ -395,6 +419,8 @@ def _write_json_review_case(
     target.write_text(json.dumps(candidate, ensure_ascii=False), encoding="utf-8", newline="")
     task = json.loads((workspace / "task.json").read_text(encoding="utf-8"))
     source = workspace / source_path
+    if kind == "schemair":
+        _bind_docir_approval(workspace)
     if source.suffix == ".md":
         source_hash = _hash(source.read_bytes())
     else:
@@ -551,6 +577,76 @@ def test_schemair_validation_rejects_changed_upstream_final_hash(
     ]
     assert lineage_issues
     assert "sourceHash" in lineage_issues[0]["message"]
+
+
+def test_schemair_validation_rejects_missing_docir_approval_evidence(
+    tmp_path: Path,
+) -> None:
+    workspace = _workspace(tmp_path)
+    chain = REPO_ROOT / "samples/trusted-chain/b2eboc-b2e0061"
+    schema = json.loads((chain / "schemair-final.json").read_text(encoding="utf-8"))
+    (workspace / "docir-final.md").write_bytes(
+        (workspace / "docir-draft.md").read_bytes()
+    )
+    _write_json_review_case(
+        workspace,
+        kind="schemair",
+        draft_path="schemair-draft.json",
+        generation_path="schemair-generation-result.json",
+        artifact=schema,
+        source_path="docir-final.md",
+        selectors={
+            "schemaId": schema["schemaId"],
+            "schemaVersion": schema["schemaVersion"],
+        },
+    )
+    (workspace / "docir-approval-result.json").unlink()
+
+    result = validate_current_draft(workspace, "schemair")
+
+    assert any(
+        item["code"] == "DOCIR_APPROVAL_EVIDENCE_INVALID"
+        for item in result["issues"]
+    )
+    assert result["summary"]["errorCount"] > 0
+
+
+def test_schemair_approval_rechecks_docir_approval_evidence(tmp_path: Path) -> None:
+    workspace = _workspace(tmp_path)
+    chain = REPO_ROOT / "samples/trusted-chain/b2eboc-b2e0061"
+    schema = json.loads((chain / "schemair-final.json").read_text(encoding="utf-8"))
+    (workspace / "docir-final.md").write_bytes(
+        (workspace / "docir-draft.md").read_bytes()
+    )
+    _write_json_review_case(
+        workspace,
+        kind="schemair",
+        draft_path="schemair-draft.json",
+        generation_path="schemair-generation-result.json",
+        artifact=schema,
+        source_path="docir-final.md",
+        selectors={
+            "schemaId": schema["schemaId"],
+            "schemaVersion": schema["schemaVersion"],
+        },
+    )
+    validation = validate_current_draft(workspace, "schemair")
+    approval_path = workspace / "docir-approval-result.json"
+    approval = json.loads(approval_path.read_text(encoding="utf-8"))
+    approval["finalHash"] = "sha256:" + "a" * 64
+    approval_path.write_text(json.dumps(approval), encoding="utf-8", newline="")
+
+    with pytest.raises(DraftReviewError, match="Final Validator rejected approval"):
+        approve_draft(
+            workspace,
+            "schemair",
+            reviewer="human-reviewer",
+            review_note="逐项确认 SchemaIR。",
+            expected_content_hash=validation["validatedArtifact"]["contentHash"],
+        )
+
+    assert not (workspace / "schemair-final.json").exists()
+    assert not (workspace / "schemair-approval-result.json").exists()
 
 
 def test_schemair_approval_detects_concurrent_upstream_final_change(

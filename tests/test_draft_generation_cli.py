@@ -28,6 +28,18 @@ from bank_config_compiler.draft_generation import (
 REPO_ROOT = Path(__file__).resolve().parents[1]
 
 
+class UnexpectedProvider:
+    name = "tracking"
+
+    def __init__(self, attempt_id: str) -> None:
+        self.attempt_id = attempt_id
+        self.calls = 0
+
+    def generate(self, request, context):
+        self.calls += 1
+        raise AssertionError("provider must not be called")
+
+
 def bind_task(workspace: Path, *, task_id: str | None = None) -> None:
     raw_bytes = (workspace / "raw-doc.md").read_bytes()
     (workspace / "task.json").write_text(
@@ -47,6 +59,31 @@ def bind_task(workspace: Path, *, task_id: str | None = None) -> None:
         encoding="utf-8",
         newline="",
     )
+
+
+def bind_approved_docir_final(workspace: Path, source: Path) -> dict[str, str]:
+    final_bytes = source.read_bytes()
+    (workspace / "docir-final.md").write_bytes(final_bytes)
+    task = json.loads((workspace / "task.json").read_text(encoding="utf-8"))
+    final_hash = "sha256:" + hashlib.sha256(final_bytes).hexdigest()
+    approval = {
+        "contractVersion": "draft-approval-result/v1",
+        "taskId": task["taskId"],
+        "interfaceCode": task["interfaceCode"],
+        "artifactKind": "docir",
+        "approvedDraftHash": final_hash,
+        "reviewer": "fixture-reviewer",
+        "reviewNote": "测试夹具中的 DocIR 已完成人工审核。",
+        "reviewedAt": "2026-08-12T10:00:00+08:00",
+        "finalArtifact": "docir-final.md",
+        "finalHash": final_hash,
+    }
+    (workspace / "docir-approval-result.json").write_text(
+        json.dumps(approval, ensure_ascii=False, indent=2) + "\n",
+        encoding="utf-8",
+        newline="",
+    )
+    return approval
 
 
 def run_cli(*args: str, cwd: Path = REPO_ROOT) -> subprocess.CompletedProcess[str]:
@@ -679,9 +716,9 @@ def test_schemair_provider_failure_consumes_attempt_before_retry(
     workspace.mkdir()
     (workspace / "raw-doc.md").write_text("# Raw\n", encoding="utf-8", newline="")
     bind_task(workspace)
-    shutil.copyfile(
+    bind_approved_docir_final(
+        workspace,
         REPO_ROOT / "samples/golden/b2eboc-b2e0061/docir.expected.md",
-        workspace / "docir-final.md",
     )
 
     class FailingProvider:
@@ -751,9 +788,9 @@ def test_schemair_materialization_failure_saves_candidate_and_consumes_attempt(
     workspace.mkdir()
     (workspace / "raw-doc.md").write_text("# Raw\n", encoding="utf-8", newline="")
     bind_task(workspace)
-    shutil.copyfile(
+    bind_approved_docir_final(
+        workspace,
         REPO_ROOT / "samples/golden/b2eboc-b2e0061/docir.expected.md",
-        workspace / "docir-final.md",
     )
     schema = json.loads(
         (
@@ -902,6 +939,98 @@ def test_generate_draft_cli_never_promotes_docir_draft(tmp_path: Path) -> None:
     assert not (workspace / "schemair-draft.json").exists()
 
 
+@pytest.mark.parametrize(
+    "approval_change",
+    [
+        {"contractVersion": "draft-approval-result/v0"},
+        {"taskId": "wrong-task"},
+        {"interfaceCode": "wrong-interface"},
+        {"artifactKind": "schemair"},
+        {"finalArtifact": "other-final.md"},
+        {"approvedDraftHash": "sha256:" + "a" * 64},
+        {"finalHash": "sha256:" + "b" * 64},
+    ],
+)
+def test_schemair_generation_rejects_invalid_docir_approval_before_provider_call(
+    tmp_path: Path,
+    monkeypatch,
+    approval_change: dict[str, str],
+) -> None:
+    workspace = tmp_path / "invalid-docir-approval"
+    workspace.mkdir()
+    (workspace / "raw-doc.md").write_text("# Raw\n", encoding="utf-8", newline="")
+    bind_task(workspace)
+    approval = bind_approved_docir_final(
+        workspace,
+        REPO_ROOT / "samples/golden/b2eboc-b2e0061/docir.expected.md",
+    )
+    approval.update(approval_change)
+    (workspace / "docir-approval-result.json").write_text(
+        json.dumps(approval, ensure_ascii=False, indent=2) + "\n",
+        encoding="utf-8",
+        newline="",
+    )
+
+    provider = UnexpectedProvider("schemair-invalid-approval")
+    monkeypatch.setattr(cli, "_draft_provider", lambda args: provider)
+    args = SimpleNamespace(
+        workspace=workspace,
+        draft_kind="schemair",
+        provider="openai-chat",
+        overwrite=False,
+        schema_id="b2eboc-b2e0061-schema",
+        schema_version="v1",
+    )
+
+    with pytest.raises(cli.DraftReviewError, match="approval"):
+        cli._generate_draft(args)
+
+    assert provider.calls == 0
+    assert not (workspace / "schemair-draft.json").exists()
+
+
+@pytest.mark.parametrize("approval_state", ["missing", "malformed", "stale-final"])
+def test_schemair_generation_rejects_untrusted_docir_final_before_provider_call(
+    tmp_path: Path,
+    monkeypatch,
+    approval_state: str,
+) -> None:
+    workspace = tmp_path / f"untrusted-docir-{approval_state}"
+    workspace.mkdir()
+    (workspace / "raw-doc.md").write_text("# Raw\n", encoding="utf-8", newline="")
+    bind_task(workspace)
+    bind_approved_docir_final(
+        workspace,
+        REPO_ROOT / "samples/golden/b2eboc-b2e0061/docir.expected.md",
+    )
+    if approval_state == "missing":
+        (workspace / "docir-approval-result.json").unlink()
+    elif approval_state == "malformed":
+        (workspace / "docir-approval-result.json").write_text(
+            "{\n", encoding="utf-8", newline=""
+        )
+    else:
+        with (workspace / "docir-final.md").open("ab") as final_file:
+            final_file.write(b"\nchanged after approval\n")
+
+    provider = UnexpectedProvider(f"schemair-{approval_state}")
+    monkeypatch.setattr(cli, "_draft_provider", lambda args: provider)
+    args = SimpleNamespace(
+        workspace=workspace,
+        draft_kind="schemair",
+        provider="openai-chat",
+        overwrite=False,
+        schema_id="b2eboc-b2e0061-schema",
+        schema_version="v1",
+    )
+
+    with pytest.raises(cli.DraftReviewError, match="approval"):
+        cli._generate_draft(args)
+
+    assert provider.calls == 0
+    assert not (workspace / "schemair-draft.json").exists()
+
+
 def test_generate_draft_cli_completes_controlled_b2e0061_workflow(tmp_path: Path) -> None:
     workspace = tmp_path / "workspace"
     workspace.mkdir()
@@ -917,7 +1046,7 @@ def test_generate_draft_cli_completes_controlled_b2e0061_workflow(tmp_path: Path
     assert docir.returncode == 0, docir.stderr
 
     # Human gate 只能通过显式装载已审核 fixture 表达；严禁把本次生成的 Draft 自动提升为 Final。
-    shutil.copyfile(fixture_root / "docir-final.md", workspace / "docir-final.md")
+    bind_approved_docir_final(workspace, fixture_root / "docir-final.md")
     assert (workspace / "docir-final.md").read_bytes() == (
         fixture_root / "docir-final.md"
     ).read_bytes()

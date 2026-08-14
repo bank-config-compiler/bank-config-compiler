@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+import datetime as datetime_module
 import hashlib
 import json
+import logging
 import os
 import re
 import tempfile
@@ -22,6 +24,7 @@ from .workspace import (
     artifact_path,
     ensure_workspace_dir,
     load_task_manifest,
+    read_artifact_bytes,
     read_json_artifact,
 )
 
@@ -29,10 +32,97 @@ from .workspace import (
 DRAFT_APPROVAL_RESULT_CONTRACT = "draft-approval-result/v1"
 SHA256_PATTERN = re.compile(r"^sha256:[0-9a-f]{64}$")
 _DOCIR_INTERFACE_CODE = re.compile(r"^\| Interface Code \| ([^|]*) \|", re.MULTILINE)
+LOGGER = logging.getLogger(__name__)
+_DOCIR_APPROVAL_PROPERTIES = {
+    "contractVersion",
+    "taskId",
+    "interfaceCode",
+    "artifactKind",
+    "approvedDraftHash",
+    "reviewer",
+    "reviewNote",
+    "reviewedAt",
+    "finalArtifact",
+    "finalHash",
+}
 
 
 class DraftReviewError(Exception):
     """Raised when validation or approval cannot preserve the Draft trust boundary."""
+
+
+def load_approved_docir_final(
+    workspace_path: Path,
+    *,
+    task: dict[str, Any] | None = None,
+) -> str:
+    workspace = workspace_path.resolve()
+    locked_task = task if task is not None else load_task_manifest(workspace)
+    final_bytes = read_artifact_bytes(workspace, "docir-final.md")
+    try:
+        final_text = final_bytes.decode("utf-8")
+    except UnicodeDecodeError as exc:
+        raise WorkspaceError("docir-final.md must be valid UTF-8") from exc
+    final_hash = _bytes_hash(final_bytes)
+    context = {
+        "component": "docir_approval_gate",
+        "task_id": locked_task["taskId"],
+        "interface_code": locked_task["interfaceCode"],
+        "artifact_kind": "docir",
+        "final_hash": final_hash,
+    }
+    try:
+        approval = read_json_artifact(workspace, "docir-approval-result.json")
+        _validate_docir_approval(approval, task=locked_task, final_hash=final_hash)
+    except (DraftReviewError, WorkspaceError) as exc:
+        LOGGER.warning(
+            "DocIR approval evidence rejected",
+            extra={**context, "outcome": "rejected", "failure_detail": str(exc)},
+        )
+        raise DraftReviewError(f"DocIR approval evidence is invalid: {exc}") from exc
+    LOGGER.info(
+        "DocIR approval evidence accepted",
+        extra={**context, "outcome": "accepted"},
+    )
+    return final_text
+
+
+def _validate_docir_approval(
+    approval: dict[str, Any],
+    *,
+    task: dict[str, Any],
+    final_hash: str,
+) -> None:
+    if set(approval) != _DOCIR_APPROVAL_PROPERTIES:
+        raise DraftReviewError(
+            "docir-approval-result.json must contain the exact draft-approval-result/v1 properties"
+        )
+    expected = {
+        "contractVersion": DRAFT_APPROVAL_RESULT_CONTRACT,
+        "taskId": task["taskId"],
+        "interfaceCode": task["interfaceCode"],
+        "artifactKind": "docir",
+        "approvedDraftHash": final_hash,
+        "finalArtifact": "docir-final.md",
+        "finalHash": final_hash,
+    }
+    mismatches = [key for key, value in expected.items() if approval.get(key) != value]
+    if mismatches:
+        raise DraftReviewError(
+            "docir-approval-result.json mismatches the current task or Final: "
+            + ", ".join(mismatches)
+        )
+    _non_empty(approval.get("reviewer"), label="DocIR approval reviewer")
+    _non_empty(approval.get("reviewNote"), label="DocIR approval review note")
+    reviewed_at = _non_empty(
+        approval.get("reviewedAt"), label="DocIR approval reviewedAt"
+    )
+    try:
+        timestamp = datetime_module.datetime.fromisoformat(reviewed_at)
+    except ValueError as exc:
+        raise DraftReviewError("DocIR approval reviewedAt must be an ISO-8601 timestamp") from exc
+    if timestamp.tzinfo is None or timestamp.utcoffset() is None:
+        raise DraftReviewError("DocIR approval reviewedAt must include a timezone")
 
 
 def validate_current_draft(
@@ -334,6 +424,16 @@ def _validate_draft_bytes(
     artifact = _decode_artifact(artifact_kind, draft_bytes)
     if artifact_kind == "schemair":
         result = validate_schemair(artifact)
+        try:
+            # SchemaIR 的每次校验与最终批准都必须重新证明当前 DocIR 仍是准确获批版本。
+            load_approved_docir_final(workspace, task=task)
+        except (DraftReviewError, WorkspaceError) as exc:
+            _append_issue(
+                result,
+                code="DOCIR_APPROVAL_EVIDENCE_INVALID",
+                path=None,
+                message=str(exc),
+            )
     elif artifact_kind == "standard":
         if not isinstance(rule_package, RulePackage):
             raise DraftReviewError("standard validation requires --rule-package")

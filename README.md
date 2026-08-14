@@ -87,7 +87,7 @@ uv run bank-config-compiler generate-draft docir `
 
 配置优先级为：CLI 参数 > 已存在的进程环境变量 > 当前启动目录的 `.env` > timeout 默认值 600 秒。该 timeout 既是 SDK 逐次 I/O timeout，也是每个物理 subcall 的绝对墙钟期限；它不是整个多段 attempt 的共享预算。API key 不提供 CLI 参数，避免进入 shell history。`--chat-base-url` 只接受不含 credential、query 或 fragment 的 HTTPS URL；`--chat-model` 没有内置模型默认值。attempt ID 在整个 workspace 内不可复用，`--overwrite` 也只能替换根工作 Draft，不能覆盖历史 attempt。成功或失败 evidence 位于 `provider-attempts/{artifactKind}/{attemptId}/`；v2 摘要按顺序记录 subcall 的 segment、outcome、hash、模型/响应 ID、token usage、时间和 contract，不记录 API key、endpoint 原文或输入内容。原始 response/candidate 是被 Git 忽略的临时诊断，不属于 Human Review、Final 或 trusted chain。
 
-下游命令分别是 `generate-draft schemair`、`generate-draft standard` 和 `generate-draft template`。SchemaIR 固定读取 `docir-final.md`，并要求显式 `--schema-id`、`--schema-version`；Standard 还要求 direction、`--standard-id`、Standard version 和 RELEASED 规则包；Template 要求匹配的 Final Standard、Template identity 和 RELEASED 规则包。模型不得生成这些稳定身份。完整参数以 `--help` 为准。可物化但 Validator 含 ERROR 的 JSON Draft 仍会连同结果发布，命令返回 `3`；reviewable 返回 `0`；未形成 Draft 的硬失败返回 `2`。
+下游命令分别是 `generate-draft schemair`、`generate-draft standard` 和 `generate-draft template`。SchemaIR 固定读取 `docir-final.md`，并在 provider 调用前要求匹配的 `docir-approval-result.json`：task/interface、artifact kind/path、`approvedDraftHash → finalHash` 映射和当前 Final 准确 bytes hash 任一缺失或错配都会 fail closed；`validate-draft schemair` 与 `approve-draft schemair` 也会重新检查该 evidence。SchemaIR 还要求显式 `--schema-id`、`--schema-version`；Standard 还要求 direction、`--standard-id`、Standard version 和 RELEASED 规则包；Template 要求匹配的 Final Standard、Template identity 和 RELEASED 规则包。模型不得生成这些稳定身份。完整参数以 `--help` 为准。可物化但 Validator 含 ERROR 的 JSON Draft 仍会连同结果发布，命令返回 `3`；reviewable 返回 `0`；未形成 Draft 的硬失败返回 `2`。
 
 Human 修改当前工作 Draft 后，用同一组 selector 重新校验。例如 DocIR：
 

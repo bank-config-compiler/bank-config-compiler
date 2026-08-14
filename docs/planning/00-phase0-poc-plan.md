@@ -64,14 +64,14 @@ P0-T5 Done 不代表 Phase0 Done，也不授权进入 Phase1 planning。
 
 P0-T6 只能消费 P0-T5 获批的 Final DocIR，并按以下顺序执行：
 
-1. **P0-T6.1 SchemaIR**：显式 schema identity；支持 invalid/revalidate/approve；真实 Human-approved Final SchemaIR。
+1. **P0-T6.1 SchemaIR**：provider 调用前校验匹配的 DocIR approval evidence 与准确 Final bytes；显式 schema identity；支持 invalid/revalidate/approve；真实 Human-approved Final SchemaIR。
 2. **P0-T6.2 Standard**：代码投影 path/sequence/XML Keys；ASSEMBLY/PARSE 分别形成真实 Final。
 3. **P0-T6.3 Template**：代码投影 Standard target；LLM/Human 负责 binding/expression/policy；两个方向分别形成真实 Final。
 4. **P0-T6.4 Closure**：两个 `check --profile phase0`、两个 Workbook、结构化/安全检查和 Phase0 状态收口。
 
 每一小节必须等待上一层准确 Final，不能集中到最后一次批准。
 
-SchemaIR、Standard、Template 的 semantic materializer、统一 validate/approve CLI 和离线回归已经实现。该实现不改变执行依赖：没有 P0-T5 获批的真实 Final DocIR 时，不得把 fixture closure 记为 P0-T6 真实验收。
+SchemaIR、Standard、Template 的 semantic materializer、统一 validate/approve CLI 和离线回归已经实现。SchemaIR generation/validation/approval 会重新校验 `docir-approval-result.json` 的 task/interface、artifact kind/path、Draft→Final hash 映射和当前 Final 准确 bytes hash。该实现不改变执行依赖：没有 P0-T5 获批的真实 Final DocIR 时，不得把 fixture closure 记为 P0-T6 真实验收。
 
 ## 5. Commit Plan
 
@@ -108,7 +108,7 @@ git diff --check
 
 ## 7. 当前阻塞
 
-- P0-T5 已无阻塞；`docir-022` Final DocIR 与 approval evidence 已确认，attempt evidence 保持 immutable。P0-T6.1 可开始真实 SchemaIR generation，但必须使用该准确 Final DocIR 作为上游。
+- P0-T5 已无阻塞；`docir-022` Final DocIR 与 approval evidence 已确认，attempt evidence 保持 immutable。P0-T6.1 可开始真实 SchemaIR generation，但必须同时使用该准确 Final DocIR 和匹配的 approval evidence 作为上游。
 - P0-T6 的每一层均受前一层 Human-approved Final 阻塞。
 - Phase0 Done 仍受五份下游真实 Final、双方向 `check --profile phase0` 和 Workbook 验收阻塞。
 

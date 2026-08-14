@@ -24,7 +24,12 @@ from .draft_generation import (
     publish_generated_draft,
     publish_provider_failure,
 )
-from .draft_review import DraftReviewError, approve_draft, validate_current_draft
+from .draft_review import (
+    DraftReviewError,
+    approve_draft,
+    load_approved_docir_final,
+    validate_current_draft,
+)
 from .openai_chat_provider import (
     DEFAULT_DOCIR_FIELD_BATCH_SIZE,
     OpenAIChatDraftProvider,
@@ -381,6 +386,10 @@ def main(argv: list[str] | None = None) -> int:
 def _generate_draft(args: argparse.Namespace) -> tuple[Path, int]:
     workspace = args.workspace.resolve()
     task = load_task_manifest(workspace)
+    approved_docir_final = None
+    if args.draft_kind == "schemair":
+        # approval result 是可信链提交标记；先校验，再构造任何可能访问外部 provider 的对象。
+        approved_docir_final = load_approved_docir_final(workspace, task=task)
     provider = _draft_provider(args)
     if args.provider == "openai-chat":
         assert_provider_attempt_unused(
@@ -397,7 +406,7 @@ def _generate_draft(args: argparse.Namespace) -> tuple[Path, int]:
             )
         elif args.draft_kind == "schemair":
             generated = generate_schemair_draft(
-                docir_final=read_text_artifact(workspace, "docir-final.md"),
+                docir_final=approved_docir_final,
                 provider=provider,
                 task_id=task_id,
                 interface_code=task["interfaceCode"],
