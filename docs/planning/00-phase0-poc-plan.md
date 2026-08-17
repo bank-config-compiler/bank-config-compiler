@@ -100,8 +100,8 @@ SchemaIR、Standard、Template 的 semantic materializer、统一 validate/appro
 每个实现批次运行目标测试与受影响回归；连贯 implementation batch 后运行 docs-sync。最终离线门禁：
 
 ```powershell
-uv --cache-dir .uv-cache run --group dev pytest -q -p no:cacheprovider --basetemp .pytest-p0
-uv lock --check
+.\scripts\test.ps1
+uv --cache-dir .uv-cache lock --check
 uv --cache-dir .uv-cache build --out-dir tmp\build-phase0
 git diff --check
 ```

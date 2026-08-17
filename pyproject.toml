@@ -26,3 +26,5 @@ build-backend = "hatchling.build"
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["."]
+tmp_path_retention_count = "3"
+tmp_path_retention_policy = "failed"

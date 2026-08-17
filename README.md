@@ -31,11 +31,13 @@ P0-T3、P0-T4 与 P0-T5 均为 `Done`。P0-T6 的下游五类 IR materializer/Hu
 
 ## 快速开始
 
-安装依赖并运行测试：
+安装依赖并通过仓库统一入口运行测试：
 
 ```powershell
-uv run --group dev pytest
+.\scripts\test.ps1
 ```
+
+该入口将 pytest 临时文件放在 Git-ignored 的 `tmp/pytest/` 下，先按 Windows 执行身份隔离，再使用 pytest 自带的运行编号隔离，支持并发执行且不会在仓库根目录累积 `.pytest-*`。成功测试的临时目录会被清理，每个执行身份最多保留最近三次失败运行的现场。可以在命令后追加测试路径或其他 pytest 参数。
 
 为运行下面的受控 b2e0061 fixture，导入其精确绑定的 raw doc 到 workspace：
 
