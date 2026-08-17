@@ -2,9 +2,9 @@
 
 ## Status
 
-**In Progress。P0-T5 真实 DocIR Human Gate 已完成；P0-T6 runtime 已离线实现，下一执行 Gate 是使用新 `schemair-003` 生成真实 SchemaIR。**
+**In Progress。P0-T5 真实 DocIR Human Gate 已完成；P0-T6 runtime 已离线实现，P0-T6.1 当前受 F-007 SchemaIR 单次完整输出 coverage 不足阻塞。**
 
-P0-T3 trusted chain、P0-T4 deterministic Draft-to-Workbook closure 与 P0-T5 真实 DocIR Human Gate 已完成。`docir-020` 是未发布 Draft 的历史失败 attempt；`docir-021` 与 `docir-022` 均为不可复用的真实 attempt，其 evidence 保持 immutable。`docir-022` Final DocIR 已由 `deng` 对准确 bytes 批准，hash 为 `sha256:180dadcc10fea5cf364c72e7b36d6d36aad3bfc24d3edd172138b24869042ae6`，Validation Result 为零 ERROR、两个已审阅的非阻塞跨字段 WARNING。P0-T6.1 的 `schemair-001` 在 materialization 失败后暴露失败证据 hash 绑定缺陷；该 attempt 已消费且不得复用。`schemair-002` 完成 provider 调用并保留 immutable candidate/Draft/evidence，但因 candidate shape 与公开 SchemaIR contract 不一致产生 792 ERROR、2 WARNING，不可批准。失败证据与 candidate 信任边界已离线修复；任何后续真实调用必须使用新的 `schemair-003` 并另获授权。
+P0-T3 trusted chain、P0-T4 deterministic Draft-to-Workbook closure 与 P0-T5 真实 DocIR Human Gate 已完成。`docir-020` 是未发布 Draft 的历史失败 attempt；`docir-021` 与 `docir-022` 均为不可复用的真实 attempt，其 evidence 保持 immutable。`docir-022` Final DocIR 已由 `deng` 对准确 bytes 批准，hash 为 `sha256:180dadcc10fea5cf364c72e7b36d6d36aad3bfc24d3edd172138b24869042ae6`，Validation Result 为零 ERROR、两个已审阅的非阻塞跨字段 WARNING。P0-T6.1 的 `schemair-001` 在 materialization 失败后暴露失败证据 hash 绑定缺陷；`schemair-002` 完成 provider 调用并保留 immutable candidate/Draft/evidence，但因 candidate shape 与公开 SchemaIR contract 不一致产生 792 ERROR、2 WARNING，不可批准。F-005/F-006 已分别修复失败 evidence 和 exact candidate 信任边界。`schemair-003` 使用 `draft-prompt/v10` 完成一次无自动重试的真实调用，provider 返回 `finishReason=stop` 且 response complete，但 candidate 只含 13/13 envelope 字段和 16/27 ASSEMBLY 字段，缺少整个 10 字段 PARSE message、ASSEMBLY `conditionalConstraints`，且最后一个字段缺少六项必需语义属性；materializer 在发布公开 Draft 前 hard fail，失败 response/candidate/summary 已保存在 immutable attempt evidence 中。`schemair-001` 至 `schemair-003` 均已消费且不得复用；F-007 必须先收敛 SchemaIR 输出 coverage，任何 `schemair-004` 外发仍需新的精确摘要与授权。
 
 ## 1. 目标与可信边界
 
@@ -86,7 +86,8 @@ SchemaIR、Standard、Template 的 semantic materializer、统一 validate/appro
 | 4C | ADR-0018、DocIR v4 Object Required=N/A 与 SchemaIR v2 materializer | Object 不再产生虚假 Required Gate；标量 marker 明确；SchemaIR Object 出现性独立审查 | 可继续 `docir-022` 标量 Human Gate |
 | 4D | ADR-0019、DocIR v17 Prompt 与 Conditions Validator | 最大笔数、格式、唯一性和一般校验不再污染 Conditions；明确条件分支与无条件占位符回归通过 | 可继续 `docir-022` Conditions Human Gate |
 | 5 | 非敏感 P0-T5 真实验收摘要 | 真实 Final DocIR 与 approval evidence 确认 | P0-T6 开始 |
-| 5A | P0-T6.1 DocIR approval gate、失败证据与 SchemaIR candidate contract 修复 | 审批前置、attempt evidence、v10 prompt/strict materialization 离线门禁通过 | 可单独授权 `schemair-003` |
+| 5A | P0-T6.1 DocIR approval gate、失败证据与 SchemaIR candidate contract 修复 | 审批前置、attempt evidence、v10 prompt/strict materialization 离线门禁通过；`schemair-003` 已验证 hard-fail 边界 | F-007 开始 |
+| 5B | F-007 有界 SchemaIR 分段提取 | Envelope、ASSEMBLY、PARSE 及字段 coverage 确定性合并；离线回归、docs-sync、review 全绿 | 可准备并单独授权 `schemair-004` |
 | 6 | SchemaIR 闭环 | 真实 Final SchemaIR | Standard 开始 |
 | 7 | 两个 Standard 闭环 | 两个真实 Final Standard | Template 开始 |
 | 8 | 两个 Template 闭环 | 两个真实 Final Template | closure 开始 |
@@ -109,7 +110,9 @@ git diff --check
 
 ## 7. 当前阻塞
 
-- P0-T5 已无阻塞；`docir-022` Final DocIR 与 approval evidence 已确认，attempt evidence 保持 immutable。`schemair-001`/`schemair-002` 已消费且不得复用；P0-T6.1 下一次真实 generation 必须使用 `schemair-003`、准确 Final DocIR 和匹配 approval evidence，并在离线门禁全绿后另获外发授权。
+- P0-T5 已无阻塞；`docir-022` Final DocIR 与 approval evidence 已确认，attempt evidence 保持 immutable。`schemair-001`/`schemair-002`/`schemair-003` 已消费且不得复用。
+- F-007 是 P0-T6.1 的直接阻塞：单次 `complete-artifact` SchemaIR 输出即使 `finishReason=stop` 且 response complete，仍不能可靠覆盖两个方向和全部字段。推荐下一步先以 TDD 设计有界 Envelope/ASSEMBLY/PARSE 分段及确定性 coverage merge；不得通过填充缺失语义、复用 `schemair-003` 或无条件重试绕过门禁。
+- F-007 离线门禁、docs-sync 与 code review 完成后，才能为 `schemair-004` 准备精确非 secret 外发摘要并重新请求授权。
 - P0-T6 的每一层均受前一层 Human-approved Final 阻塞。
 - Phase0 Done 仍受五份下游真实 Final、双方向 `check --profile phase0` 和 Workbook 验收阻塞。
 
