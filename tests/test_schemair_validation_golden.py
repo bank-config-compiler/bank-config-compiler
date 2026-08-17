@@ -10,7 +10,7 @@ from bank_config_compiler.schemair_validator import validate_schemair
 GOLDEN_DIR = Path("samples/golden/b2eboc-b2e0061")
 TRUSTED_CHAIN_DIR = Path("samples/trusted-chain/b2eboc-b2e0061")
 P0_T2_HASHES = {
-    "docir.expected.md": "31d7fc002ccc2b840f401206f54665e36771f2bb5502d480566defdff9ac7585",
+    "docir.expected.md": "369b7fb62b1447226d404fe1e67e980933c8d1538a1635f7ef6b72454e16207b",
     "schemair.expected.json": "ad9477a2c3abd3baab2ca03c5f018b02cc3e4fd827e8721df080fd612e44bfc4",
     "schemair-validation.expected.json": "0d716a1c026c8cb6648a64a0d480a1e443befadb63fed6bf97626d895002896a",
     "review-notes.expected.md": "e94856b0ea55148c4955fdbf602f369284429eecffc466dc30c6d35aa7f7835b",

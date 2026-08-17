@@ -85,18 +85,22 @@ Raw doc 仍表示受控输入源。本次 `b2e0061` 样例以人工修正后的 
 
 ## Fields
 
-| Index | Or | Message Item | Mult. | Type | Required | 说明 | 前置机校验点/格式 | 接口平台校验点 | Review |
-|---|---|---|---|---|---|---|---|---|---|
-| 2 |  | `trn-b2e0061-rq` | [1..1] | Object | Y | 转账交易请求 |  |  | 交易包装节点。 |
-| 2.1 |  | 　`ceitinfo` | [0..1] | String | N | 数字签名 |  | 该标签由前置机自动添加，企业无需上送 | 是否进入可配置字段需确认。 |
-| 2.2 |  | 　`transtype` | [0..1] | String | N | 交易类型 | 不超过1位数字；可空 | 1 委托待授权；2 授权退回修改；非空只能为1或2 |  |
-| 2.3 |  | 　`b2e0061-rq` | [1..1000] | Node | Y | 转账请求内容 | 1–1000笔 |  | 每次出现表示一个重复交易元素。 |
-| 2.3.1 |  | 　　`insid` | [1..1] | String | Y | 指令ID；客户端唯一标识 | 非空字符串；长度1-32 | 客户号下不能重复；不支持中文 |  |
+| Index | Or | Message Item | Mult. | Type | Required | 说明 | 校验点 | Review |
+|---|---|---|---|---|---|---|---|---|
+| 2 |  | `trn-b2e0061-rq` |  | Object |  | 转账交易请求 |  | 交易包装节点。 |
+| 2.1 |  | 　`ceitinfo` |  | String | N | 数字签名 | 该标签由前置机自动添加，企业无需上送 | 是否进入可配置字段需确认。 |
+| 2.2 |  | 　`transtype` |  | String | N | 交易类型 | 不超过1位数字；可空；1 委托待授权；2 授权退回修改；非空只能为1或2 |  |
+| 2.3 |  | 　`b2e0061-rq` | [1..1000] | Object |  | 转账请求内容 | 1–1000笔 | 每次出现表示一个重复交易元素。 |
+| 2.3.1 |  | 　　`insid` |  | String | Y | 指令ID；客户端唯一标识 | 非空字符串；长度1-32；客户号下不能重复；不支持中文 |  |
 ```
 
 `Message Item` 存 XML item name，不带尖括号；XML attribute 使用 `@version` 形式。DocIR 字段主表不展示完整 `path`，避免人工 review 表过宽；完整 path 属于 SchemaIR 字段对象。`Index` 是结构编号而不是行号：同级递增最后一段，子节点追加一段，例如 `2.3` 的子节点从 `2.3.1` 开始；`Message Item` 前的缩进必须与 `Index` 层级一致。
 
-Draft 中的 `Mult.`、`Type` 或 `Required` 如果无法从原文结构或明确措辞直接得到，对应单元格必须留空，并在 `Review` 标记“原文未说明，待人工确认”；不能为了填满表格静默推断。Human Review 可以基于明确证据补全候选，但必须保留推导说明。
+DocIR `Type` 只使用 `Object/String/Boolean/Date/Decimal`：有 children 的节点及 `trans` 由代码物化为 `Object`，普通 leaf/attribute 默认 `String`，只有原文明示时保留 `Boolean/Date/Decimal`。`Mult.` 只描述重复 `Object`；新生成的标量和非重复 `Object` 留空，历史 `[0..1]/[1..1]` wire 继续兼容。DocIR 不使用 `Node` 或 `List`；重复 Object 到 Standard `Node` 的映射属于下游，`List` 只属于 PARSE target。
+
+`Required` 只适用于标量，并按原文明示的必输/非空、可选/可空、条件必填填写 `Y/N/C`。标量缺少可靠证据时必须留空，并在 `Review` 标记“Required 原文未说明，待人工确认”；不能从字段表或 XML 示例猜测。Object 的 Required 固定留空（N/A），不产生缺失 marker，也不能从必填叶子反推容器出现性。LLM 提议标量值，代码只对 `说明`、`校验点`、Conditions 中的既有证据执行保守一致性门禁，不自动改写 `Y/N/C`。SchemaIR 标量以 DocIR Required 决定 occurs minimum；SchemaIR Object 出现性由 SchemaIR candidate/Human 独立确认；maximum 仍由 DocIR `Mult.` 锁定。
+
+`Conditions` 只表达 raw doc 明确写出的条件谓词与结果，例如“当 `transtype=2` 时，`obssid` 必须非空”。最大笔数、出现次数、格式、长度、枚举、唯一性和普通业务校验只属于对应 Fields，不得复制到 Conditions；没有明确条件分支时使用“原文未提供可确认条件。”。Validator 只检查当前 Draft 是否具有明确分支形式，不证明条件忠实性，也不自动重写文字。
 
 ### 2.5 Review 要点
 
@@ -104,13 +108,13 @@ Draft 中的 `Mult.`、`Type` 或 `Required` 如果无法从原文结构或明�
 - Message Item 层级是否能正确还原 XML 树；推导 path 是否能在 SchemaIR 中对应。
 - 请求组装和响应处理是否正确区分为 `ASSEMBLY` / `PARSE`。
 - 可复用 envelope/head 字段是否被保留。
-- 条件说明、枚举、长度冲突和平台/前置机约束是否保留。
+- 条件说明、枚举、长度冲突和来源中的全部校验约束是否保留。
 
 ### 2.6 真实 provider 的内部结构化提取
 
-真实 `openai-chat` provider 不再要求模型直接排版上述 Markdown。一个 DocIR attempt 先完整提取 Interface/Source Context/Envelope，再用一个联合 messages outline 盘点 ASSEMBLY/PARSE 的 metadata、conditions 和 `{index,item}` 字段身份，最后只把两个方向的字段详情按连续有界批次拆分。默认每个详情批次最多 16 个字段；所有 subcall 都携带同一 raw-doc，详情 selector 只约束字段身份和顺序。各 segment 校验后合并为内部 `docir-extraction/v1` JSON object 根：固定 Metadata key、字段属性、1/2/3 根 Index、父子顺序、`Mult./Type/Required` 值域与 Conditions。代码随后确定性生成章节、表头、列顺序、U+3000 层级缩进、Markdown escaping，并按固定 checklist 与稳定字段位置生成 Human Review Notes。
+真实 `openai-chat` provider 不要求模型直接排版上述 Markdown，也不要求模型生成 index/path/level。一个 DocIR attempt 先提取 Interface/Source Context 与 Envelope 有序 semantic tree，再提取联合 ASSEMBLY/PARSE message tree；编排层按前序遍历为树节点分配内部 selector，最后只让有界 detail subcall 返回匹配 selector 的语义字段。默认每个详情批次最多 16 个字段；所有 subcall 都携带同一 raw-doc。各 segment 校验后合并为内部 `docir-semantic-candidate/v2`，代码从固定 section root `1/2/3`、父子结构和兄弟顺序确定性分配 index，并生成章节、九列表头、U+3000 层级缩进、Markdown escaping 与 Human Review Notes。
 
-segment、outline 和 extraction 只存在于 provider 信任边界内，不保存到 workspace，不是新的 IR，也不进入 SchemaIR 或 Final trusted chain。attempt 顺序 fail-fast，不自动重试或 resume；失败后以新 attempt ID 从第一段重跑。renderer 只保证机械 wire，不判断银行事实是否完整或有充分证据；Golden 也不参与真实候选的自动语义判定。语义正确性仍由 DocIR Human Review 对准确 Markdown hash 确认。详见 ADR-0013、ADR-0014。
+segment 与内部 semantic candidate 只存在于 provider 信任边界和临时 attempt evidence 中，不是新的公开 IR，也不进入 SchemaIR 或 Final trusted chain。代码从无歧义有序树分配 index、固定 wire、Type 和非重复 `Mult.`；结构无法物化时 fail closed。非法 multiplicity 降为空并保留 blocking Review marker，Type 冲突按结构规范化并保留 Review WARNING；标量 Required 缺失、Required 证据冲突或非条件内容进入 Conditions 时进入 Human Gate，Object Required 则固定为空（N/A）。Review Notes 只复制同一 attempt/当前 Human Draft 中的 issue 与显式 Review 证据，生成时不发起额外 LLM 调用。十列 DocIR 不兼容并 fail closed。详见 ADR-0013、ADR-0014、ADR-0015、ADR-0016、ADR-0017、ADR-0018、ADR-0019。
 
 ## 3. SchemaIR
 

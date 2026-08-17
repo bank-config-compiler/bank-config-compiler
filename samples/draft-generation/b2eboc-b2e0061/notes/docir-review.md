@@ -10,7 +10,7 @@ Review input: 本文件复用既有 Review Golden 中的人工确认入口，不
 2. `Root.bocb2e.@locale` 与观察到的 `Root.bocb2e.@lang` 是否需要同时支持。协议说明使用 `locale`，示例使用 `lang="chs"`。
 3. 请求报文 `<b2e0061-rq>` 原文只写“不超过1000笔”。当前候选保留 `occurs: "0..1000"`、`multiple: true`，同时将 `required=true` 标为待确认；需要确认请求最小出现次数是否应为 `1`。
 4. `ceitinfo` 是否进入配置人员可编辑范围。字段存在于请求表，但原文说明“该标签由前置机自动添加，企业无需上送”。
-5. 多个字段同时存在前置机约束和接口平台约束，后续 Validator 应采用更严格约束、更宽松约束，还是同时展示两组约束，仍需明确。
+5. 多个字段的合并 `校验点` 中同时存在不同来源的约束；后续 Human Review 仍需确认冲突处理口径，确定性合并本身不选择更严格或更宽松的约束。
 6. 响应状态字段正式 tag。b2e0061 响应表使用 `rspmsg`，通用示例出现 `errmsg`；当前 SchemaIR 使用 `rspmsg` 并保留 review note。
 
 ## 建议关注
@@ -27,7 +27,7 @@ Review input: 本文件复用既有 Review Golden 中的人工确认入口，不
 2. DocIR 允许写推导出的完整 path，但不确定项必须通过 review 信息标记；SchemaIR 字段通过 `confidence`、`uncertain` 和 `evidence` 表达推导风险。
 3. XML 文本值采用保守类型策略：账号、联行号、币种、枚举和流水号即使原文写数码/数字，也优先保留为 `string`。
 4. 条件规则仍以文本保留，P0-T2 不把条件转换为正式 DSL。
-5. 本文件由 deterministic fixture 作为 `docir-review-notes.md` 输出；Final freeze 必须另行记录具名 reviewer、时间与准确 bytes hash。
+5. 本文件是 provider fixture 的输入说明；公开的 `docir-review-notes.md` 由当前 DocIR Draft 和 Validation Result 确定性重建，不会复制本文件或触发额外 LLM 调用。Final freeze 必须另行记录具名 reviewer、时间与准确 bytes hash。
 
 ## 历史导出 JSON 对照
 

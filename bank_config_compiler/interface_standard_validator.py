@@ -446,6 +446,13 @@ def _validate_fields(
     )
     schema_fields: dict[str, dict[str, Any]] = context["schema_fields"]
     schema_attributes: dict[str, dict[str, Any]] = context["schema_attributes"]
+    schema_sibling_counts: Counter[str] = Counter()
+    expected_sequences: dict[str, int] = {}
+    for source_path, source_field in schema_fields.items():
+        source_parent = source_field.get("parentPath")
+        if isinstance(source_parent, str):
+            schema_sibling_counts[source_parent] += 1
+            expected_sequences[source_path] = schema_sibling_counts[source_parent]
     mapped_xml_keys: set[str] = set()
     mapped_condition_indexes: set[int] = set()
 
@@ -496,6 +503,14 @@ def _validate_fields(
                     "Standard fullPath must preserve the SchemaIR element path.",
                 )
             _validate_source_projection(field, source_field, issues, path=path)
+            if field.get("sequence") != expected_sequences.get(source_path):
+                issue(
+                    issues,
+                    "ERROR",
+                    "SCHEMAIR_SEQUENCE_PROJECTION_MISMATCH",
+                    f"{path}.sequence",
+                    "Standard sequence must match Final SchemaIR sibling order.",
+                )
 
         mapped_xml_keys.update(
             _validate_xml_keys(

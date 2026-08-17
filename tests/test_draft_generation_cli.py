@@ -14,8 +14,10 @@ from openpyxl import load_workbook
 
 import bank_config_compiler.cli as cli
 from bank_config_compiler.draft_generation import (
+    DraftGenerationError,
     DraftGenerationRequest,
     DraftProviderDiagnosticError,
+    DraftProviderResult,
     ProviderCallMetadata,
     ProviderFailureCallEvidence,
     ProviderFailureEvidence,
@@ -24,6 +26,64 @@ from bank_config_compiler.draft_generation import (
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
+
+
+class UnexpectedProvider:
+    name = "tracking"
+
+    def __init__(self, attempt_id: str) -> None:
+        self.attempt_id = attempt_id
+        self.calls = 0
+
+    def generate(self, request, context):
+        self.calls += 1
+        raise AssertionError("provider must not be called")
+
+
+def bind_task(workspace: Path, *, task_id: str | None = None) -> None:
+    raw_bytes = (workspace / "raw-doc.md").read_bytes()
+    (workspace / "task.json").write_text(
+        json.dumps(
+            {
+                "contractVersion": "phase0-task/v1",
+                "taskId": task_id or workspace.name,
+                "interfaceCode": "b2e0061",
+                "messageFormat": "XML",
+                "sourceDocument": "raw-doc.md",
+                "sourceHash": "sha256:" + hashlib.sha256(raw_bytes).hexdigest(),
+            },
+            ensure_ascii=False,
+            indent=2,
+        )
+        + "\n",
+        encoding="utf-8",
+        newline="",
+    )
+
+
+def bind_approved_docir_final(workspace: Path, source: Path) -> dict[str, str]:
+    final_bytes = source.read_bytes()
+    (workspace / "docir-final.md").write_bytes(final_bytes)
+    task = json.loads((workspace / "task.json").read_text(encoding="utf-8"))
+    final_hash = "sha256:" + hashlib.sha256(final_bytes).hexdigest()
+    approval = {
+        "contractVersion": "draft-approval-result/v1",
+        "taskId": task["taskId"],
+        "interfaceCode": task["interfaceCode"],
+        "artifactKind": "docir",
+        "approvedDraftHash": final_hash,
+        "reviewer": "fixture-reviewer",
+        "reviewNote": "测试夹具中的 DocIR 已完成人工审核。",
+        "reviewedAt": "2026-08-12T10:00:00+08:00",
+        "finalArtifact": "docir-final.md",
+        "finalHash": final_hash,
+    }
+    (workspace / "docir-approval-result.json").write_text(
+        json.dumps(approval, ensure_ascii=False, indent=2) + "\n",
+        encoding="utf-8",
+        newline="",
+    )
+    return approval
 
 
 def run_cli(*args: str, cwd: Path = REPO_ROOT) -> subprocess.CompletedProcess[str]:
@@ -93,6 +153,7 @@ def prepare_docir_case(tmp_path: Path) -> tuple[Path, Path]:
     workspace.mkdir()
     raw_bytes = (REPO_ROOT / "samples/golden/b2eboc-b2e0061/raw-doc.md").read_bytes()
     (workspace / "raw-doc.md").write_bytes(raw_bytes)
+    bind_task(workspace)
 
     fixture_root = tmp_path / "fixture"
     fixture_root.mkdir()
@@ -146,6 +207,8 @@ def test_generate_draft_docir_cli_writes_fixed_outputs(tmp_path: Path) -> None:
 def test_generate_draft_cli_requires_explicit_fixture_root(tmp_path: Path) -> None:
     workspace = tmp_path / "workspace"
     workspace.mkdir()
+    (workspace / "raw-doc.md").write_text("# Raw\n", encoding="utf-8", newline="")
+    bind_task(workspace)
 
     result = run_cli(
         "generate-draft",
@@ -168,6 +231,7 @@ def test_generate_draft_cli_openai_chat_requires_runtime_api_key(
     workspace = tmp_path / "workspace"
     workspace.mkdir()
     (workspace / "raw-doc.md").write_text("# Raw bank document\n", encoding="utf-8")
+    bind_task(workspace)
 
     result = run_cli(
         "generate-draft",
@@ -249,6 +313,33 @@ def test_main_loads_allowlisted_llm_configuration_from_cwd_dotenv(
         "docir_field_batch_size": 16,
     }
     assert "UNRELATED_SETTING" not in os.environ
+
+
+def test_generate_draft_cli_returns_3_when_invalid_draft_was_published(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    output = tmp_path / "schemair-draft.json"
+    monkeypatch.setattr(cli, "_generate_draft", lambda args: (output, 3))
+
+    result = cli.main(
+        [
+            "generate-draft",
+            "schemair",
+            "--workspace",
+            str(tmp_path / "workspace"),
+            "--provider",
+            "fixture",
+            "--fixture-root",
+            str(tmp_path / "fixture"),
+            "--schema-id",
+            "b2eboc-b2e0061-schema",
+            "--schema-version",
+            "v1",
+        ]
+    )
+
+    assert result == 3
 
 
 def test_process_environment_and_cli_override_dotenv_values(
@@ -380,6 +471,7 @@ def test_generate_draft_cli_fails_closed_on_fixture_hash_mismatch(tmp_path: Path
     workspace = tmp_path / "workspace"
     workspace.mkdir()
     (workspace / "raw-doc.md").write_text("different input", encoding="utf-8", newline="")
+    bind_task(workspace)
 
     result = run_cli(
         "generate-draft", "docir", "--workspace", str(workspace),
@@ -402,11 +494,12 @@ def test_generate_docir_failure_publishes_partial_provider_evidence(
     (workspace / "raw-doc.md").write_text(
         "# Raw bank document\n", encoding="utf-8", newline=""
     )
+    bind_task(workspace)
     completed_responses = (
-        '{"contractVersion":"docir-interface-envelope-segment/v1"}',
+        '{"contractVersion":"docir-interface-envelope-segment/v2"}',
         '{"contractVersion":"docir-messages-outline-segment/v1"}',
     )
-    partial_response = '{"contractVersion":"docir-field-details-segment/v1"'
+    partial_response = '{"contractVersion":"docir-field-details-segment/v2"'
     partial_hash = "sha256:" + hashlib.sha256(partial_response.encode()).hexdigest()
 
     class FailingProvider:
@@ -429,14 +522,14 @@ def test_generate_docir_failure_publishes_partial_provider_evidence(
                     started_at=f"2026-08-11T10:00:0{sequence}+08:00",
                     completed_at=f"2026-08-11T10:00:0{sequence + 1}+08:00",
                     finish_reason="stop",
-                    prompt_contract_version="draft-prompt/v8",
+                    prompt_contract_version="draft-prompt/v9",
                     segment_contract_version=contract,
                 )
                 for sequence, (segment, contract, response) in enumerate(
                     (
                         (
                             "interface-envelope",
-                            "docir-interface-envelope-segment/v1",
+                            "docir-interface-envelope-segment/v2",
                             completed_responses[0],
                         ),
                         (
@@ -458,8 +551,8 @@ def test_generate_docir_failure_publishes_partial_provider_evidence(
                 response_id="chatcmpl-test",
                 started_at="2026-08-11T10:00:00+08:00",
                 completed_at="2026-08-11T10:01:00+08:00",
-                prompt_contract_version="draft-prompt/v8",
-                segment_contract_version="docir-field-details-segment/v1",
+                prompt_contract_version="draft-prompt/v9",
+                segment_contract_version="docir-field-details-segment/v2",
             )
             raise DraftProviderDiagnosticError(
                 "chat stream failed: TimeoutError",
@@ -474,7 +567,7 @@ def test_generate_docir_failure_publishes_partial_provider_evidence(
                         started_at="2026-08-11T10:00:00+08:00",
                         completed_at="2026-08-11T10:01:00+08:00",
                         endpoint_fingerprint="sha256:" + "a" * 64,
-                        prompt_contract_version="draft-prompt/v8",
+                        prompt_contract_version="draft-prompt/v9",
                         calls=completed_calls + (failed_call,),
                         docir_field_batch_size=16,
                     ),
@@ -508,10 +601,11 @@ def test_generate_docir_failure_publishes_partial_provider_evidence(
     with pytest.raises(DraftProviderDiagnosticError) as caught:
         cli._generate_draft(args)
 
-    summary_path = workspace / "docir-provider-failure-result.json"
+    attempt = workspace / "provider-attempts" / "docir" / "docir-011"
+    summary_path = attempt / "provider-failure-result.json"
     response_path = (
-        workspace
-        / "docir-provider-failure-response-003-assembly-fields-001.txt"
+        attempt
+        / "response-003-assembly-fields-001.txt"
     )
     summary = json.loads(summary_path.read_text(encoding="utf-8"))
     assert summary["contractVersion"] == "draft-provider-failure-result/v2"
@@ -541,10 +635,10 @@ def test_generate_docir_failure_publishes_partial_provider_evidence(
     assert response_path.read_text(encoding="utf-8") == partial_response
     assert not (workspace / "docir-draft.md").exists()
     assert not (workspace / "docir-review-notes.md").exists()
-    assert not (workspace / "docir-provider-call-result.json").exists()
+    assert not (attempt / "provider-call-result.json").exists()
     expected_response_paths = {
-        workspace / "docir-provider-failure-response-001-interface-envelope.txt",
-        workspace / "docir-provider-failure-response-002-messages-outline.txt",
+        attempt / "response-001-interface-envelope.txt",
+        attempt / "response-002-messages-outline.txt",
         response_path,
     }
     assert set(caught.value.failure_evidence_paths) == {
@@ -563,6 +657,7 @@ def test_generate_docir_request_failure_does_not_create_empty_response_file(
     (workspace / "raw-doc.md").write_text(
         "# Raw bank document\n", encoding="utf-8", newline=""
     )
+    bind_task(workspace)
 
     class FailingProvider:
         name = "openai-chat"
@@ -603,18 +698,203 @@ def test_generate_docir_request_failure_does_not_create_empty_response_file(
     with pytest.raises(DraftProviderDiagnosticError) as caught:
         cli._generate_draft(args)
 
-    summary_path = workspace / "docir-provider-failure-result.json"
+    attempt = workspace / "provider-attempts" / "docir" / "docir-011"
+    summary_path = attempt / "provider-failure-result.json"
     summary = json.loads(summary_path.read_text(encoding="utf-8"))
     assert summary["failureStage"] == "request"
     assert summary["responseContentHash"] is None
-    assert not list(workspace.glob("docir-provider-failure-response-*.txt"))
+    assert not list(attempt.glob("response-*.txt"))
     assert caught.value.failure_evidence_paths == (summary_path,)
     assert str(summary_path) in cli._safe_error(caught.value)
 
 
-def test_overwriting_request_failure_removes_stale_response_evidence(tmp_path: Path) -> None:
+def test_schemair_provider_failure_consumes_attempt_before_retry(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    workspace = tmp_path / "phase0-schemair-request-failure"
+    workspace.mkdir()
+    (workspace / "raw-doc.md").write_text("# Raw\n", encoding="utf-8", newline="")
+    bind_task(workspace)
+    bind_approved_docir_final(
+        workspace,
+        REPO_ROOT / "samples/golden/b2eboc-b2e0061/docir.expected.md",
+    )
+
+    class FailingProvider:
+        name = "openai-chat"
+        attempt_id = "schemair-001"
+        model = "qwen-test-snapshot"
+
+        def __init__(self) -> None:
+            self.calls = 0
+
+        def generate(self, request, context):
+            self.calls += 1
+            raise DraftProviderDiagnosticError(
+                "chat request failed: TimeoutError",
+                evidence=ProviderFailureEvidence(
+                    request=request,
+                    metadata=ProviderCallMetadata(
+                        provider_name=self.name,
+                        attempt_id=self.attempt_id,
+                        requested_model=self.model,
+                        started_at="2026-08-12T10:00:00+08:00",
+                        completed_at="2026-08-12T10:00:01+08:00",
+                        endpoint_fingerprint="sha256:" + "a" * 64,
+                        prompt_contract_version="draft-prompt/v9",
+                    ),
+                    failure_stage="request",
+                    failure_detail="chat request failed: TimeoutError",
+                    error_type="TimeoutError",
+                    response_complete=False,
+                    response_text=None,
+                    finish_reason=None,
+                ),
+            )
+
+    provider = FailingProvider()
+    monkeypatch.setattr(cli, "_draft_provider", lambda args: provider)
+    args = SimpleNamespace(
+        workspace=workspace,
+        draft_kind="schemair",
+        provider="openai-chat",
+        overwrite=False,
+        schema_id="b2eboc-b2e0061-schema",
+        schema_version="v1",
+    )
+
+    with pytest.raises(DraftProviderDiagnosticError):
+        cli._generate_draft(args)
+
+    attempt = workspace / "provider-attempts/schemair/schemair-001"
+    summary = json.loads(
+        (attempt / "provider-failure-result.json").read_text(encoding="utf-8")
+    )
+    assert summary["artifactKind"] == "schemair"
+    assert summary["attemptId"] == "schemair-001"
+    assert not (workspace / "schemair-draft.json").exists()
+
+    with pytest.raises(DraftGenerationError, match="attempt ID.*already exists"):
+        cli._generate_draft(args)
+    assert provider.calls == 1
+
+
+def test_schemair_materialization_failure_saves_candidate_and_consumes_attempt(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    workspace = tmp_path / "phase0-schemair-materialization-failure"
+    workspace.mkdir()
+    (workspace / "raw-doc.md").write_text("# Raw\n", encoding="utf-8", newline="")
+    bind_task(workspace)
+    bind_approved_docir_final(
+        workspace,
+        REPO_ROOT / "samples/golden/b2eboc-b2e0061/docir.expected.md",
+    )
+    schema = json.loads(
+        (
+            REPO_ROOT
+            / "samples/trusted-chain/b2eboc-b2e0061/schemair-final.json"
+        ).read_text(encoding="utf-8")
+    )
+    schema["envelope"]["fields"].pop()
+    candidate_text = json.dumps(schema, ensure_ascii=False)
+    review_notes = "# Review\n\nPending.\n"
+    raw_response_text = json.dumps(
+        {"artifact": schema, "reviewNotes": review_notes},
+        ensure_ascii=False,
+    )
+    provider_response_text = json.dumps(
+        {
+            "contractVersion": "draft-provider-response/v1",
+            "artifactKind": "schemair",
+            "artifactContent": candidate_text,
+            "reviewNotes": review_notes,
+        },
+        ensure_ascii=False,
+    )
+
+    class InvalidCandidateProvider:
+        name = "openai-chat"
+        attempt_id = "schemair-002"
+        model = "qwen-test-snapshot"
+
+        def __init__(self) -> None:
+            self.calls = 0
+
+        def generate(self, request, context):
+            self.calls += 1
+            return DraftProviderResult(
+                response_text=provider_response_text,
+                metadata=ProviderCallMetadata(
+                    provider_name=self.name,
+                    attempt_id=self.attempt_id,
+                    requested_model=self.model,
+                    response_model=self.model,
+                    response_id="chatcmpl-schemair-materialization-failure",
+                    started_at="2026-08-12T10:00:00+08:00",
+                    completed_at="2026-08-12T10:00:01+08:00",
+                    endpoint_fingerprint="sha256:" + "a" * 64,
+                    prompt_contract_version="draft-prompt/v9",
+                    calls=(
+                        ProviderSubcallMetadata(
+                            segment="complete-artifact",
+                            outcome="succeeded",
+                            response_complete=True,
+                            response_content_hash=(
+                                "sha256:"
+                                + hashlib.sha256(raw_response_text.encode("utf-8")).hexdigest()
+                            ),
+                            requested_model=self.model,
+                            response_model=self.model,
+                            response_id="chatcmpl-schemair-materialization-failure",
+                            started_at="2026-08-12T10:00:00+08:00",
+                            completed_at="2026-08-12T10:00:01+08:00",
+                            finish_reason="stop",
+                            prompt_contract_version="draft-prompt/v9",
+                        ),
+                    ),
+                ),
+            )
+
+    provider = InvalidCandidateProvider()
+    monkeypatch.setattr(cli, "_draft_provider", lambda args: provider)
+    args = SimpleNamespace(
+        workspace=workspace,
+        draft_kind="schemair",
+        provider="openai-chat",
+        overwrite=False,
+        schema_id="b2eboc-b2e0061-schema",
+        schema_version="v1",
+    )
+
+    with pytest.raises(DraftProviderDiagnosticError, match="cannot be materialized"):
+        cli._generate_draft(args)
+
+    attempt = workspace / "provider-attempts/schemair/schemair-002"
+    summary = json.loads(
+        (attempt / "provider-failure-result.json").read_text(encoding="utf-8")
+    )
+    assert summary["failureStage"] == "materialization"
+    assert summary["candidateContentHash"].startswith("sha256:")
+    assert summary["calls"][0]["outcome"] == "succeeded"
+    assert (attempt / "candidate.json").read_text(encoding="utf-8") == candidate_text
+    assert (
+        attempt / "response-001-complete-artifact.txt"
+    ).read_text(encoding="utf-8") == provider_response_text
+    assert not (workspace / "schemair-draft.json").exists()
+
+    with pytest.raises(DraftGenerationError, match="attempt ID.*already exists"):
+        cli._generate_draft(args)
+    assert provider.calls == 1
+
+
+def test_provider_failure_attempt_cannot_be_overwritten(tmp_path: Path) -> None:
     workspace = tmp_path / "phase0-docir-overwrite-failure"
     workspace.mkdir()
+    (workspace / "raw-doc.md").write_text("# Raw\n", encoding="utf-8", newline="")
+    bind_task(workspace)
 
     def diagnostic(response_text: str | None) -> DraftProviderDiagnosticError:
         request = DraftGenerationRequest(
@@ -646,18 +926,18 @@ def test_overwriting_request_failure_removes_stale_response_evidence(tmp_path: P
 
     cli.publish_provider_failure(workspace, diagnostic("partial response"))
     response_path = (
-        workspace / "docir-provider-failure-response-001-complete-artifact.txt"
+        workspace
+        / "provider-attempts"
+        / "docir"
+        / "docir-011"
+        / "response-001-complete-artifact.txt"
     )
     assert response_path.is_file()
 
-    cli.publish_provider_failure(workspace, diagnostic(None), overwrite=True)
+    with pytest.raises(DraftGenerationError, match="attempt ID.*already exists"):
+        cli.publish_provider_failure(workspace, diagnostic(None), overwrite=True)
 
-    summary = json.loads(
-        (workspace / "docir-provider-failure-result.json").read_text(encoding="utf-8")
-    )
-    assert summary["failureStage"] == "request"
-    assert summary["responseContentHash"] is None
-    assert not response_path.exists()
+    assert response_path.read_text(encoding="utf-8") == "partial response"
 
 
 def test_generate_draft_cli_never_promotes_docir_draft(tmp_path: Path) -> None:
@@ -668,6 +948,7 @@ def test_generate_draft_cli_never_promotes_docir_draft(tmp_path: Path) -> None:
         REPO_ROOT / "samples/golden/b2eboc-b2e0061/raw-doc.md",
         workspace / "raw-doc.md",
     )
+    bind_task(workspace)
 
     docir = run_cli(
         "generate-draft", "docir", "--workspace", str(workspace),
@@ -680,9 +961,102 @@ def test_generate_draft_cli_never_promotes_docir_draft(tmp_path: Path) -> None:
     schemair = run_cli(
         "generate-draft", "schemair", "--workspace", str(workspace),
         "--provider", "fixture", "--fixture-root", str(fixture_root),
+        "--schema-id", "b2eboc-b2e0061-schema", "--schema-version", "v1",
     )
     assert schemair.returncode == 2
     assert "docir-final.md is missing" in schemair.stderr
+    assert not (workspace / "schemair-draft.json").exists()
+
+
+@pytest.mark.parametrize(
+    "approval_change",
+    [
+        {"contractVersion": "draft-approval-result/v0"},
+        {"taskId": "wrong-task"},
+        {"interfaceCode": "wrong-interface"},
+        {"artifactKind": "schemair"},
+        {"finalArtifact": "other-final.md"},
+        {"approvedDraftHash": "sha256:" + "a" * 64},
+        {"finalHash": "sha256:" + "b" * 64},
+    ],
+)
+def test_schemair_generation_rejects_invalid_docir_approval_before_provider_call(
+    tmp_path: Path,
+    monkeypatch,
+    approval_change: dict[str, str],
+) -> None:
+    workspace = tmp_path / "invalid-docir-approval"
+    workspace.mkdir()
+    (workspace / "raw-doc.md").write_text("# Raw\n", encoding="utf-8", newline="")
+    bind_task(workspace)
+    approval = bind_approved_docir_final(
+        workspace,
+        REPO_ROOT / "samples/golden/b2eboc-b2e0061/docir.expected.md",
+    )
+    approval.update(approval_change)
+    (workspace / "docir-approval-result.json").write_text(
+        json.dumps(approval, ensure_ascii=False, indent=2) + "\n",
+        encoding="utf-8",
+        newline="",
+    )
+
+    provider = UnexpectedProvider("schemair-invalid-approval")
+    monkeypatch.setattr(cli, "_draft_provider", lambda args: provider)
+    args = SimpleNamespace(
+        workspace=workspace,
+        draft_kind="schemair",
+        provider="openai-chat",
+        overwrite=False,
+        schema_id="b2eboc-b2e0061-schema",
+        schema_version="v1",
+    )
+
+    with pytest.raises(cli.DraftReviewError, match="approval"):
+        cli._generate_draft(args)
+
+    assert provider.calls == 0
+    assert not (workspace / "schemair-draft.json").exists()
+
+
+@pytest.mark.parametrize("approval_state", ["missing", "malformed", "stale-final"])
+def test_schemair_generation_rejects_untrusted_docir_final_before_provider_call(
+    tmp_path: Path,
+    monkeypatch,
+    approval_state: str,
+) -> None:
+    workspace = tmp_path / f"untrusted-docir-{approval_state}"
+    workspace.mkdir()
+    (workspace / "raw-doc.md").write_text("# Raw\n", encoding="utf-8", newline="")
+    bind_task(workspace)
+    bind_approved_docir_final(
+        workspace,
+        REPO_ROOT / "samples/golden/b2eboc-b2e0061/docir.expected.md",
+    )
+    if approval_state == "missing":
+        (workspace / "docir-approval-result.json").unlink()
+    elif approval_state == "malformed":
+        (workspace / "docir-approval-result.json").write_text(
+            "{\n", encoding="utf-8", newline=""
+        )
+    else:
+        with (workspace / "docir-final.md").open("ab") as final_file:
+            final_file.write(b"\nchanged after approval\n")
+
+    provider = UnexpectedProvider(f"schemair-{approval_state}")
+    monkeypatch.setattr(cli, "_draft_provider", lambda args: provider)
+    args = SimpleNamespace(
+        workspace=workspace,
+        draft_kind="schemair",
+        provider="openai-chat",
+        overwrite=False,
+        schema_id="b2eboc-b2e0061-schema",
+        schema_version="v1",
+    )
+
+    with pytest.raises(cli.DraftReviewError, match="approval"):
+        cli._generate_draft(args)
+
+    assert provider.calls == 0
     assert not (workspace / "schemair-draft.json").exists()
 
 
@@ -692,6 +1066,7 @@ def test_generate_draft_cli_completes_controlled_b2e0061_workflow(tmp_path: Path
     fixture_root = REPO_ROOT / "samples/draft-generation/b2eboc-b2e0061"
     raw_source = REPO_ROOT / "samples/golden/b2eboc-b2e0061/raw-doc.md"
     shutil.copyfile(raw_source, workspace / "raw-doc.md")
+    bind_task(workspace)
 
     docir = run_cli(
         "generate-draft", "docir", "--workspace", str(workspace),
@@ -700,13 +1075,14 @@ def test_generate_draft_cli_completes_controlled_b2e0061_workflow(tmp_path: Path
     assert docir.returncode == 0, docir.stderr
 
     # Human gate 只能通过显式装载已审核 fixture 表达；严禁把本次生成的 Draft 自动提升为 Final。
-    shutil.copyfile(fixture_root / "docir-final.md", workspace / "docir-final.md")
+    bind_approved_docir_final(workspace, fixture_root / "docir-final.md")
     assert (workspace / "docir-final.md").read_bytes() == (
         fixture_root / "docir-final.md"
     ).read_bytes()
     schemair = run_cli(
         "generate-draft", "schemair", "--workspace", str(workspace),
         "--provider", "fixture", "--fixture-root", str(fixture_root),
+        "--schema-id", "b2eboc-b2e0061-schema", "--schema-version", "v1",
     )
     assert schemair.returncode == 0, schemair.stderr
 
@@ -721,6 +1097,7 @@ def test_generate_draft_cli_completes_controlled_b2e0061_workflow(tmp_path: Path
             "generate-draft", "standard", "--workspace", str(workspace),
             "--provider", "fixture", "--fixture-root", str(fixture_root),
             "--direction", direction, "--standard-version", "v1",
+            "--standard-id", f"b2e0061-{direction}-standard",
             "--rule-package", str(REPO_ROOT / "configuration-rules/v1"),
         )
         assert standard.returncode == 0, standard.stderr

@@ -12,6 +12,7 @@ from bank_config_compiler.docir_draft import (
     render_docir_review_notes,
     validate_docir_field_details_segment,
     validate_docir_interface_envelope_segment,
+    validate_docir_markdown,
     validate_docir_messages_outline_segment,
     validate_docir_markdown_wire,
 )
@@ -37,15 +38,14 @@ def field(
         "type": field_type,
         "required": required,
         "description": f"{item} description",
-        "preValidation": "source format",
-        "platformValidation": "platform check",
+        "validation": "source format\nplatform check",
         "review": "",
     }
 
 
 def docir_extraction() -> dict:
     return {
-        "contractVersion": "docir-extraction/v1",
+        "contractVersion": "docir-extraction/v2",
         "interface": {
             "metadata": [
                 metadata("Source Document", "raw-doc.md", "logical source"),
@@ -64,7 +64,7 @@ def docir_extraction() -> dict:
                 metadata("Envelope Name", "bocb2e"),
             ],
             "fields": [
-                field("1", "bocb2e", multiplicity="[1..1]", field_type="Object", required="Y"),
+                field("1", "bocb2e", multiplicity="[1..1]", field_type="Object", required=""),
                 field(
                     "1.1",
                     "@version",
@@ -82,10 +82,10 @@ def docir_extraction() -> dict:
                 metadata("Message Name", "test-rq"),
             ],
             "fields": [
-                field("2", "trn-test-rq", multiplicity="[1..1]", field_type="Object", required="Y"),
+                field("2", "trn-test-rq", multiplicity="[1..1]", field_type="Object", required=""),
                 field("2.1", "request", multiplicity="[1..1]", field_type="String", required="Y"),
             ],
-            "conditions": ["仅保留来源明确的请求条件。"],
+            "conditions": ["原文未提供可确认条件。"],
         },
         "parse": {
             "metadata": [
@@ -95,11 +95,11 @@ def docir_extraction() -> dict:
                 metadata("Message Name", "test-rs"),
             ],
             "fields": [
-                field("3", "trn-test-rs", multiplicity="[1..1]", field_type="Object", required="Y"),
-                field("3.1", "status", multiplicity="[1..1]", field_type="Object", required="Y"),
+                field("3", "trn-test-rs", multiplicity="[1..1]", field_type="Object", required=""),
+                field("3.1", "status", multiplicity="[1..1]", field_type="Object", required=""),
                 field("3.1.1", "code", multiplicity="[1..1]", field_type="String", required="Y"),
             ],
-            "conditions": ["响应状态码来自来源文档。"],
+            "conditions": ["原文未提供可确认条件。"],
         },
     }
 
@@ -117,18 +117,51 @@ def test_render_docir_extraction_produces_deterministic_frozen_markdown_wire() -
     assert rendered.count("| Key | Value | Review Note |") == 4
     assert (
         rendered.count(
-            "| Index | Or | Message Item | Mult. | Type | Required | 说明 | "
-            "前置机校验点/格式 | 接口平台校验点 | Review |"
+            "| Index | Or | Message Item | Mult. | Type | Required | 说明 | 校验点 | Review |"
         )
         == 3
     )
     assert "| Interface Code | b2e9999 | source title |" in rendered
     assert "| 1.1 |  | 　`@version` | [0..1] | String | N |" in rendered
     assert "| 3.1.1 |  | 　　`code` | [1..1] | String | Y |" in rendered
-    assert "## Conditions\n\n- 仅保留来源明确的请求条件。" in rendered
+    assert "## Conditions\n\n- 原文未提供可确认条件。" in rendered
     assert "Path | Tag" not in rendered
     assert rendered.endswith("\n")
     validate_docir_markdown_wire(rendered)
+
+
+def test_historical_non_repeating_ranges_remain_valid() -> None:
+    result = validate_docir_markdown(render_docir_extraction(docir_extraction()))
+
+    assert result["summary"]["errorCount"] == 0
+
+
+def test_markdown_validator_rejects_type_that_conflicts_with_tree() -> None:
+    rendered = render_docir_extraction(docir_extraction())
+    rendered = rendered.replace(
+        "| 3.1 |  | 　`status` | [1..1] | Object |  |",
+        "| 3.1 |  | 　`status` | [1..1] | String | Y |",
+    )
+
+    result = validate_docir_markdown(rendered)
+
+    assert "DOCIR_TYPE_STRUCTURE" in {issue["code"] for issue in result["issues"]}
+
+
+def test_required_and_explicit_lower_bound_conflict_is_a_warning() -> None:
+    rendered = render_docir_extraction(docir_extraction())
+    rendered = rendered.replace(
+        "| 1.1 |  | 　`@version` | [0..1] | String | N |",
+        "| 1.1 |  | 　`@version` | [1..1] | String | N |",
+    )
+
+    result = validate_docir_markdown(rendered)
+
+    assert result["summary"]["errorCount"] == 0
+    assert result["summary"]["warningCount"] == 1
+    assert {issue["code"] for issue in result["issues"]} == {
+        "DOCIR_REQUIRED_MULTIPLICITY_CONFLICT"
+    }
 
 
 @pytest.mark.parametrize(
@@ -166,7 +199,7 @@ def test_render_docir_extraction_requires_review_when_wire_value_is_unknown() ->
     response_field["required"] = ""
     response_field["review"] = ""
 
-    with pytest.raises(DocIRDraftError, match="原文未说明，待人工确认"):
+    with pytest.raises(DocIRDraftError, match="Required 原文未说明，待人工确认"):
         render_docir_extraction(extraction)
 
 
@@ -215,7 +248,7 @@ def test_render_docir_review_notes_is_deterministic_and_preserves_locations() ->
         "- 核对 Interface、Envelope、ASSEMBLY、PARSE 的字段和父子层级是否完整忠实于 raw-doc。\n"
         "- 核对 Source Context 的适用范围，确认通用 XML 示例或其他交易代码未污染目标交易字段。\n"
         "- 核对所有冲突、空值和“原文未说明”项均已显式保留，未被模型静默推断。\n"
-        "- 核对 ASSEMBLY 与 PARSE Conditions 是否完整且仅包含 raw-doc 支持的条件。\n\n"
+            "- 核对 ASSEMBLY 与 PARSE Conditions 是否完整且仅包含 raw-doc 明确表达的条件分支。\n\n"
         "## 提取项\n\n"
         "- Interface.Metadata[Interface Code]: source title\n"
         "- Interface.Metadata[Interface Name]: source title\n"
@@ -240,7 +273,7 @@ def test_render_docir_review_notes_rejects_invalid_extraction() -> None:
 def segmented_extraction() -> tuple[dict, dict, list[dict], list[dict]]:
     extraction = docir_extraction()
     interface_envelope = {
-        "contractVersion": "docir-interface-envelope-segment/v1",
+        "contractVersion": "docir-interface-envelope-segment/v2",
         "interface": extraction["interface"],
         "sourceContext": extraction["sourceContext"],
         "envelope": extraction["envelope"],
@@ -266,7 +299,7 @@ def segmented_extraction() -> tuple[dict, dict, list[dict], list[dict]]:
     }
     assembly_details = [
         {
-            "contractVersion": "docir-field-details-segment/v1",
+            "contractVersion": "docir-field-details-segment/v2",
             "direction": "ASSEMBLY",
             "batchIndex": 1,
             "fields": extraction["assembly"]["fields"],
@@ -274,7 +307,7 @@ def segmented_extraction() -> tuple[dict, dict, list[dict], list[dict]]:
     ]
     parse_details = [
         {
-            "contractVersion": "docir-field-details-segment/v1",
+            "contractVersion": "docir-field-details-segment/v2",
             "direction": "PARSE",
             "batchIndex": 1,
             "fields": extraction["parse"]["fields"],

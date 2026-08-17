@@ -16,12 +16,19 @@ from .draft_generation import (
     DraftProvider,
     DraftProviderDiagnosticError,
     FixtureDraftProvider,
+    assert_provider_attempt_unused,
     generate_docir_draft,
     generate_interface_standard_draft,
     generate_interface_template_draft,
     generate_schemair_draft,
     publish_generated_draft,
     publish_provider_failure,
+)
+from .draft_review import (
+    DraftReviewError,
+    approve_draft,
+    load_approved_docir_final,
+    validate_current_draft,
 )
 from .openai_chat_provider import (
     DEFAULT_DOCIR_FIELD_BATCH_SIZE,
@@ -33,6 +40,7 @@ from .workspace import (
     check_workspace,
     ingest_raw_doc,
     load_phase0_artifacts,
+    load_task_manifest,
     phase0_workbook_path,
     read_json_artifact,
     read_text_artifact,
@@ -58,6 +66,8 @@ def build_parser() -> argparse.ArgumentParser:
     ingest = subparsers.add_parser("ingest", help="Import a .md or .txt raw document into a workspace.")
     ingest.add_argument("--input", required=True, type=Path, help="Path to a .md or .txt input file.")
     ingest.add_argument("--workspace", required=True, type=Path, help="Workspace output directory.")
+    ingest.add_argument("--task-id", required=True, help="Lowercase kebab-case task identity.")
+    ingest.add_argument("--interface-code", required=True, help="Explicit bank interface code.")
     ingest.add_argument("--overwrite", action="store_true", help="Overwrite an existing raw-doc.md.")
 
     check = subparsers.add_parser("check", help="Validate workspace artifacts for a supported profile.")
@@ -107,6 +117,8 @@ def build_parser() -> argparse.ArgumentParser:
 
     schemair = draft_kinds.add_parser("schemair", help="Generate SchemaIR Draft from docir-final.md.")
     _add_draft_provider_arguments(schemair)
+    schemair.add_argument("--schema-id", required=True, help="Locked SchemaIR stable ID.")
+    schemair.add_argument("--schema-version", required=True, help="Locked SchemaIR version.")
 
     standard = draft_kinds.add_parser(
         "standard",
@@ -114,6 +126,7 @@ def build_parser() -> argparse.ArgumentParser:
     )
     _add_draft_provider_arguments(standard)
     _add_draft_direction(standard)
+    standard.add_argument("--standard-id", required=True, help="Locked Standard stable ID.")
     standard.add_argument("--standard-version", required=True, help="Output Standard version.")
     standard.add_argument(
         "--rule-package",
@@ -136,6 +149,28 @@ def build_parser() -> argparse.ArgumentParser:
         required=True,
         type=Path,
         help="Path to the Template's RELEASED rule package.",
+    )
+
+    validate_draft = subparsers.add_parser(
+        "validate-draft",
+        help="Validate the current Human working Draft and replace its validation outputs.",
+    )
+    validate_draft.add_argument("kind", choices=["docir", "schemair", "standard", "template"])
+    validate_draft.add_argument("--workspace", required=True, type=Path)
+    _add_draft_review_arguments(validate_draft)
+
+    approve = subparsers.add_parser(
+        "approve-draft",
+        help="Approve the exact validated Draft bytes and publish Final.",
+    )
+    approve.add_argument("kind", choices=["docir", "schemair", "standard", "template"])
+    approve.add_argument("--workspace", required=True, type=Path)
+    _add_draft_review_arguments(approve)
+    approve.add_argument("--reviewer", required=True)
+    approve.add_argument("--review-note", required=True)
+    approve.add_argument(
+        "--expected-content-hash",
+        help="Required for non-interactive approval; must match the exact current Draft bytes.",
     )
 
     return parser
@@ -182,7 +217,7 @@ def _add_draft_provider_arguments(parser: argparse.ArgumentParser) -> None:
         "--overwrite",
         action="store_true",
         help=(
-            "Replace the existing Draft output set or DocIR provider failure evidence."
+            "Replace the existing Draft output set; provider attempt evidence remains immutable."
         ),
     )
 
@@ -194,6 +229,14 @@ def _add_draft_direction(parser: argparse.ArgumentParser) -> None:
         choices=["assembly", "parse"],
         help="Selected message direction.",
     )
+
+
+def _add_draft_review_arguments(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument("--direction", choices=["assembly", "parse"])
+    parser.add_argument("--standard-version")
+    parser.add_argument("--template-id")
+    parser.add_argument("--template-version")
+    parser.add_argument("--rule-package", type=Path)
 
 
 def _positive_integer(raw_value: str) -> int:
@@ -231,7 +274,13 @@ def main(argv: list[str] | None = None) -> int:
 
     try:
         if args.command == "ingest":
-            output_path = ingest_raw_doc(args.input, args.workspace, overwrite=args.overwrite)
+            output_path = ingest_raw_doc(
+                args.input,
+                args.workspace,
+                task_id=args.task_id,
+                interface_code=args.interface_code,
+                overwrite=args.overwrite,
+            )
             print(f"saved raw document: {output_path}")
             return 0
         if args.command == "check":
@@ -271,10 +320,62 @@ def main(argv: list[str] | None = None) -> int:
         if args.command == "generate-draft":
             if args.provider == "openai-chat":
                 args.llm_environment = _load_runtime_environment()
-            output = _generate_draft(args)
+            command_result = _generate_draft(args)
+            if isinstance(command_result, tuple):
+                output, exit_code = command_result
+            else:  # 兼容只替换 CLI 边界的既有测试 double；生产路径始终返回 tuple。
+                output, exit_code = command_result, 0
             print(f"saved {args.draft_kind} Draft: {output}")
+            return exit_code
+        if args.command == "validate-draft":
+            review_arguments = _draft_review_arguments(args)
+            result = validate_current_draft(
+                args.workspace, args.kind, **review_arguments
+            )
+            print(
+                f"validated {args.kind} Draft: {result['status']} "
+                f"({result['validatedArtifact']['contentHash']})"
+            )
+            return 3 if result["summary"]["errorCount"] else 0
+        if args.command == "approve-draft":
+            review_arguments = _draft_review_arguments(args)
+            expected_hash = args.expected_content_hash
+            if expected_hash is None:
+                if not sys.stdin.isatty():
+                    raise DraftReviewError(
+                        "non-interactive approval requires --expected-content-hash"
+                    )
+                validation = validate_current_draft(
+                    args.workspace, args.kind, **review_arguments
+                )
+                expected_hash = validation["validatedArtifact"]["contentHash"]
+                _print_interactive_approval_summary(args, validation)
+                print(f"Reviewer: {args.reviewer}")
+                print(f"Review note: {args.review_note}")
+                print(f"Content hash: {expected_hash}")
+                confirmation = input("Approve these exact Draft bytes? [y/N]: ").strip().lower()
+                if confirmation not in {"y", "yes"}:
+                    raise DraftReviewError("approval was not confirmed")
+            approval = approve_draft(
+                args.workspace,
+                args.kind,
+                reviewer=args.reviewer,
+                review_note=args.review_note,
+                expected_content_hash=expected_hash,
+                **review_arguments,
+            )
+            print(
+                f"approved {args.kind} Draft: {approval['finalArtifact']} "
+                f"({approval['finalHash']})"
+            )
             return 0
-    except (DraftGenerationError, WorkspaceError, RulePackageValidationError, WorkbookGenerationError) as exc:
+    except (
+        DraftGenerationError,
+        DraftReviewError,
+        WorkspaceError,
+        RulePackageValidationError,
+        WorkbookGenerationError,
+    ) as exc:
         print(f"error: {_safe_error(exc)}", file=sys.stderr)
         return 2
 
@@ -282,28 +383,42 @@ def main(argv: list[str] | None = None) -> int:
     return 2
 
 
-def _generate_draft(args: argparse.Namespace) -> Path:
+def _generate_draft(args: argparse.Namespace) -> tuple[Path, int]:
     workspace = args.workspace.resolve()
+    task = load_task_manifest(workspace)
+    approved_docir_final = None
+    if args.draft_kind == "schemair":
+        # approval result 是可信链提交标记；先校验，再构造任何可能访问外部 provider 的对象。
+        approved_docir_final = load_approved_docir_final(workspace, task=task)
     provider = _draft_provider(args)
-    task_id = workspace.name
+    if args.provider == "openai-chat":
+        assert_provider_attempt_unused(
+            workspace, getattr(provider, "attempt_id", None)
+        )
+    task_id = task["taskId"]
     try:
         if args.draft_kind == "docir":
             generated = generate_docir_draft(
                 raw_doc=read_text_artifact(workspace, "raw-doc.md"),
                 provider=provider,
                 task_id=task_id,
+                interface_code=task["interfaceCode"],
             )
         elif args.draft_kind == "schemair":
             generated = generate_schemair_draft(
-                docir_final=read_text_artifact(workspace, "docir-final.md"),
+                docir_final=approved_docir_final,
                 provider=provider,
                 task_id=task_id,
+                interface_code=task["interfaceCode"],
+                schema_id=args.schema_id,
+                schema_version=args.schema_version,
             )
         elif args.draft_kind == "standard":
             generated = generate_interface_standard_draft(
                 schemair_final=read_json_artifact(workspace, "schemair-final.json"),
                 rule_package=load_rule_package(args.rule_package),
                 direction=args.direction.upper(),
+                standard_id=args.standard_id,
                 standard_version=args.standard_version,
                 provider=provider,
                 task_id=task_id,
@@ -325,16 +440,15 @@ def _generate_draft(args: argparse.Namespace) -> Path:
         else:
             raise DraftGenerationError(f"unsupported Draft kind: {args.draft_kind}")
     except DraftProviderDiagnosticError as exc:
-        # 失败证据属于显式 DocIR attempt 的开发诊断，不改变其他 IR 或 fixture 的输出协议。
+        # 失败 attempt 也必须消费 ID；否则重跑可能覆盖或混淆外部调用证据。
         if (
-            args.draft_kind == "docir"
-            and args.provider == "openai-chat"
+            args.provider == "openai-chat"
             and exc.evidence is not None
         ):
             publish_provider_failure(workspace, exc, overwrite=args.overwrite)
         raise
     outputs = publish_generated_draft(workspace, generated, overwrite=args.overwrite)
-    return outputs["artifact"]
+    return outputs["artifact"], 3 if generated.publication_state == "invalid" else 0
 
 
 def _draft_provider(args: argparse.Namespace) -> DraftProvider:
@@ -463,6 +577,74 @@ def _phase0_selection(args: argparse.Namespace) -> Phase0Selection:
         standard_version=args.standard_version,
         template_id=args.template_id,
         template_version=args.template_version,
+    )
+
+
+def _draft_review_arguments(args: argparse.Namespace) -> dict[str, object]:
+    supplied = {
+        "direction": args.direction.upper() if args.direction else None,
+        "standard_version": args.standard_version,
+        "template_id": args.template_id,
+        "template_version": args.template_version,
+        "rule_package": (
+            load_rule_package(args.rule_package) if args.rule_package is not None else None
+        ),
+    }
+    if args.kind in {"docir", "schemair"}:
+        if any(value is not None for value in supplied.values()):
+            raise DraftReviewError(
+                f"{args.kind} review does not accept direction, version or rule package selectors"
+            )
+        return supplied
+    required = {
+        "--direction": supplied["direction"],
+        "--standard-version": supplied["standard_version"],
+        "--rule-package": supplied["rule_package"],
+    }
+    if args.kind == "template":
+        required.update(
+            {
+                "--template-id": supplied["template_id"],
+                "--template-version": supplied["template_version"],
+            }
+        )
+    elif supplied["template_id"] is not None or supplied["template_version"] is not None:
+        raise DraftReviewError("standard review does not accept template selectors")
+    missing = [name for name, value in required.items() if value is None]
+    if missing:
+        raise DraftReviewError(
+            f"{args.kind} review requires explicit arguments: {', '.join(missing)}"
+        )
+    return supplied
+
+
+def _print_interactive_approval_summary(
+    args: argparse.Namespace, validation: dict[str, object]
+) -> None:
+    task = load_task_manifest(args.workspace)
+    validated = validation["validatedArtifact"]
+    summary = validation["summary"]
+    if not isinstance(validated, dict) or not isinstance(summary, dict):
+        raise DraftReviewError("validation result cannot be summarized for approval")
+    identity = [
+        f"taskId={task['taskId']}",
+        f"interfaceCode={task['interfaceCode']}",
+        f"kind={args.kind}",
+    ]
+    for key in ("artifactId", "artifactVersion", "artifactContractVersion"):
+        value = validated.get(key)
+        if value is not None:
+            identity.append(f"{key}={value}")
+    for key in ("direction", "standard_version", "template_id", "template_version"):
+        value = getattr(args, key, None)
+        if value is not None:
+            identity.append(f"{key}={value}")
+    print("Artifact identity: " + ", ".join(identity))
+    print(
+        "Validation summary: "
+        f"ERROR={summary.get('errorCount')}, "
+        f"WARNING={summary.get('warningCount')}, "
+        f"INFO={summary.get('infoCount')}"
     )
 
 

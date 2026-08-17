@@ -11,9 +11,18 @@ from bank_config_compiler.draft_generation import (
     generate_docir_draft,
     publish_generated_draft,
 )
+from bank_config_compiler.workspace import ingest_raw_doc
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
+
+
+def prepare_workspace(tmp_path: Path, *, task_id: str = "phase0-test") -> Path:
+    source = tmp_path / f"{task_id}.md"
+    source.write_text("# Raw bank document\n", encoding="utf-8", newline="")
+    workspace = tmp_path / "workspace"
+    ingest_raw_doc(source, workspace, task_id=task_id, interface_code="b2e0061")
+    return workspace
 
 
 class CapturingProvider:
@@ -79,10 +88,13 @@ def test_publish_real_provider_draft_writes_non_sensitive_call_result(tmp_path: 
         task_id="phase0-test",
     )
 
-    outputs = publish_generated_draft(tmp_path, generated)
+    workspace = prepare_workspace(tmp_path)
+    publish_generated_draft(workspace, generated)
 
-    assert outputs["provider_call_result"] == tmp_path / "docir-provider-call-result.json"
-    call_result = json.loads(outputs["provider_call_result"].read_text(encoding="utf-8"))
+    call_result_path = (
+        workspace / "provider-attempts" / "docir" / "docir-001" / "provider-call-result.json"
+    )
+    call_result = json.loads(call_result_path.read_text(encoding="utf-8"))
     assert call_result == {
         "contractVersion": "draft-provider-call-result/v2",
         "taskId": "phase0-test",
@@ -128,7 +140,7 @@ def test_publish_real_provider_draft_writes_non_sensitive_call_result(tmp_path: 
         ],
         "artifactContentHash": generated.content_hash,
     }
-    serialized = outputs["provider_call_result"].read_text(encoding="utf-8")
+    serialized = call_result_path.read_text(encoding="utf-8")
     assert "test-key" not in serialized
     assert "https://" not in serialized
 
@@ -156,14 +168,14 @@ def test_publish_segmented_docir_records_ordered_subcalls(tmp_path: Path) -> Non
                     started_at=f"2026-08-11T10:00:0{sequence}+08:00",
                     completed_at=f"2026-08-11T10:00:0{sequence + 1}+08:00",
                     finish_reason="stop",
-                    prompt_contract_version="draft-prompt/v8",
+                    prompt_contract_version="draft-prompt/v9",
                     segment_contract_version=contract,
                 )
                 for sequence, (segment, contract, digit) in enumerate(
                     (
                         (
                             "interface-envelope",
-                            "docir-interface-envelope-segment/v1",
+                            "docir-interface-envelope-segment/v2",
                             "1",
                         ),
                         (
@@ -188,7 +200,7 @@ def test_publish_segmented_docir_records_ordered_subcalls(tmp_path: Path) -> Non
                     started_at=calls[0].started_at,
                     completed_at=calls[-1].completed_at,
                     endpoint_fingerprint="sha256:" + "3" * 64,
-                    prompt_contract_version="draft-prompt/v8",
+                    prompt_contract_version="draft-prompt/v9",
                     calls=calls,
                     docir_field_batch_size=16,
                 ),
@@ -200,8 +212,17 @@ def test_publish_segmented_docir_records_ordered_subcalls(tmp_path: Path) -> Non
         task_id="phase0-test",
     )
 
-    outputs = publish_generated_draft(tmp_path, generated)
-    call_result = json.loads(outputs["provider_call_result"].read_text(encoding="utf-8"))
+    workspace = prepare_workspace(tmp_path)
+    publish_generated_draft(workspace, generated)
+    call_result = json.loads(
+        (
+            workspace
+            / "provider-attempts"
+            / "docir"
+            / "docir-012"
+            / "provider-call-result.json"
+        ).read_text(encoding="utf-8")
+    )
 
     assert call_result["contractVersion"] == "draft-provider-call-result/v2"
     assert call_result["docirFieldBatchSize"] == 16

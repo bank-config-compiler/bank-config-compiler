@@ -6,7 +6,7 @@ Implemented for P0-T3. The immutable P0-T2 Review Golden remains separate from t
 
 ## 1. 目的
 
-Golden sample 是 Prompt、四类 IR、三个 Validator、Workbook Generator 和验收判断的核心回归证据。它必须区分：
+Golden sample 是 Prompt、四类 IR、DocIR Markdown Validator、三个 JSON IR Validator、Workbook Generator 和验收判断的核心回归证据。它必须区分：
 
 - 已由现有测试证明的 DocIR / SchemaIR 基线；
 - 正在建立的目标配置和 Workbook 基线；

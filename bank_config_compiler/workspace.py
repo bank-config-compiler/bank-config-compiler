@@ -1,7 +1,10 @@
 from __future__ import annotations
 
 import json
+import hashlib
+import os
 import re
+import tempfile
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -11,12 +14,14 @@ from .configuration_workbook import validate_configuration_workbook_inputs
 
 
 RAW_DOC_ARTIFACT = "raw-doc.md"
+TASK_ARTIFACT = "task.json"
+TASK_CONTRACT_VERSION = "phase0-task/v1"
 TEXT_ARTIFACTS = {
     "raw-doc.md",
     "docir-draft.md",
     "docir-final.md",
 }
-RAW_PROFILE_ARTIFACTS = (RAW_DOC_ARTIFACT,)
+RAW_PROFILE_ARTIFACTS = (TASK_ARTIFACT, RAW_DOC_ARTIFACT)
 SUPPORTED_RAW_DOC_SUFFIXES = {".md", ".txt"}
 UTF8_BOM = b"\xef\xbb\xbf"
 VERSION_PATTERN = re.compile(r"^v[1-9]\d*$")
@@ -55,19 +60,70 @@ class Phase0Artifacts:
     template_validation_result: dict[str, Any]
 
 
-def ingest_raw_doc(input_path: Path, workspace_path: Path, *, overwrite: bool = False) -> Path:
-    # 只导入原始文档，避免把后续 DocIR / SchemaIR 生成语义混入 ingest。
+def ingest_raw_doc(
+    input_path: Path,
+    workspace_path: Path,
+    *,
+    task_id: str,
+    interface_code: str,
+    overwrite: bool = False,
+) -> Path:
+    # task manifest 与 raw-doc 必须作为同一身份边界发布，避免目录名被误当成 task identity。
     input_path = input_path.resolve()
     workspace_path = workspace_path.resolve()
 
     raw_doc = read_raw_input(input_path)
+    _stable_id(task_id, label="task_id")
+    _interface_code(interface_code)
     ensure_workspace_dir(workspace_path)
+    raw_bytes = raw_doc.encode("utf-8")
+    manifest = {
+        "contractVersion": TASK_CONTRACT_VERSION,
+        "taskId": task_id,
+        "interfaceCode": interface_code,
+        "messageFormat": "XML",
+        "sourceDocument": RAW_DOC_ARTIFACT,
+        "sourceHash": _bytes_hash(raw_bytes),
+    }
+    outputs = {
+        "raw": artifact_path(workspace_path, RAW_DOC_ARTIFACT),
+        "task": artifact_path(workspace_path, TASK_ARTIFACT),
+    }
+    payloads = {
+        "raw": raw_bytes,
+        "task": _json_bytes(manifest),
+    }
+    _atomic_write_set(outputs, payloads, overwrite=overwrite, label="workspace input")
+    return outputs["raw"]
 
-    output_path = artifact_path(workspace_path, RAW_DOC_ARTIFACT)
-    if output_path.exists() and not overwrite:
-        raise WorkspaceError(f"{RAW_DOC_ARTIFACT} already exists; pass --overwrite to replace it")
 
-    return write_text_artifact(workspace_path, RAW_DOC_ARTIFACT, raw_doc)
+def load_task_manifest(workspace_path: Path) -> dict[str, Any]:
+    manifest = read_json_artifact(workspace_path, TASK_ARTIFACT)
+    required = {
+        "contractVersion",
+        "taskId",
+        "interfaceCode",
+        "messageFormat",
+        "sourceDocument",
+        "sourceHash",
+    }
+    if set(manifest) != required:
+        raise WorkspaceError("task.json must contain the exact phase0-task/v1 properties")
+    if manifest.get("contractVersion") != TASK_CONTRACT_VERSION:
+        raise WorkspaceError(f"task.json contractVersion must be {TASK_CONTRACT_VERSION}")
+    _stable_id(manifest.get("taskId"), label="task.json taskId")
+    _interface_code(manifest.get("interfaceCode"))
+    if manifest.get("messageFormat") != "XML":
+        raise WorkspaceError("task.json messageFormat must be XML")
+    if manifest.get("sourceDocument") != RAW_DOC_ARTIFACT:
+        raise WorkspaceError("task.json sourceDocument must be raw-doc.md")
+    source_hash = manifest.get("sourceHash")
+    if not isinstance(source_hash, str) or not re.fullmatch(r"sha256:[0-9a-f]{64}", source_hash):
+        raise WorkspaceError("task.json sourceHash must be a SHA-256 hash")
+    actual_hash = _bytes_hash(read_artifact_bytes(workspace_path, RAW_DOC_ARTIFACT))
+    if source_hash != actual_hash:
+        raise WorkspaceError("task.json sourceHash does not match raw-doc.md")
+    return manifest
 
 
 def read_raw_input(input_path: Path) -> str:
@@ -105,8 +161,7 @@ def check_workspace(
     _require_existing_workspace(workspace_path)
 
     if profile == "raw":
-        for artifact_name in RAW_PROFILE_ARTIFACTS:
-            read_text_artifact(workspace_path, artifact_name)
+        load_task_manifest(workspace_path)
         return len(RAW_PROFILE_ARTIFACTS)
     if profile == "phase0":
         if selection is None:
@@ -293,3 +348,64 @@ def _reject_duplicate_json_keys(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
 
 def _reject_non_finite_json_number(value: str) -> None:
     raise ValueError(f"non-finite number is not allowed: {value}")
+
+
+def _stable_id(value: Any, *, label: str) -> None:
+    if not isinstance(value, str) or not STABLE_ID_PATTERN.fullmatch(value):
+        raise WorkspaceError(f"{label} must be a lowercase kebab-case stable ID")
+
+
+def _interface_code(value: Any) -> None:
+    if not isinstance(value, str) or re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._-]*", value) is None:
+        raise WorkspaceError("interface_code must contain only letters, digits, dot, underscore or hyphen")
+
+
+def _bytes_hash(value: bytes) -> str:
+    return f"sha256:{hashlib.sha256(value).hexdigest()}"
+
+
+def _json_bytes(value: dict[str, Any]) -> bytes:
+    try:
+        return (json.dumps(value, ensure_ascii=False, indent=2, allow_nan=False) + "\n").encode(
+            "utf-8"
+        )
+    except (TypeError, ValueError) as exc:
+        raise WorkspaceError("JSON artifact must contain only finite JSON values") from exc
+
+
+def _atomic_write_set(
+    outputs: dict[str, Path],
+    payloads: dict[str, bytes],
+    *,
+    overwrite: bool,
+    label: str,
+) -> None:
+    existing = [path for path in outputs.values() if path.exists()]
+    if existing and not overwrite:
+        names = ", ".join(path.name for path in existing)
+        raise WorkspaceError(f"{label} already exists: {names}; pass --overwrite to replace it")
+    staged: dict[str, Path] = {}
+    try:
+        for key, output in outputs.items():
+            output.parent.mkdir(parents=True, exist_ok=True)
+            descriptor, temporary_name = tempfile.mkstemp(
+                dir=output.parent,
+                prefix=f".{output.name}.",
+                suffix=".tmp",
+            )
+            temporary = Path(temporary_name)
+            staged[key] = temporary
+            with os.fdopen(descriptor, "wb") as handle:
+                handle.write(payloads[key])
+                handle.flush()
+                os.fsync(handle.fileno())
+        for key, output in outputs.items():
+            os.replace(staged[key], output)
+            staged.pop(key)
+    except OSError as exc:
+        for temporary in staged.values():
+            try:
+                temporary.unlink(missing_ok=True)
+            except OSError:
+                pass
+        raise WorkspaceError(f"failed to publish {label}: {type(exc).__name__}") from exc

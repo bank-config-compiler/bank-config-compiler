@@ -2,12 +2,14 @@ from __future__ import annotations
 
 import subprocess
 import sys
+import hashlib
 from pathlib import Path
 
 import pytest
 
 from bank_config_compiler.workspace import (
     WorkspaceError,
+    ingest_raw_doc,
     read_json_artifact,
     write_json_artifact,
     write_text_artifact,
@@ -27,8 +29,9 @@ def run_cli(*args: str, cwd: Path) -> subprocess.CompletedProcess[str]:
 
 def test_check_raw_profile_passes_with_raw_doc(tmp_path: Path) -> None:
     workspace = tmp_path / "workspace"
-    workspace.mkdir()
-    (workspace / "raw-doc.md").write_text("raw doc", encoding="utf-8")
+    source = tmp_path / "raw.md"
+    source.write_text("raw doc", encoding="utf-8", newline="")
+    ingest_raw_doc(source, workspace, task_id="raw-check", interface_code="b2e0061")
 
     result = run_cli("check", "--workspace", str(workspace), "--profile", "raw", cwd=Path.cwd())
 
@@ -39,6 +42,18 @@ def test_check_raw_profile_passes_with_raw_doc(tmp_path: Path) -> None:
 def test_check_raw_profile_reports_missing_raw_doc(tmp_path: Path) -> None:
     workspace = tmp_path / "workspace"
     workspace.mkdir()
+    write_json_artifact(
+        workspace,
+        "task.json",
+        {
+            "contractVersion": "phase0-task/v1",
+            "taskId": "missing-raw",
+            "interfaceCode": "b2e0061",
+            "messageFormat": "XML",
+            "sourceDocument": "raw-doc.md",
+            "sourceHash": "sha256:" + "0" * 64,
+        },
+    )
 
     result = run_cli("check", "--workspace", str(workspace), "--profile", "raw", cwd=Path.cwd())
 
@@ -61,6 +76,18 @@ def test_check_rejects_utf8_bom_artifact(tmp_path: Path) -> None:
     workspace = tmp_path / "workspace"
     workspace.mkdir()
     (workspace / "raw-doc.md").write_bytes(b"\xef\xbb\xbfraw doc")
+    write_json_artifact(
+        workspace,
+        "task.json",
+        {
+            "contractVersion": "phase0-task/v1",
+            "taskId": "bom-check",
+            "interfaceCode": "b2e0061",
+            "messageFormat": "XML",
+            "sourceDocument": "raw-doc.md",
+            "sourceHash": "sha256:" + hashlib.sha256(b"\xef\xbb\xbfraw doc").hexdigest(),
+        },
+    )
 
     result = run_cli("check", "--workspace", str(workspace), "--profile", "raw", cwd=Path.cwd())
 

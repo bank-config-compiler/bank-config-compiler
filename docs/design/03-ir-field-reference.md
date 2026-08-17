@@ -31,19 +31,22 @@ Draft. P0-T2 expected DocIR / SchemaIR remains a historical Review baseline; the
 | `Index` | 面向人工 review 的结构编号，例如 `2`、`2.1`、`2.1.1`；同级递增最后一段，子节点追加一段。 |
 | `Or` | 表达原文中的互斥选择关系；无互斥关系时留空。 |
 | `Message Item` | XML item name，不带尖括号；attribute 使用 `@version`。可用缩进表达父子层级。 |
-| `Mult.` | 出现次数，例如 `[1..1]`、`[0..1]`、`[0..1000]`。 |
-| `Type` | 面向人阅读的候选类型，例如 `String`、`Object`、`Decimal`。 |
-| `Required` | `Y`、`N` 或 `C`。`C` 表示条件必填。 |
+| `Mult.` | 只描述重复 `Object`，例如 `[0..1000]`；新生成的非重复字段留空，历史 `[0..1]/[1..1]` 继续兼容。 |
+| `Type` | DocIR 类型只允许 `Object/String/Boolean/Date/Decimal`；容器由代码派生 `Object`，普通 leaf/attribute 默认 `String`。 |
+| `Required` | 标量使用 `Y`、`N` 或 `C`，`C` 表示条件必填；`Object` 固定留空（N/A）。 |
 | `说明` | 字段业务说明，保留 raw doc 中的中文含义。 |
-| `前置机校验点/格式` | raw doc 中前置机侧的格式或校验说明。 |
-| `接口平台校验点` | raw doc 中接口平台侧的校验说明。 |
+| `校验点` | raw doc 中与当前字段有关的格式、长度、枚举、条件和业务校验；按来源顺序完整保留，不固化特定银行的栏目分类。 |
 | `Review` | 不确定、冲突、推导说明和人工 review 提醒。 |
 
 DocIR 主表不展示完整 `Path`，避免人工 review 时被长路径淹没。完整 path 由 SchemaIR 表达；DocIR 必须通过 `Index`、`Message Item` 缩进和 review 信息保留足够层级线索。`Index` 不是展示行号，不能用连续行号跨越层级；例如 `2.3.4` 的子节点应编号为 `2.3.4.1`，而不是后续行号 `2.17`。DocIR 不负责把复杂条件转换为 DSL。
 
-真实 provider 的模型响应不直接承载本表 Markdown。内部 `docir-extraction/v1` 保存未排版的 `index` 与 plain XML `item`，renderer 按 Index 层级确定性添加 U+3000、代码标记和固定列；代码再按稳定 section/index 位置聚合非空 `reviewNote` 与 `review`。extraction 本身不持久化，也不改变本页定义的 DocIR wire。
+真实 provider 的模型响应不直接承载本表 Markdown。内部 `docir-semantic-candidate/v2` 保存有序 XML element/attribute 树和语义属性，不保存由模型选择的 index/path/level；代码按固定 section root 与当前父子/兄弟顺序分配 Index，并从树规范化 Type、非重复 Mult.、U+3000、代码标记和九列 wire。candidate 只存在于临时 attempt evidence，不能作为 SchemaIR 输入。
 
-Draft 无法从原文直接确认 `Mult.`、`Type` 或 `Required` 时，对应单元格留空，并在 `Review` 标记“原文未说明，待人工确认”。空值表示待 Review，不是默认 `N`、`String` 或 `[0..1]`。
+有 children 的节点和固定 `trans` 交接容器为 `Object`；普通 leaf/attribute 为 `String`，原文明示时可覆盖为 `Boolean/Date/Decimal`。只有重复 Object 填写 `Mult.`；空 Mult. 规范表示 maximum `1`，而不是 `0..n`。DocIR 不包含 Standard `Node` 或 Parse target `List`。
+
+标量无法从原文直接确认 `Required` 时，该单元格留空，并在 `Review` 标记“Required 原文未说明，待人工确认”。标量空 Required 表示待 Review，不能默认 `Y/N`。Object 不存在独立字段值，其 Required 固定留空（N/A），不产生缺失 marker，也不从叶子 Required 反推容器出现性。代码只对当前 Draft 已有的标量 `说明`、`校验点` 和 Conditions 做证据一致性门禁：明显冲突为 ERROR，可能涉及其他字段为 WARNING，不自动填值。SchemaIR 标量的 `required` 与 occurs minimum 由 Human 确认后的 DocIR `Y/N/C` 确定；SchemaIR Object `required` 由该层 candidate/Human 独立确认；occurs maximum 由 DocIR `Mult.` 锁定。
+
+两段 `Conditions` 只允许明确的条件分支，即当前文字必须表达条件谓词及其结果。`b2e0061-rq` 不超过 1000 笔属于 Object `Mult.`，`insid` 长度和唯一性属于字段 `校验点`，均不得进入 Conditions。某方向没有明确条件时使用“原文未提供可确认条件。”；该占位符不代表已确认业务规则。
 
 ## 3. SchemaIR 顶层字段
 
@@ -124,7 +127,7 @@ SchemaIR message 可以包含 `conditionalConstraints[]`，用于保存银行文
 
 ## 8. review-notes.md 结构
 
-每次 IR Draft 都应生成 `review-notes.md`。DocIR / SchemaIR Review notes 按以下顺序组织：
+每次 IR Draft 都应生成 `review-notes.md`。DocIR Notes 由当前 Validation Result 和 Draft 中的显式 Review 证据确定性生成；不得额外调用 LLM，也不得重新读取 raw-doc 作第二次语义提取。SchemaIR 等 JSON IR 继续按各自 Review contract 生成。Review 内容按以下顺序组织：
 
 1. `必须确认`：影响字段是否存在、path、required、occurs、类型、版本和配置正确性的事项。
 2. `建议关注`：推导字段、长度冲突、平台/前置机约束差异。

@@ -119,7 +119,7 @@ Overview 必须展示方向级 XML encoding。Interface Template 必须将 Stand
 
 - 能输入一份真实脱敏 XML 银行接口样例。
 - 四类 Draft 均可读、可 Review 且不能绕过可信边界形成 Final。
-- 三个 Validator 返回字段级、可定位错误。
+- DocIR Markdown Validator 与三个 JSON IR Validator 返回可定位错误。
 - 用户能确认 Final SchemaIR、Final Standard 和 Final Template。
 - Template 只能绑定精确 Final Standard 版本。
 - 一个 Standard 可被多份同方向 Template 复用。
