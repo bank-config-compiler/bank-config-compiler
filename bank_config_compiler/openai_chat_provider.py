@@ -42,6 +42,7 @@ from .draft_generation import (
 
 
 PROMPT_CONTRACT_VERSION = "draft-prompt/v9"
+SCHEMAIR_PROMPT_CONTRACT_VERSION = "draft-prompt/v10"
 DOCIR_PROMPT_CONTRACT_VERSION = "draft-prompt/v17"
 DEFAULT_DOCIR_FIELD_BATCH_SIZE = 16
 JSON_IR_MODEL_RESPONSE_PROPERTIES = {"artifact", "reviewNotes"}
@@ -51,7 +52,34 @@ LOGGER = logging.getLogger(__name__)
 
 _ARTIFACT_INSTRUCTIONS = {
     "schemair": """
-Return a SchemaIR semantic candidate containing `envelope` and both ordered `messages`.
+Return a SchemaIR semantic candidate with exactly `envelope` and `messages` at the top level.
+Use exactly this shape; every property shown is required even when its value is null:
+{
+  "envelope": {"description": "SOURCE-SUPPORTED TEXT", "fields": [SCHEMA_FIELD, ...]},
+  "messages": [
+    {
+      "functionType": "ASSEMBLY",
+      "xmlEncoding": "UTF-8",
+      "xmlEncodingEvidence": [ENCODING_EVIDENCE, ...],
+      "description": "SOURCE-SUPPORTED TEXT",
+      "fields": [SCHEMA_FIELD, ...],
+      "conditionalConstraints": [CONDITIONAL_CONSTRAINT, ...]
+    },
+    {"functionType": "PARSE", "xmlEncoding": "UTF-8", "xmlEncodingEvidence": [ENCODING_EVIDENCE, ...],
+     "description": "SOURCE-SUPPORTED TEXT", "fields": [SCHEMA_FIELD, ...],
+     "conditionalConstraints": [CONDITIONAL_CONSTRAINT, ...]}
+  ]
+}
+Every field has exactly `fieldName`, `displayName`, `format`, `length`, `description`,
+`conditionText`, `sourceText`, `evidence`, `confidence`, `uncertain`, `uncertainReason`, `reviewNote`.
+Object fields additionally require `required` as a boolean. Scalar fields must omit `required`.
+`format`, `conditionText`, `uncertainReason` and `reviewNote` are string or null.
+`length` is exactly {"min": NON_NEGATIVE_INTEGER_OR_NULL, "max": NON_NEGATIVE_INTEGER_OR_NULL,
+"raw": "SOURCE TEXT OR NULL"}. `evidence` is exactly {"kind": "DIRECT|DERIVED|ASSUMED",
+"note": "SOURCE-SUPPORTED TEXT"}. `confidence` is a number from 0 to 1 and `uncertain` is boolean.
+Each ENCODING_EVIDENCE has exactly `sourceKind`, `sourceRef`, `observedValue`, `disposition`,
+`reviewNote`. Each CONDITIONAL_CONSTRAINT has exactly `controllingFieldPath`, `operator`, `literal`,
+`targetFieldPath`, `effect`, `sourceText`, `evidence`; the materializer injects pending review metadata.
 Do not choose artifact identity, version, lifecycle, interface identity, field path, parent path,
 level, node kind, scalar occurs/required, multiple or hasChildren; the materializer locks or derives
 them from the exact Final DocIR. DocIR Object Required is not applicable, so propose each Object
@@ -438,7 +466,9 @@ class OpenAIChatDraftProvider:
     ) -> _CompletedChatCall:
         segment = prompt.segment if prompt is not None else "complete-artifact"
         prompt_contract_version = (
-            DOCIR_PROMPT_CONTRACT_VERSION if prompt is not None else PROMPT_CONTRACT_VERSION
+            DOCIR_PROMPT_CONTRACT_VERSION
+            if prompt is not None
+            else _json_ir_prompt_contract_version(request.artifact_kind)
         )
         segment_contract_version = prompt.contract_version if prompt is not None else None
         started_at = _now()
@@ -1013,6 +1043,12 @@ def _collect_stream_response(
     )
 
 
+def _json_ir_prompt_contract_version(artifact_kind: str) -> str:
+    if artifact_kind == "schemair":
+        return SCHEMAIR_PROMPT_CONTRACT_VERSION
+    return PROMPT_CONTRACT_VERSION
+
+
 def build_chat_messages(
     request: DraftGenerationRequest,
     context: DraftGenerationContext,
@@ -1076,7 +1112,7 @@ Do not wrap the JSON in Markdown fences. {_ARTIFACT_INSTRUCTIONS[request.artifac
 """.strip()
     selector = json.dumps(request.case_fingerprint(), ensure_ascii=False, sort_keys=True)
     user_parts = [
-        f"Prompt contract: {PROMPT_CONTRACT_VERSION}",
+        f"Prompt contract: {_json_ir_prompt_contract_version(request.artifact_kind)}",
         f"Request selector JSON: {selector}",
         f"Source media type: {context.source_content_type}",
         "<SOURCE_DATA>",

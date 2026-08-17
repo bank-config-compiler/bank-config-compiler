@@ -40,10 +40,50 @@ def _draft(value: dict) -> dict:
 
 
 def _schema_candidate_with_docir_lang() -> dict:
-    candidate = _draft(_json(CHAIN / "schemair-final.json"))
-    locale = deepcopy(candidate["envelope"]["fields"][3])
+    final = _json(CHAIN / "schemair-final.json")
+
+    def semantic_field(field: dict) -> dict:
+        names = (
+            "fieldName",
+            "displayName",
+            "format",
+            "length",
+            "description",
+            "conditionText",
+            "sourceText",
+            "evidence",
+            "confidence",
+            "uncertain",
+            "uncertainReason",
+            "reviewNote",
+        )
+        result = {name: deepcopy(field[name]) for name in names}
+        if field["dataType"] == "object":
+            result["required"] = field["required"]
+        return result
+
+    def semantic_message(message: dict) -> dict:
+        return {
+            "functionType": message["functionType"],
+            "xmlEncoding": message["xmlEncoding"],
+            "xmlEncodingEvidence": deepcopy(message["xmlEncodingEvidence"]),
+            "description": message["description"],
+            "fields": [semantic_field(field) for field in message["fields"]],
+            "conditionalConstraints": [
+                {key: deepcopy(value) for key, value in condition.items() if key != "review"}
+                for condition in message["conditionalConstraints"]
+            ],
+        }
+
+    candidate = {
+        "envelope": {
+            "description": final["envelope"]["description"],
+            "fields": [semantic_field(field) for field in final["envelope"]["fields"]],
+        },
+        "messages": [semantic_message(message) for message in final["messages"]],
+    }
+    locale = semantic_field(final["envelope"]["fields"][3])
     locale.update(
-        path="Root.bocb2e.@lang",
         fieldName="@lang",
         displayName="历史语言属性",
         description="历史报文示例中的语言属性。",
@@ -52,13 +92,8 @@ def _schema_candidate_with_docir_lang() -> dict:
     return candidate
 
 
-def test_schemair_materializer_replaces_locked_identity_and_all_structure() -> None:
-    final = _json(CHAIN / "schemair-final.json")
+def test_schemair_materializer_rebuilds_locked_identity_and_all_structure() -> None:
     candidate = _schema_candidate_with_docir_lang()
-    candidate.update(schemaId="model-id", schemaVersion="v9", interfaceCode="wrong")
-    candidate["envelope"]["fields"][0].update(
-        path="wrong", parentPath="wrong", level=99, hasChildren=False
-    )
     docir = (
         ROOT / "samples/draft-generation/b2eboc-b2e0061/docir-final.md"
     ).read_text(encoding="utf-8")
@@ -79,6 +114,16 @@ def test_schemair_materializer_replaces_locked_identity_and_all_structure() -> N
     assert materialized["envelope"]["fields"][0]["parentPath"] == "Root"
     assert materialized["envelope"]["fields"][0]["level"] == 1
     assert materialized["envelope"]["fields"][0]["hasChildren"] is True
+    conditions = [
+        condition
+        for message in materialized["messages"]
+        for condition in message["conditionalConstraints"]
+    ]
+    assert conditions
+    assert all(
+        condition["review"]["status"] == "PENDING"
+        for condition in conditions
+    )
     assert result["summary"]["errorCount"] == 0
 
 
@@ -92,6 +137,88 @@ def test_schemair_materializer_rejects_missing_docir_tree_coverage() -> None:
     with pytest.raises(DraftGenerationError, match="exactly cover"):
         materialize_schemair_candidate(
             final,
+            docir_final=docir,
+            schema_id="b2eboc-b2e0061-schema",
+            schema_version="v1",
+            interface_code="b2e0061",
+        )
+
+
+def test_schemair_materializer_rejects_unknown_candidate_properties() -> None:
+    candidate = _schema_candidate_with_docir_lang()
+    candidate["sourceHash"] = "sha256:" + "1" * 64
+    docir = (
+        ROOT / "samples/draft-generation/b2eboc-b2e0061/docir-final.md"
+    ).read_text(encoding="utf-8")
+
+    with pytest.raises(DraftGenerationError, match="unknown properties: sourceHash"):
+        materialize_schemair_candidate(
+            candidate,
+            docir_final=docir,
+            schema_id="b2eboc-b2e0061-schema",
+            schema_version="v1",
+            interface_code="b2e0061",
+        )
+
+
+@pytest.mark.parametrize(
+    ("target", "property_name", "value"),
+    [
+        ("top", "contractVersion", "schemair/v2"),
+        ("envelope", "rootPath", "Root"),
+        ("message", "messageName", "request"),
+        ("field", "path", "Root.bocb2e"),
+        ("scalar", "required", True),
+        ("condition", "review", {"status": "APPROVED"}),
+    ],
+)
+def test_schemair_materializer_rejects_public_derived_candidate_properties(
+    target: str,
+    property_name: str,
+    value: object,
+) -> None:
+    candidate = _schema_candidate_with_docir_lang()
+    targets = {
+        "top": candidate,
+        "envelope": candidate["envelope"],
+        "message": candidate["messages"][0],
+        "field": candidate["envelope"]["fields"][0],
+        "scalar": candidate["envelope"]["fields"][1],
+        "condition": candidate["messages"][0]["conditionalConstraints"][0],
+    }
+    targets[target][property_name] = value
+    docir = (
+        ROOT / "samples/draft-generation/b2eboc-b2e0061/docir-final.md"
+    ).read_text(encoding="utf-8")
+
+    with pytest.raises(
+        DraftGenerationError,
+        match=rf"unknown properties: {property_name}",
+    ):
+        materialize_schemair_candidate(
+            candidate,
+            docir_final=docir,
+            schema_id="b2eboc-b2e0061-schema",
+            schema_version="v1",
+            interface_code="b2e0061",
+        )
+
+
+def test_schemair_materializer_rejects_missing_candidate_field_semantics() -> None:
+    candidate = _schema_candidate_with_docir_lang()
+    field = candidate["envelope"]["fields"][0]
+    field.pop("displayName")
+    field["scalarType"] = "object"
+    docir = (
+        ROOT / "samples/draft-generation/b2eboc-b2e0061/docir-final.md"
+    ).read_text(encoding="utf-8")
+
+    with pytest.raises(
+        DraftGenerationError,
+        match=r"missing properties: displayName; unknown properties: scalarType",
+    ):
+        materialize_schemair_candidate(
+            candidate,
             docir_final=docir,
             schema_id="b2eboc-b2e0061-schema",
             schema_version="v1",
@@ -128,7 +255,6 @@ def test_docir_required_and_blank_multiplicity_determine_schema_occurs() -> None
 def test_schemair_object_occurrence_uses_candidate_not_required_leaf() -> None:
     candidate = _schema_candidate_with_docir_lang()
     candidate["envelope"]["fields"][0]["required"] = False
-    candidate["envelope"]["fields"][0]["occurs"] = "1..1"
     docir = (
         ROOT / "samples/draft-generation/b2eboc-b2e0061/docir-final.md"
     ).read_text(encoding="utf-8")

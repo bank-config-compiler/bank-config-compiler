@@ -81,6 +81,52 @@ class StaticProvider:
         )
 
 
+def schema_candidate(final_artifact: dict) -> dict:
+    field_names = (
+        "fieldName",
+        "displayName",
+        "format",
+        "length",
+        "description",
+        "conditionText",
+        "sourceText",
+        "evidence",
+        "confidence",
+        "uncertain",
+        "uncertainReason",
+        "reviewNote",
+    )
+
+    def semantic_field(field: dict) -> dict:
+        result = {name: deepcopy(field[name]) for name in field_names}
+        if field["dataType"] == "object":
+            result["required"] = field["required"]
+        return result
+
+    def semantic_message(message: dict) -> dict:
+        return {
+            "functionType": message["functionType"],
+            "xmlEncoding": message["xmlEncoding"],
+            "xmlEncodingEvidence": deepcopy(message["xmlEncodingEvidence"]),
+            "description": message["description"],
+            "fields": [semantic_field(field) for field in message["fields"]],
+            "conditionalConstraints": [
+                {key: deepcopy(value) for key, value in condition.items() if key != "review"}
+                for condition in message["conditionalConstraints"]
+            ],
+        }
+
+    return {
+        "envelope": {
+            "description": final_artifact["envelope"]["description"],
+            "fields": [
+                semantic_field(field) for field in final_artifact["envelope"]["fields"]
+            ],
+        },
+        "messages": [semantic_message(message) for message in final_artifact["messages"]],
+    }
+
+
 def test_ingest_creates_task_manifest_bound_to_raw_bytes(tmp_path: Path) -> None:
     source = tmp_path / "source.md"
     source.write_text("# 银行接口\n", encoding="utf-8", newline="")
@@ -146,18 +192,9 @@ def test_schemair_generation_keeps_materializable_validator_errors() -> None:
             encoding="utf-8"
         )
     )
-    invalid = deepcopy(final)
-    invalid["status"] = "DRAFT"
-    invalid["review"] = {
-        "status": "PENDING",
-        "reviewer": None,
-        "reviewedAt": None,
-        "note": None,
-    }
-    invalid["messages"][0]["fields"][0]["level"] = 999
+    invalid = schema_candidate(final)
     locale = deepcopy(invalid["envelope"]["fields"][3])
     locale.update(
-        path="Root.bocb2e.@lang",
         fieldName="@lang",
         displayName="历史语言属性",
         confidence=2,

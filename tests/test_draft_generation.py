@@ -113,10 +113,51 @@ def pending_draft(final_artifact: dict) -> dict:
 
 
 def schema_candidate(final_artifact: dict) -> dict:
-    candidate = pending_draft(final_artifact)
-    locale = deepcopy(candidate["envelope"]["fields"][3])
+    field_names = (
+        "fieldName",
+        "displayName",
+        "format",
+        "length",
+        "description",
+        "conditionText",
+        "sourceText",
+        "evidence",
+        "confidence",
+        "uncertain",
+        "uncertainReason",
+        "reviewNote",
+    )
+
+    def semantic_field(field: dict) -> dict:
+        result = {name: deepcopy(field[name]) for name in field_names}
+        if field["dataType"] == "object":
+            result["required"] = field["required"]
+        return result
+
+    def semantic_message(message: dict) -> dict:
+        return {
+            "functionType": message["functionType"],
+            "xmlEncoding": message["xmlEncoding"],
+            "xmlEncodingEvidence": deepcopy(message["xmlEncodingEvidence"]),
+            "description": message["description"],
+            "fields": [semantic_field(field) for field in message["fields"]],
+            "conditionalConstraints": [
+                {key: deepcopy(value) for key, value in condition.items() if key != "review"}
+                for condition in message["conditionalConstraints"]
+            ],
+        }
+
+    candidate = {
+        "envelope": {
+            "description": final_artifact["envelope"]["description"],
+            "fields": [
+                semantic_field(field) for field in final_artifact["envelope"]["fields"]
+            ],
+        },
+        "messages": [semantic_message(message) for message in final_artifact["messages"]],
+    }
+    locale = semantic_field(final_artifact["envelope"]["fields"][3])
     locale.update(
-        path="Root.bocb2e.@lang",
         fieldName="@lang",
         displayName="历史语言属性",
         description="历史报文示例中的语言属性。",

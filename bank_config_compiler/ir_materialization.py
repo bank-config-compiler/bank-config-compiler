@@ -22,6 +22,55 @@ _SCHEMA_DATA_TYPES = {
     "Decimal": "decimal",
     "Object": "object",
 }
+
+_SCHEMAIR_CANDIDATE_TOP_LEVEL_PROPERTIES = {"envelope", "messages"}
+_SCHEMAIR_CANDIDATE_ENVELOPE_PROPERTIES = {"description", "fields"}
+_SCHEMAIR_CANDIDATE_MESSAGE_PROPERTIES = {
+    "functionType",
+    "xmlEncoding",
+    "xmlEncodingEvidence",
+    "description",
+    "fields",
+    "conditionalConstraints",
+}
+_SCHEMAIR_CANDIDATE_FIELD_PROPERTY_ORDER = (
+    "fieldName",
+    "displayName",
+    "format",
+    "length",
+    "description",
+    "conditionText",
+    "sourceText",
+    "evidence",
+    "confidence",
+    "uncertain",
+    "uncertainReason",
+    "reviewNote",
+)
+_SCHEMAIR_CANDIDATE_FIELD_PROPERTIES = set(_SCHEMAIR_CANDIDATE_FIELD_PROPERTY_ORDER)
+_SCHEMAIR_CANDIDATE_CONDITION_PROPERTY_ORDER = (
+    "controllingFieldPath",
+    "operator",
+    "literal",
+    "targetFieldPath",
+    "effect",
+    "sourceText",
+    "evidence",
+)
+_SCHEMAIR_CANDIDATE_CONDITION_PROPERTIES = set(
+    _SCHEMAIR_CANDIDATE_CONDITION_PROPERTY_ORDER
+)
+_SCHEMAIR_CANDIDATE_LENGTH_PROPERTIES = {"min", "max", "raw"}
+_SCHEMAIR_CANDIDATE_EVIDENCE_PROPERTIES = {"kind", "note"}
+_SCHEMAIR_CANDIDATE_ENCODING_EVIDENCE_PROPERTIES = {
+    "sourceKind",
+    "sourceRef",
+    "observedValue",
+    "disposition",
+    "reviewNote",
+}
+
+
 def materialize_schemair_candidate(
     candidate: Any,
     *,
@@ -30,7 +79,12 @@ def materialize_schemair_candidate(
     schema_version: str,
     interface_code: str,
 ) -> dict[str, Any]:
-    artifact = _object_copy(candidate, label="SchemaIR candidate")
+    candidate_object = _require_candidate_object(
+        candidate,
+        label="SchemaIR candidate",
+        allowed=_SCHEMAIR_CANDIDATE_TOP_LEVEL_PROPERTIES,
+        required=_SCHEMAIR_CANDIDATE_TOP_LEVEL_PROPERTIES,
+    )
     structure = parse_final_docir_structure(docir_final)
     interface = structure["interface"]
     if interface.get("Interface Code") != interface_code:
@@ -38,33 +92,47 @@ def materialize_schemair_candidate(
             "Final DocIR Interface Code does not match the locked task identity"
         )
 
-    artifact.update(
-        {
-            "contractVersion": "schemair/v2",
-            "schemaId": schema_id,
-            "schemaVersion": schema_version,
-            "status": "DRAFT",
-            "review": _pending_review(),
-            "interfaceCode": interface_code,
-            "interfaceName": interface.get("Interface Name", ""),
-            "messageFormat": "XML",
-            "protocolVersion": interface.get("Version", ""),
-            "sourceDocument": "raw-doc.md",
-        }
+    artifact = {
+        "contractVersion": "schemair/v2",
+        "schemaId": schema_id,
+        "schemaVersion": schema_version,
+        "status": "DRAFT",
+        "review": _pending_review(),
+        "interfaceCode": interface_code,
+        "interfaceName": interface.get("Interface Name", ""),
+        "messageFormat": "XML",
+        "protocolVersion": interface.get("Version", ""),
+        "sourceDocument": "raw-doc.md",
+    }
+    candidate_envelope = _require_candidate_object(
+        candidate_object.get("envelope"),
+        label="SchemaIR candidate envelope",
+        allowed=_SCHEMAIR_CANDIDATE_ENVELOPE_PROPERTIES,
+        required=_SCHEMAIR_CANDIDATE_ENVELOPE_PROPERTIES,
     )
-    envelope = _require_object(artifact.get("envelope"), label="SchemaIR candidate envelope")
     envelope_structure = structure["envelope"]
-    envelope["rootPath"] = envelope_structure["rootPath"]
-    envelope["fields"] = _materialize_schema_fields(
-        envelope.get("fields"), envelope_structure["fields"], label="envelope.fields"
-    )
+    envelope = {
+        "rootPath": envelope_structure["rootPath"],
+        "description": deepcopy(candidate_envelope["description"]),
+        "fields": _materialize_schema_fields(
+            candidate_envelope["fields"],
+            envelope_structure["fields"],
+            label="envelope.fields",
+        ),
+    }
+    artifact["envelope"] = envelope
 
-    messages = artifact.get("messages")
+    messages = candidate_object.get("messages")
     if not isinstance(messages, list):
         raise DraftGenerationError("SchemaIR candidate messages must be an array")
     by_direction: dict[str, dict[str, Any]] = {}
-    for message in messages:
-        message_object = _require_object(message, label="SchemaIR candidate message")
+    for index, message in enumerate(messages):
+        message_object = _require_candidate_object(
+            message,
+            label=f"SchemaIR candidate messages[{index}]",
+            allowed=_SCHEMAIR_CANDIDATE_MESSAGE_PROPERTIES,
+            required=_SCHEMAIR_CANDIDATE_MESSAGE_PROPERTIES,
+        )
         direction = message_object.get("functionType")
         if direction not in {"ASSEMBLY", "PARSE"} or direction in by_direction:
             raise DraftGenerationError(
@@ -77,16 +145,28 @@ def materialize_schemair_candidate(
         )
     materialized_messages: list[dict[str, Any]] = []
     for direction in ("ASSEMBLY", "PARSE"):
-        message = by_direction[direction]
+        candidate_message = by_direction[direction]
         message_structure = structure[direction.lower()]
-        message["functionType"] = direction
-        message["messageName"] = message_structure["messageName"]
-        message["rootPath"] = message_structure["rootPath"]
-        message["fields"] = _materialize_schema_fields(
-            message.get("fields"),
-            message_structure["fields"],
-            label=f"messages[{direction}].fields",
-        )
+        message = {
+            "functionType": direction,
+            "messageName": message_structure["messageName"],
+            "rootPath": message_structure["rootPath"],
+            "xmlEncoding": deepcopy(candidate_message["xmlEncoding"]),
+            "xmlEncodingEvidence": _materialize_schema_encoding_evidence(
+                candidate_message["xmlEncodingEvidence"],
+                label=f"messages[{direction}].xmlEncodingEvidence",
+            ),
+            "description": deepcopy(candidate_message["description"]),
+            "fields": _materialize_schema_fields(
+                candidate_message["fields"],
+                message_structure["fields"],
+                label=f"messages[{direction}].fields",
+            ),
+            "conditionalConstraints": _materialize_schema_conditions(
+                candidate_message["conditionalConstraints"],
+                label=f"messages[{direction}].conditionalConstraints",
+            ),
+        }
         materialized_messages.append(message)
     artifact["messages"] = materialized_messages
     inherited_message_parents = {
@@ -307,10 +387,23 @@ def _materialize_schema_fields(
         supplied = _require_object(
             supplied_value_item, label=f"{label}[{position}]"
         )
+        required_properties = set(_SCHEMAIR_CANDIDATE_FIELD_PROPERTIES)
+        if derived["dataType"] == "object":
+            required_properties.add("required")
+        _require_candidate_properties(
+            supplied,
+            label=f"{label}[{position}]",
+            allowed=required_properties,
+            required=required_properties,
+        )
         if supplied.get("fieldName") != derived["fieldName"]:
             raise DraftGenerationError(
                 f"{label}[{position}] fieldName does not match Final DocIR preorder"
             )
+        materialized = {
+            name: deepcopy(supplied[name])
+            for name in _SCHEMAIR_CANDIDATE_FIELD_PROPERTY_ORDER
+        }
         derived = dict(derived)
         maximum = derived.pop("_maximumOccurs")
         if derived["dataType"] == "object":
@@ -321,13 +414,102 @@ def _materialize_schema_fields(
                 raise DraftGenerationError(
                     f"{label}[{position}] Object required must be proposed as a boolean"
                 )
-            supplied.update(derived)
-            supplied["required"] = required
-            supplied["occurs"] = _schema_occurs(1 if required else 0, maximum)
+            materialized.update(derived)
+            materialized["required"] = required
+            materialized["occurs"] = _schema_occurs(1 if required else 0, maximum)
         else:
-            supplied.update(derived)
-        result.append(supplied)
+            materialized.update(derived)
+        _require_candidate_object(
+            materialized["length"],
+            label=f"{label}[{position}].length",
+            allowed=_SCHEMAIR_CANDIDATE_LENGTH_PROPERTIES,
+            required=_SCHEMAIR_CANDIDATE_LENGTH_PROPERTIES,
+        )
+        _require_candidate_object(
+            materialized["evidence"],
+            label=f"{label}[{position}].evidence",
+            allowed=_SCHEMAIR_CANDIDATE_EVIDENCE_PROPERTIES,
+            required=_SCHEMAIR_CANDIDATE_EVIDENCE_PROPERTIES,
+        )
+        result.append(materialized)
     return result
+
+
+def _materialize_schema_encoding_evidence(value: Any, *, label: str) -> list[dict[str, Any]]:
+    if not isinstance(value, list):
+        raise DraftGenerationError(f"{label} must be an array")
+    result: list[dict[str, Any]] = []
+    for index, item in enumerate(value):
+        evidence = _require_candidate_object(
+            item,
+            label=f"{label}[{index}]",
+            allowed=_SCHEMAIR_CANDIDATE_ENCODING_EVIDENCE_PROPERTIES,
+            required=_SCHEMAIR_CANDIDATE_ENCODING_EVIDENCE_PROPERTIES,
+        )
+        result.append(deepcopy(evidence))
+    return result
+
+
+def _materialize_schema_conditions(value: Any, *, label: str) -> list[dict[str, Any]]:
+    if not isinstance(value, list):
+        raise DraftGenerationError(f"{label} must be an array")
+    result: list[dict[str, Any]] = []
+    for index, item in enumerate(value):
+        condition = _require_candidate_object(
+            item,
+            label=f"{label}[{index}]",
+            allowed=_SCHEMAIR_CANDIDATE_CONDITION_PROPERTIES,
+            required=_SCHEMAIR_CANDIDATE_CONDITION_PROPERTIES,
+        )
+        _require_candidate_object(
+            condition["evidence"],
+            label=f"{label}[{index}].evidence",
+            allowed=_SCHEMAIR_CANDIDATE_EVIDENCE_PROPERTIES,
+            required=_SCHEMAIR_CANDIDATE_EVIDENCE_PROPERTIES,
+        )
+        materialized = {
+            name: deepcopy(condition[name])
+            for name in _SCHEMAIR_CANDIDATE_CONDITION_PROPERTY_ORDER
+        }
+        materialized["review"] = _pending_review()
+        result.append(materialized)
+    return result
+
+
+def _require_candidate_object(
+    value: Any,
+    *,
+    label: str,
+    allowed: set[str],
+    required: set[str],
+) -> dict[str, Any]:
+    result = _require_object(value, label=label)
+    _require_candidate_properties(
+        result,
+        label=label,
+        allowed=allowed,
+        required=required,
+    )
+    return result
+
+
+def _require_candidate_properties(
+    value: dict[str, Any],
+    *,
+    label: str,
+    allowed: set[str],
+    required: set[str],
+) -> None:
+    missing = sorted(required - value.keys())
+    unknown = sorted(value.keys() - allowed)
+    if not missing and not unknown:
+        return
+    details: list[str] = []
+    if missing:
+        details.append(f"missing properties: {', '.join(missing)}")
+    if unknown:
+        details.append(f"unknown properties: {', '.join(unknown)}")
+    raise DraftGenerationError(f"{label} has invalid properties ({'; '.join(details)})")
 
 
 def _docir_field_structure(

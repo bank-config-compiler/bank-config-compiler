@@ -1018,6 +1018,35 @@ def test_openai_chat_provider_serializes_json_artifact_without_double_encoded_pr
         "contractVersion": "schemair/v2",
         "status": "DRAFT",
     }
+    assert result.metadata.prompt_contract_version == "draft-prompt/v10"
+
+
+def test_schemair_prompt_defines_exact_semantic_candidate_shape() -> None:
+    request = DraftGenerationRequest(
+        task_id="phase0-test",
+        artifact_kind="schemair",
+        source_hash="sha256:" + "2" * 64,
+        schema_id="b2eboc-b2e0061-schema",
+        schema_version="v2",
+    )
+    context = DraftGenerationContext(
+        source_content="# Final DocIR\n",
+        source_content_type="text/markdown",
+    )
+
+    messages = build_chat_messages(request, context)
+    system_prompt = " ".join(messages[0]["content"].split())
+    user_prompt = messages[1]["content"]
+
+    assert "Prompt contract: draft-prompt/v10" in user_prompt
+    assert "exactly `envelope` and `messages`" in system_prompt
+    assert (
+        "Every field has exactly `fieldName`, `displayName`, `format`, `length`, "
+        "`description`, `conditionText`, `sourceText`, `evidence`, `confidence`, "
+        "`uncertain`, `uncertainReason`, `reviewNote`"
+    ) in system_prompt
+    assert "Object fields additionally require `required`" in system_prompt
+    assert "Scalar fields must omit `required`" in system_prompt
 
 
 def test_openai_chat_provider_constructs_sdk_client_without_automatic_retries(
@@ -1267,6 +1296,7 @@ def test_standard_prompt_contains_canonical_rules_but_no_workspace_or_golden_pat
     messages = build_chat_messages(request, context)
     user_message = messages[1]["content"]
 
+    assert "Prompt contract: draft-prompt/v9" in user_message
     assert '"direction": "ASSEMBLY"' in user_message
     assert '<RELEASED_RULE_PACKAGE_JSON>' in user_message
     assert '"schema.yaml":{"status":"RELEASED"}' in user_message
