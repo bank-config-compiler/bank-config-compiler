@@ -71,7 +71,7 @@ P0-T6 只能消费 P0-T5 获批的 Final DocIR，并按以下顺序执行：
 
 每一小节必须等待上一层准确 Final，不能集中到最后一次批准。
 
-SchemaIR、Standard、Template 的 semantic materializer、统一 validate/approve CLI 和离线回归已经实现。SchemaIR generation/validation/approval 会重新校验 `docir-approval-result.json` 的 task/interface、artifact kind/path、Draft→Final hash 映射和当前 Final 准确 bytes hash。SchemaIR `draft-prompt/v10` 明确 exact semantic candidate shape；materializer 按白名单重建公开 SchemaIR，未知或缺失 candidate 属性在 Draft 发布前 hard fail。该实现不改变执行依赖：没有 P0-T5 获批的真实 Final DocIR 时，不得把 fixture closure 记为 P0-T6 真实验收。
+SchemaIR、Standard、Template 的 semantic materializer、统一 validate/approve CLI 和离线回归已经实现。SchemaIR generation/validation/approval 会重新校验 `docir-approval-result.json` 的 task/interface、artifact kind/path、Draft→Final hash 映射和当前 Final 准确 bytes hash。SchemaIR `draft-prompt/v10` 明确 exact semantic candidate shape；materializer 按白名单重建公开 SchemaIR，未知或缺失 candidate 属性在 Draft 发布前 hard fail。ADR-0020 已接受 F-007 的实现边界：SchemaIR 将升级为一次联合 metadata 加按 Final DocIR selector 覆盖的 Envelope/ASSEMBLY/PARSE 有界字段批次，默认 batch size 为 8；Standard/Template 仍为单次 `complete-artifact`。该决定不改变执行依赖：没有 P0-T5 获批的真实 Final DocIR 时，不得把 fixture closure 记为 P0-T6 真实验收。
 
 ## 5. Commit Plan
 
@@ -87,7 +87,7 @@ SchemaIR、Standard、Template 的 semantic materializer、统一 validate/appro
 | 4D | ADR-0019、DocIR v17 Prompt 与 Conditions Validator | 最大笔数、格式、唯一性和一般校验不再污染 Conditions；明确条件分支与无条件占位符回归通过 | 可继续 `docir-022` Conditions Human Gate |
 | 5 | 非敏感 P0-T5 真实验收摘要 | 真实 Final DocIR 与 approval evidence 确认 | P0-T6 开始 |
 | 5A | P0-T6.1 DocIR approval gate、失败证据与 SchemaIR candidate contract 修复 | 审批前置、attempt evidence、v10 prompt/strict materialization 离线门禁通过；`schemair-003` 已验证 hard-fail 边界 | F-007 开始 |
-| 5B | F-007 有界 SchemaIR 分段提取 | Envelope、ASSEMBLY、PARSE 及字段 coverage 确定性合并；离线回归、docs-sync、review 全绿 | 可准备并单独授权 `schemair-004` |
+| 5B | ADR-0020 与 F-007 有界 SchemaIR 分段提取 | 联合 metadata、默认 8 字段批次、Envelope/ASSEMBLY/PARSE selector coverage 确定性合并；离线回归、docs-sync、review 全绿 | 可准备并单独授权 `schemair-004` |
 | 6 | SchemaIR 闭环 | 真实 Final SchemaIR | Standard 开始 |
 | 7 | 两个 Standard 闭环 | 两个真实 Final Standard | Template 开始 |
 | 8 | 两个 Template 闭环 | 两个真实 Final Template | closure 开始 |
@@ -111,7 +111,7 @@ git diff --check
 ## 7. 当前阻塞
 
 - P0-T5 已无阻塞；`docir-022` Final DocIR 与 approval evidence 已确认，attempt evidence 保持 immutable。`schemair-001`/`schemair-002`/`schemair-003` 已消费且不得复用。
-- F-007 是 P0-T6.1 的直接阻塞：单次 `complete-artifact` SchemaIR 输出即使 `finishReason=stop` 且 response complete，仍不能可靠覆盖两个方向和全部字段。推荐下一步先以 TDD 设计有界 Envelope/ASSEMBLY/PARSE 分段及确定性 coverage merge；不得通过填充缺失语义、复用 `schemair-003` 或无条件重试绕过门禁。
+- F-007 是 P0-T6.1 的直接阻塞：单次 `complete-artifact` SchemaIR 输出即使 `finishReason=stop` 且 response complete，仍不能可靠覆盖两个方向和全部字段。ADR-0020 已选择一次联合 metadata 加默认 8 字段的 Envelope/ASSEMBLY/PARSE 有界批次，并要求按 Final DocIR selector 确定性 merge；不得通过填充缺失语义、复用 `schemair-003` 或无条件重试绕过门禁。
 - F-007 离线门禁、docs-sync 与 code review 完成后，才能为 `schemair-004` 准备精确非 secret 外发摘要并重新请求授权。
 - P0-T6 的每一层均受前一层 Human-approved Final 阻塞。
 - Phase0 Done 仍受五份下游真实 Final、双方向 `check --profile phase0` 和 Workbook 验收阻塞。
