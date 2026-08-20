@@ -2,7 +2,7 @@
 
 ## Status
 
-In Progress. P0-T3 trusted chain、P0-T4 deterministic Draft-to-Workbook closure 与历史 P0-T5 真实 DocIR Human Gate 已完成。`docir-022` 的批准事实保持不变，但当前执行链已由操作者选择从新 DocIR attempt 重启；`docir-023` 至 `docir-025` 均已消费且未发布 Draft，Prompt v18 已离线修复 task `interfaceCode` 未在首段校验前锁定的问题。下一步是单次 `docir-026` 真实验证及新的 Human Review/approval；`schemair-004` 和其余五类下游真实 Final、双方向 Workbook、最终门禁都必须等待该 Final DocIR。
+In Progress. P0-T3 trusted chain、P0-T4 deterministic Draft-to-Workbook closure 与历史 P0-T5 真实 DocIR Human Gate 已完成。`docir-022` 的批准事实保持不变，但当前执行链已由操作者选择从新 DocIR attempt 重启；`docir-023` 至 `docir-025` 均已消费且未发布 Draft，Prompt v18 已修复 task `interfaceCode` 未在首段校验前锁定的问题。`docir-026` 已以 5 个完整 subcall 生成 49 字段 Invalid Draft，初始 Validator 结果为 14 ERROR、1 WARNING；当前必须完成新的 Human 修订、重验与 approval。`schemair-004` 和其余五类下游真实 Final、双方向 Workbook、最终门禁都必须等待该 Final DocIR。
 
 ## 1. 阶段目标
 

@@ -2,9 +2,9 @@
 
 ## Status
 
-**In Progress。F-007 SchemaIR 有界分段已离线实现；当前执行链已重新从 DocIR 开始，下一步是单次 `docir-026` 真实验证，随后必须完成新的 Human Review/approval 才能进入 `schemair-004`。**
+**In Progress。F-007 SchemaIR 有界分段已离线实现；`docir-026` 已生成 Invalid Draft，当前停在新的 DocIR Human Review/approval Gate，完成前不得进入 `schemair-004`。**
 
-P0-T3 trusted chain、P0-T4 deterministic Draft-to-Workbook closure 与历史 P0-T5 真实 DocIR Human Gate 已完成。`docir-020` 是未发布 Draft 的历史失败 attempt；`docir-021` 与 `docir-022` 均为不可复用的真实 attempt，其 evidence 保持 immutable。`docir-022` Final DocIR 曾由 `deng` 对准确 bytes 批准，hash 为 `sha256:180dadcc10fea5cf364c72e7b36d6d36aad3bfc24d3edd172138b24869042ae6`。操作者决定不恢复该历史链到当前执行 workspace，而是从同一 raw doc 重新生成并重新 Human approval。新链中 `docir-023` 在首个请求以 `PermissionDenied` 失败，`docir-024` 在成功完成 Interface/Envelope 后于 messages outline 遇到 `APIConnectionError`，`docir-025` 的首段完整返回但因模型留空 Interface Code 且未使用精确 unknown marker 而被 segment Validator 拒绝；三个 attempt 均已消费、未发布 Draft且不得复用。根因修复将 task `interfaceCode` 纳入 DocIR request selector，并在 segment 校验与 merge 前应用 code-owned identity；Prompt 升级为 `draft-prompt/v18`，公开 DocIR candidate/materializer/wire 不变。P0-T6.1 的 `schemair-001` 至 `schemair-003` 也均已消费。F-007 已以 `draft-prompt/v11`、联合 metadata、Final DocIR selector 字段批次、严格 merge、逐段 evidence 和 deterministic Review Notes 完成离线实现；但 `schemair-004` 现在必须等待 `docir-026` 形成 Draft并完成新的 Human Review/approval。
+P0-T3 trusted chain、P0-T4 deterministic Draft-to-Workbook closure 与历史 P0-T5 真实 DocIR Human Gate 已完成。`docir-020` 是未发布 Draft 的历史失败 attempt；`docir-021` 与 `docir-022` 均为不可复用的真实 attempt，其 evidence 保持 immutable。`docir-022` Final DocIR 曾由 `deng` 对准确 bytes 批准，hash 为 `sha256:180dadcc10fea5cf364c72e7b36d6d36aad3bfc24d3edd172138b24869042ae6`。操作者决定不恢复该历史链到当前执行 workspace，而是从同一 raw doc 重新生成并重新 Human approval。新链中 `docir-023` 在首个请求以 `PermissionDenied` 失败，`docir-024` 在成功完成 Interface/Envelope 后于 messages outline 遇到 `APIConnectionError`，`docir-025` 的首段完整返回但因模型留空 Interface Code 且未使用精确 unknown marker 而被 segment Validator 拒绝；三个 attempt 均已消费、未发布 Draft且不得复用。根因修复将 task `interfaceCode` 纳入 DocIR request selector，并在 segment 校验与 merge 前应用 code-owned identity；Prompt 升级为 `draft-prompt/v18`，公开 DocIR candidate/materializer/wire 不变。`docir-026` 的 5 个 subcall 均以 `finishReason=stop` 完整结束并通过 segment/merge，使用 53,508 tokens，发布 49 字段 Draft；Draft hash 为 `sha256:7c69b3eabc500509f3700b0f121758a7907dc3ee3b6d48eba5e7fc3e09fc7f29`，接口代码正确锁定为 `b2e0061`。初始 Validator 结果为 14 个 `DOCIR_SEMANTIC_VALUE_MISSING` ERROR 和 1 个 `DOCIR_REQUIRED_EVIDENCE_AMBIGUOUS` WARNING，`finalEligible=false`，因此当前停在 Human Gate。P0-T6.1 的 `schemair-001` 至 `schemair-003` 也均已消费。F-007 已以 `draft-prompt/v11`、联合 metadata、Final DocIR selector 字段批次、严格 merge、逐段 evidence 和 deterministic Review Notes 完成离线实现；但 `schemair-004` 必须等待当前 Draft 完成 Human 修订、重验与 approval。
 
 ## 1. 目标与可信边界
 
@@ -112,7 +112,7 @@ git diff --check
 
 - 历史 P0-T5 已完成且 `docir-022` approval 事实保持不变；当前执行 workspace 按操作者决策不恢复该链，必须由新的 DocIR Draft 重新经过 Human Gate。`docir-023`/`docir-024`/`docir-025` 和 `schemair-001`/`schemair-002`/`schemair-003` 均已消费且不得复用。
 - F-007 已消除 P0-T6.1 的离线实现阻塞：SchemaIR 使用联合 metadata 加默认 8 字段的 Envelope/ASSEMBLY/PARSE 有界批次，并按 Final DocIR selector 确定性 merge；不得通过填充缺失语义、复用 `schemair-003`、无条件重试或成功前缀复用绕过门禁。
-- 当前直接阻塞是单次 `docir-026` 真实验证及其后的 Human Review/approval；在新的 Final DocIR 形成前不得发起 `schemair-004`。
+- 当前直接阻塞是 `docir-026` Draft 的 14 个 Required ERROR 与 1 个歧义 WARNING；必须由 Human 修订、重验并批准准确 hash。在新的 Final DocIR 形成前不得发起 `schemair-004`。
 - P0-T6 的每一层均受前一层 Human-approved Final 阻塞。
 - Phase0 Done 仍受五份下游真实 Final、双方向 `check --profile phase0` 和 Workbook 验收阻塞。
 

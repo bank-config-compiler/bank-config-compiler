@@ -27,7 +27,7 @@ LLM / Agent 只能生成 DocIR、SchemaIR、InterfaceStandardIR 和 InterfaceTem
 - DocIR / SchemaIR Review Golden sample 已落地；Golden 只用于开发 fixture、历史批准样例和确定性 trusted-chain regression，不进入真实 prompt，也不对真实 DocIR 候选执行自动语义判定。`configuration-rules/v1` 与 `configuration-rules/v2` 均已发布并冻结为接口无关、非全量的 BKL configuration rules 子集。v2 保持 v1 的 27/207/14/5/6 catalog，只修订方向相关 Standard projection：ASSEMBLY 显式镜像 target，PARSE 从精确绑定的 Final Standard 解析表达式/collection source。
 - 规则包 loader/validator 已作为库实现：只使用 `yaml.safe_load`，校验 UTF-8 no BOM、严格结构、生命周期、唯一性、值域、redaction 和跨文件引用。调用方显式选择 v1 或 v2 后，默认加载接受相应 `RELEASED` 版本；不会自动选择最新版本或迁移已有 Final IR。
 
-P0-T3、P0-T4 与历史 P0-T5 均为 `Done`，F-007 SchemaIR 有界分段也已离线完成。操作者选择不恢复历史 `docir-022` 到当前执行 workspace，而是从同一 raw doc 启动新的 DocIR→Human Gate→SchemaIR 链。`docir-023` 至 `docir-025` 均已消费且未发布 Draft；`docir-025` 暴露的 task `interfaceCode` 未进入 provider selector/分段校验问题已由 Prompt v18 和 code-owned identity 锁定离线修复。当前下一步是以新 ID 单次验证 `docir-026`；只有形成并人工批准新的 Final DocIR 后，才能发起 `schemair-004`。P0-T6.1 尚未完成，Phase0-PoC 仍为 `In Progress`。详细状态见 [Phase0-PoC 执行计划](docs/planning/00-phase0-poc-plan.md)。
+P0-T3、P0-T4 与历史 P0-T5 均为 `Done`，F-007 SchemaIR 有界分段也已离线完成。操作者选择不恢复历史 `docir-022` 到当前执行 workspace，而是从同一 raw doc 启动新的 DocIR→Human Gate→SchemaIR 链。`docir-023` 至 `docir-025` 均已消费且未发布 Draft；`docir-025` 暴露的 task `interfaceCode` 未进入 provider selector/分段校验问题已由 Prompt v18 和 code-owned identity 锁定修复。`docir-026` 随后以 5 个完整 subcall 生成 49 字段 Invalid Draft，接口代码正确锁定为 `b2e0061`；初始 Validator 结果为 14 ERROR、1 WARNING，必须由 Human 对当前准确 Draft 修订、重验并批准。形成新的 Final DocIR 前不得发起 `schemair-004`。P0-T6.1 尚未完成，Phase0-PoC 仍为 `In Progress`。详细状态见 [Phase0-PoC 执行计划](docs/planning/00-phase0-poc-plan.md)。
 
 ## 快速开始
 
