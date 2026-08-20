@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import json
 from pathlib import Path
 
@@ -9,6 +10,7 @@ from bank_config_compiler.draft_generation import (
     ProviderCallMetadata,
     ProviderSubcallMetadata,
     generate_docir_draft,
+    generate_schemair_draft,
     publish_generated_draft,
 )
 from bank_config_compiler.workspace import ingest_raw_doc
@@ -111,6 +113,7 @@ def test_publish_real_provider_draft_writes_non_sensitive_call_result(tmp_path: 
         "startedAt": "2026-08-10T10:00:00+08:00",
         "completedAt": "2026-08-10T10:00:05+08:00",
         "docirFieldBatchSize": None,
+        "schemairFieldBatchSize": None,
         "usage": {
             "promptTokens": 10,
             "completionTokens": 20,
@@ -231,3 +234,106 @@ def test_publish_segmented_docir_records_ordered_subcalls(tmp_path: Path) -> Non
         "interface-envelope",
         "messages-outline",
     ]
+
+
+def test_publish_segmented_schemair_records_batch_size_and_ordered_subcalls(
+    tmp_path: Path,
+) -> None:
+    docir = (REPO_ROOT / "samples/draft-generation/b2eboc-b2e0061/docir-final.md").read_text(
+        encoding="utf-8"
+    )
+    candidate_text = (
+        REPO_ROOT / "samples/draft-generation/b2eboc-b2e0061/artifacts/schemair-draft.json"
+    ).read_text(encoding="utf-8")
+    responses = tuple(f'{{"segment":{sequence}}}' for sequence in range(1, 10))
+    calls = tuple(
+        ProviderSubcallMetadata(
+            segment=segment,
+            outcome="succeeded",
+            response_complete=True,
+            response_content_hash=(
+                "sha256:" + hashlib.sha256(response.encode("utf-8")).hexdigest()
+            ),
+            requested_model="qwen-test-snapshot",
+            response_model="qwen-test-snapshot",
+            response_id=f"chatcmpl-{sequence}",
+            started_at=f"2026-08-20T10:00:{sequence:02d}+08:00",
+            completed_at=f"2026-08-20T10:00:{sequence + 1:02d}+08:00",
+            finish_reason="stop",
+            prompt_contract_version="draft-prompt/v11",
+            segment_contract_version=(
+                "schemair-metadata-segment/v1"
+                if sequence == 1
+                else "schemair-field-semantics-segment/v1"
+            ),
+        )
+        for sequence, (segment, response) in enumerate(
+            zip(
+                (
+                    "schemair-metadata",
+                    "schemair-envelope-fields-001",
+                    "schemair-envelope-fields-002",
+                    "schemair-assembly-fields-001",
+                    "schemair-assembly-fields-002",
+                    "schemair-assembly-fields-003",
+                    "schemair-assembly-fields-004",
+                    "schemair-parse-fields-001",
+                    "schemair-parse-fields-002",
+                ),
+                responses,
+                strict=True,
+            ),
+            start=1,
+        )
+    )
+
+    class SegmentedSchemaIRProvider:
+        name = "openai-chat"
+
+        def generate(self, request, context: DraftGenerationContext) -> DraftProviderResult:
+            return DraftProviderResult(
+                response_text=json.dumps(
+                    {
+                        "contractVersion": "draft-provider-response/v1",
+                        "artifactKind": "schemair",
+                        "artifactContent": candidate_text,
+                        "reviewNotes": "Pending review.",
+                    }
+                ),
+                metadata=ProviderCallMetadata(
+                    provider_name=self.name,
+                    attempt_id="schemair-004",
+                    requested_model="qwen-test-snapshot",
+                    response_model="qwen-test-snapshot",
+                    started_at=calls[0].started_at,
+                    completed_at=calls[-1].completed_at,
+                    endpoint_fingerprint="sha256:" + "4" * 64,
+                    prompt_contract_version="draft-prompt/v11",
+                    calls=calls,
+                    schemair_field_batch_size=8,
+                ),
+                candidate_content=candidate_text,
+                subcall_response_texts=responses,
+            )
+
+    generated = generate_schemair_draft(
+        docir_final=docir,
+        provider=SegmentedSchemaIRProvider(),
+        task_id="phase0-test",
+        interface_code="b2e0061",
+        schema_id="b2eboc-b2e0061-schema",
+        schema_version="v1",
+    )
+    workspace = prepare_workspace(tmp_path)
+    publish_generated_draft(workspace, generated)
+    call_result = json.loads(
+        (
+            workspace
+            / "provider-attempts/schemair/schemair-004/provider-call-result.json"
+        ).read_text(encoding="utf-8")
+    )
+
+    assert call_result["docirFieldBatchSize"] is None
+    assert call_result["schemairFieldBatchSize"] == 8
+    assert len(call_result["calls"]) == 9
+    assert call_result["calls"][-1]["segment"] == "schemair-parse-fields-002"

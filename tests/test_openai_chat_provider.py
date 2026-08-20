@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import logging
 import sys
+from pathlib import Path
 from threading import Event
 from types import SimpleNamespace
 
@@ -22,6 +23,11 @@ from bank_config_compiler.openai_chat_provider import (
     OpenAIChatDraftProvider,
     build_chat_messages,
 )
+from bank_config_compiler.ir_materialization import parse_final_docir_structure
+from bank_config_compiler.schemair_draft import build_schemair_field_batches
+
+
+SAMPLE_ROOT = Path("samples/draft-generation/b2eboc-b2e0061")
 
 
 class FakeCompletions:
@@ -339,6 +345,303 @@ def queued_docir_client(
             )
         ]
     )
+
+
+def schemair_segment_responses(*, batch_size: int = 8) -> list[dict]:
+    docir_final = (SAMPLE_ROOT / "docir-final.md").read_text(encoding="utf-8")
+    candidate = json.loads(
+        (SAMPLE_ROOT / "artifacts/schemair-draft.json").read_text(encoding="utf-8")
+    )
+    structure = parse_final_docir_structure(docir_final)
+    batches = build_schemair_field_batches(structure, batch_size=batch_size)
+    messages = {message["functionType"]: message for message in candidate["messages"]}
+    responses = [
+        {
+            "contractVersion": "schemair-metadata-segment/v1",
+            "envelope": {"description": candidate["envelope"]["description"]},
+            "messages": [
+                {
+                    key: value
+                    for key, value in messages[direction].items()
+                    if key != "fields"
+                }
+                for direction in ("ASSEMBLY", "PARSE")
+            ],
+        }
+    ]
+    candidate_fields = {
+        "ENVELOPE": candidate["envelope"]["fields"],
+        "ASSEMBLY": messages["ASSEMBLY"]["fields"],
+        "PARSE": messages["PARSE"]["fields"],
+    }
+    for section in ("ENVELOPE", "ASSEMBLY", "PARSE"):
+        offset = 0
+        for batch_index, selectors in enumerate(batches[section], start=1):
+            fields = candidate_fields[section][offset : offset + len(selectors)]
+            responses.append(
+                {
+                    "contractVersion": "schemair-field-semantics-segment/v1",
+                    "section": section,
+                    "batchIndex": batch_index,
+                    "fields": [
+                        {"selector": selector["selector"], **field}
+                        for selector, field in zip(selectors, fields, strict=True)
+                    ],
+                }
+            )
+            offset += len(selectors)
+    return responses
+
+
+def queued_schemair_client(*, batch_size: int = 8) -> QueuedFakeClient:
+    return QueuedFakeClient(
+        [
+            chat_stream(json.dumps(response, ensure_ascii=False))
+            for response in schemair_segment_responses(batch_size=batch_size)
+        ]
+    )
+
+
+def schemair_request_and_context() -> tuple[DraftGenerationRequest, DraftGenerationContext]:
+    docir_final = (SAMPLE_ROOT / "docir-final.md").read_text(encoding="utf-8")
+    return (
+        DraftGenerationRequest(
+            task_id="phase0-test",
+            artifact_kind="schemair",
+            source_hash="sha256:" + "2" * 64,
+            schema_id="b2eboc-b2e0061-schema",
+            schema_version="v2",
+        ),
+        DraftGenerationContext(
+            source_content=docir_final,
+            source_content_type="text/markdown",
+        ),
+    )
+
+
+def test_openai_chat_provider_segments_schemair_with_default_bounded_batches() -> None:
+    client = queued_schemair_client()
+    provider = OpenAIChatDraftProvider(
+        api_key="test-key",
+        base_url="https://example.invalid/v1",
+        model="qwen-test-snapshot",
+        attempt_id="schemair-004",
+        client=client,
+    )
+    request, context = schemair_request_and_context()
+
+    result = provider.generate(request, context)
+
+    assert len(client.completions.calls) == 9
+    assert [call.segment for call in result.metadata.calls] == [
+        "schemair-metadata",
+        "schemair-envelope-fields-001",
+        "schemair-envelope-fields-002",
+        "schemair-assembly-fields-001",
+        "schemair-assembly-fields-002",
+        "schemair-assembly-fields-003",
+        "schemair-assembly-fields-004",
+        "schemair-parse-fields-001",
+        "schemair-parse-fields-002",
+    ]
+    assert result.metadata.schemair_field_batch_size == 8
+    assert result.metadata.docir_field_batch_size is None
+    assert result.metadata.prompt_contract_version == "draft-prompt/v11"
+    assert result.metadata.total_tokens == 270
+    envelope = json.loads(result.response_text)
+    expected_candidate = json.loads(
+        (SAMPLE_ROOT / "artifacts/schemair-draft.json").read_text(encoding="utf-8")
+    )
+    assert json.loads(envelope["artifactContent"]) == expected_candidate
+    assert result.candidate_content == envelope["artifactContent"]
+    assert len(result.subcall_response_texts) == 9
+    for call in client.completions.calls:
+        assert context.source_content in call["messages"][1]["content"]
+        assert "Prompt contract: draft-prompt/v11" in call["messages"][1]["content"]
+
+
+def test_openai_chat_provider_respects_configured_schemair_batch_size() -> None:
+    client = queued_schemair_client(batch_size=16)
+    provider = OpenAIChatDraftProvider(
+        api_key="test-key",
+        base_url="https://example.invalid/v1",
+        model="qwen-test-snapshot",
+        attempt_id="schemair-004",
+        schemair_field_batch_size=16,
+        client=client,
+    )
+    request, context = schemair_request_and_context()
+
+    result = provider.generate(request, context)
+
+    assert len(client.completions.calls) == 5
+    assert result.metadata.schemair_field_batch_size == 16
+
+
+def test_schemair_segment_prompts_keep_metadata_and_field_responsibilities_separate() -> None:
+    request, context = schemair_request_and_context()
+    structure = parse_final_docir_structure(context.source_content)
+    selectors = build_schemair_field_batches(structure, batch_size=8)["ENVELOPE"][0]
+    metadata_prompt = openai_chat_provider._SchemaIRSegmentPrompt(
+        segment="schemair-metadata",
+        contract_version="schemair-metadata-segment/v1",
+        path_catalogs={
+            section: [field["path"] for batch in batches for field in batch]
+            for section, batches in build_schemair_field_batches(
+                structure, batch_size=8
+            ).items()
+        },
+    )
+    field_prompt = openai_chat_provider._SchemaIRSegmentPrompt(
+        segment="schemair-envelope-fields-001",
+        contract_version="schemair-field-semantics-segment/v1",
+        section="ENVELOPE",
+        batch_index=1,
+        target_selectors=selectors,
+    )
+
+    metadata_messages = build_chat_messages(
+        request, context, schemair_segment=metadata_prompt
+    )
+    field_messages = build_chat_messages(request, context, schemair_segment=field_prompt)
+    metadata_system = " ".join(metadata_messages[0]["content"].split())
+    field_system = " ".join(field_messages[0]["content"].split())
+    field_user = field_messages[1]["content"]
+
+    assert "must not return `fields`" in metadata_system
+    assert "Envelope `description`" in metadata_system
+    assert "one ASSEMBLY and one PARSE" in metadata_system
+    assert "only the requested field semantics" in field_system
+    assert "must not return metadata" in field_system
+    assert "must not return metadata, path" in field_system
+    assert "VALIDATED_SCHEMAIR_SELECTOR_JSON" in field_user
+    assert '"path":"Root.bocb2e"' in field_user
+    assert "golden" not in field_system.lower()
+    assert "golden" not in field_user.split("<SOURCE_DATA>", maxsplit=1)[0].lower()
+
+
+def test_openai_chat_provider_schemair_fails_fast_after_invalid_later_segment() -> None:
+    responses = schemair_segment_responses()
+    responses[2]["fields"][0]["selector"] = "envelope:unexpected"
+    client = QueuedFakeClient(
+        [chat_stream(json.dumps(response, ensure_ascii=False)) for response in responses]
+    )
+    provider = OpenAIChatDraftProvider(
+        api_key="test-key",
+        base_url="https://example.invalid/v1",
+        model="qwen-test-snapshot",
+        attempt_id="schemair-004",
+        client=client,
+    )
+    request, context = schemair_request_and_context()
+
+    with pytest.raises(DraftProviderDiagnosticError, match="selector does not match") as caught:
+        provider.generate(request, context)
+
+    evidence = caught.value.evidence
+    assert evidence is not None
+    assert len(client.completions.calls) == 3
+    assert evidence.failure_stage == "segment-validation"
+    assert evidence.failed_segment == "schemair-envelope-fields-002"
+    assert [call.metadata.outcome for call in evidence.calls] == [
+        "succeeded",
+        "succeeded",
+        "failed",
+    ]
+
+
+def test_openai_chat_provider_schemair_preserves_prefix_when_later_stream_fails() -> None:
+    responses = schemair_segment_responses()
+    client = QueuedFakeClient(
+        [
+            chat_stream(json.dumps(responses[0], ensure_ascii=False)),
+            chat_stream(json.dumps(responses[1], ensure_ascii=False)),
+            InterruptedStream(),
+        ]
+    )
+    provider = OpenAIChatDraftProvider(
+        api_key="test-key",
+        base_url="https://example.invalid/v1",
+        model="qwen-test-snapshot",
+        attempt_id="schemair-004",
+        client=client,
+    )
+    request, context = schemair_request_and_context()
+
+    with pytest.raises(DraftProviderDiagnosticError, match="chat stream failed") as caught:
+        provider.generate(request, context)
+
+    evidence = caught.value.evidence
+    assert evidence is not None
+    assert len(client.completions.calls) == 3
+    assert evidence.failure_stage == "stream"
+    assert evidence.failed_segment == "schemair-envelope-fields-002"
+    assert evidence.calls[0].response_text == json.dumps(
+        responses[0], ensure_ascii=False
+    )
+    assert evidence.calls[1].response_text == json.dumps(
+        responses[1], ensure_ascii=False
+    )
+    assert evidence.calls[2].response_text == '{"artifact":"SECRET-BANK-PAYLOAD'
+
+
+def test_openai_chat_provider_schemair_stops_after_later_invalid_json() -> None:
+    responses = schemair_segment_responses()
+    client = QueuedFakeClient(
+        [
+            chat_stream(json.dumps(responses[0], ensure_ascii=False)),
+            chat_stream(json.dumps(responses[1], ensure_ascii=False)),
+            chat_stream("{"),
+        ]
+    )
+    provider = OpenAIChatDraftProvider(
+        api_key="test-key",
+        base_url="https://example.invalid/v1",
+        model="qwen-test-snapshot",
+        attempt_id="schemair-004",
+        client=client,
+    )
+    request, context = schemair_request_and_context()
+
+    with pytest.raises(DraftProviderDiagnosticError, match="strict JSON") as caught:
+        provider.generate(request, context)
+
+    evidence = caught.value.evidence
+    assert evidence is not None
+    assert len(client.completions.calls) == 3
+    assert evidence.failure_stage == "model-response"
+    assert evidence.failed_segment == "schemair-envelope-fields-002"
+    assert evidence.calls[2].response_text == "{"
+
+
+def test_openai_chat_provider_schemair_records_merge_failure_after_all_subcalls(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    client = queued_schemair_client()
+    provider = OpenAIChatDraftProvider(
+        api_key="test-key",
+        base_url="https://example.invalid/v1",
+        model="qwen-test-snapshot",
+        attempt_id="schemair-004",
+        client=client,
+    )
+    request, context = schemair_request_and_context()
+
+    def fail_merge(*args: object, **kwargs: object) -> dict:
+        raise DraftGenerationError("forced SchemaIR coverage failure")
+
+    monkeypatch.setattr(openai_chat_provider, "merge_schemair_semantic_segments", fail_merge)
+
+    with pytest.raises(DraftProviderDiagnosticError, match="coverage failure") as caught:
+        provider.generate(request, context)
+
+    evidence = caught.value.evidence
+    assert evidence is not None
+    assert len(client.completions.calls) == 9
+    assert evidence.failure_stage == "merge-validation"
+    assert evidence.failed_segment is None
+    assert all(call.metadata.outcome == "succeeded" for call in evidence.calls)
+    assert evidence.metadata.schemair_field_batch_size == 8
 
 
 def test_openai_chat_provider_segments_docir_with_default_bounded_batches() -> None:
@@ -981,12 +1284,12 @@ def test_orchestration_reports_docir_extraction_validation_detail(
     )
 
 
-def test_openai_chat_provider_serializes_json_artifact_without_double_encoded_prompt_output() -> None:
+def test_openai_chat_provider_serializes_complete_json_artifact_without_double_encoding() -> None:
     client = FakeClient(
         chat_stream(
             json.dumps(
                 {
-                    "artifact": {"contractVersion": "schemair/v2", "status": "DRAFT"},
+                    "artifact": {"contractVersion": "interface-standard/v1", "status": "DRAFT"},
                     "reviewNotes": "Pending review.",
                 }
             )
@@ -996,32 +1299,34 @@ def test_openai_chat_provider_serializes_json_artifact_without_double_encoded_pr
         api_key="test-key",
         base_url="https://example.invalid/v1",
         model="qwen-test-snapshot",
-        attempt_id="schemair-001",
+        attempt_id="standard-001",
         client=client,
     )
     request = DraftGenerationRequest(
         task_id="phase0-test",
-        artifact_kind="schemair",
+        artifact_kind="standard",
         source_hash="sha256:" + "2" * 64,
-        schema_id="b2eboc-b2e0061-schema",
-        schema_version="v1",
+        standard_id="b2eboc-b2e0061-standard",
+        direction="ASSEMBLY",
+        standard_version="v1",
+        rule_package_version="v1",
     )
     context = DraftGenerationContext(
-        source_content="# Final DocIR\n",
-        source_content_type="text/markdown",
+        source_content='{"contractVersion":"schemair/v2"}',
+        source_content_type="application/json",
     )
 
     result = provider.generate(request, context)
 
     envelope = json.loads(result.response_text)
     assert json.loads(envelope["artifactContent"]) == {
-        "contractVersion": "schemair/v2",
+        "contractVersion": "interface-standard/v1",
         "status": "DRAFT",
     }
-    assert result.metadata.prompt_contract_version == "draft-prompt/v10"
+    assert result.metadata.prompt_contract_version == "draft-prompt/v9"
 
 
-def test_schemair_prompt_defines_exact_semantic_candidate_shape() -> None:
+def test_default_schemair_prompt_defines_exact_metadata_segment_shape() -> None:
     request = DraftGenerationRequest(
         task_id="phase0-test",
         artifact_kind="schemair",
@@ -1030,7 +1335,7 @@ def test_schemair_prompt_defines_exact_semantic_candidate_shape() -> None:
         schema_version="v2",
     )
     context = DraftGenerationContext(
-        source_content="# Final DocIR\n",
+        source_content=(SAMPLE_ROOT / "docir-final.md").read_text(encoding="utf-8"),
         source_content_type="text/markdown",
     )
 
@@ -1038,15 +1343,11 @@ def test_schemair_prompt_defines_exact_semantic_candidate_shape() -> None:
     system_prompt = " ".join(messages[0]["content"].split())
     user_prompt = messages[1]["content"]
 
-    assert "Prompt contract: draft-prompt/v10" in user_prompt
-    assert "exactly `envelope` and `messages`" in system_prompt
-    assert (
-        "Every field has exactly `fieldName`, `displayName`, `format`, `length`, "
-        "`description`, `conditionText`, `sourceText`, `evidence`, `confidence`, "
-        "`uncertain`, `uncertainReason`, `reviewNote`"
-    ) in system_prompt
-    assert "Object fields additionally require `required`" in system_prompt
-    assert "Scalar fields must omit `required`" in system_prompt
+    assert "Prompt contract: draft-prompt/v11" in user_prompt
+    assert "schemair-metadata-segment/v1" in system_prompt
+    assert "Envelope `description` is the only Envelope property" in system_prompt
+    assert "must not return `fields`" in system_prompt
+    assert "VALIDATED_SCHEMAIR_PATH_CATALOG_JSON" in user_prompt
 
 
 def test_openai_chat_provider_constructs_sdk_client_without_automatic_retries(
@@ -1083,6 +1384,7 @@ def test_openai_chat_provider_constructs_sdk_client_without_automatic_retries(
         ({"base_url": "https://user:secret@example.invalid/v1"}, "credentials"),
         ({"timeout_seconds": 0}, "between 1 and 3600"),
         ({"attempt_id": "bad attempt"}, "attempt_id"),
+        ({"schemair_field_batch_size": 0}, "SchemaIR field batch size"),
     ],
 )
 def test_openai_chat_provider_rejects_unsafe_runtime_configuration(

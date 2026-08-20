@@ -32,6 +32,7 @@ from .draft_review import (
 )
 from .openai_chat_provider import (
     DEFAULT_DOCIR_FIELD_BATCH_SIZE,
+    DEFAULT_SCHEMAIR_FIELD_BATCH_SIZE,
     OpenAIChatDraftProvider,
 )
 from .workspace import (
@@ -117,6 +118,14 @@ def build_parser() -> argparse.ArgumentParser:
 
     schemair = draft_kinds.add_parser("schemair", help="Generate SchemaIR Draft from docir-final.md.")
     _add_draft_provider_arguments(schemair)
+    schemair.add_argument(
+        "--schemair-field-batch-size",
+        type=_positive_integer,
+        help=(
+            "Maximum fields per Envelope/ASSEMBLY/PARSE semantics subcall; "
+            f"defaults to {DEFAULT_SCHEMAIR_FIELD_BATCH_SIZE} for openai-chat."
+        ),
+    )
     schemair.add_argument("--schema-id", required=True, help="Locked SchemaIR stable ID.")
     schemair.add_argument("--schema-version", required=True, help="Locked SchemaIR version.")
 
@@ -463,6 +472,7 @@ def _draft_provider(args: argparse.Namespace) -> DraftProvider:
                 args.chat_timeout_seconds,
                 args.attempt_id,
                 getattr(args, "docir_field_batch_size", None),
+                getattr(args, "schemair_field_batch_size", None),
             )
         ):
             raise DraftGenerationError(
@@ -521,6 +531,11 @@ def _draft_provider(args: argparse.Namespace) -> DraftProvider:
         provider_arguments["docir_field_batch_size"] = (
             getattr(args, "docir_field_batch_size", None)
             or DEFAULT_DOCIR_FIELD_BATCH_SIZE
+        )
+    if getattr(args, "draft_kind", None) == "schemair":
+        provider_arguments["schemair_field_batch_size"] = (
+            getattr(args, "schemair_field_batch_size", None)
+            or DEFAULT_SCHEMAIR_FIELD_BATCH_SIZE
         )
     return OpenAIChatDraftProvider(
         **provider_arguments,

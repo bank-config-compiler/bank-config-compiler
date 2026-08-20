@@ -358,6 +358,7 @@ class ProviderCallMetadata:
     prompt_contract_version: str | None = None
     calls: tuple[ProviderSubcallMetadata, ...] = ()
     docir_field_batch_size: int | None = None
+    schemair_field_batch_size: int | None = None
 
     def __post_init__(self) -> None:
         if not isinstance(self.provider_name, str) or not self.provider_name.strip():
@@ -400,6 +401,14 @@ class ProviderCallMetadata:
             or self.docir_field_batch_size <= 0
         ):
             raise DraftGenerationError("provider DocIR field batch size must be a positive integer")
+        if self.schemair_field_batch_size is not None and (
+            isinstance(self.schemair_field_batch_size, bool)
+            or not isinstance(self.schemair_field_batch_size, int)
+            or self.schemair_field_batch_size <= 0
+        ):
+            raise DraftGenerationError(
+                "provider SchemaIR field batch size must be a positive integer"
+            )
 
 
 @dataclass(frozen=True, slots=True)
@@ -488,6 +497,7 @@ class DraftProviderResult:
     metadata: ProviderCallMetadata
     candidate_content: str | None = None
     materializer_contract_version: str | None = None
+    subcall_response_texts: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True, slots=True)
@@ -616,6 +626,7 @@ def generate_docir_draft(
         response_text,
         candidate_content,
         materializer_contract_version,
+        _,
     ) = _provider_content(
         provider,
         request,
@@ -678,7 +689,15 @@ def generate_schemair_draft(
         schema_id=schema_id,
         schema_version=schema_version,
     )
-    artifact_content, review_notes, metadata, response_text, _, _ = _provider_content(
+    (
+        artifact_content,
+        review_notes,
+        metadata,
+        response_text,
+        _,
+        _,
+        subcall_response_texts,
+    ) = _provider_content(
         provider,
         request,
         _text_context(docir_final),
@@ -699,6 +718,9 @@ def generate_schemair_draft(
         )
         _require_pending_draft(artifact, label="SchemaIR")
         result = validate_schemair(artifact)
+        from .schemair_draft import render_schemair_review_notes
+
+        review_notes = render_schemair_review_notes(candidate, result)
         return _generated_json(
             request,
             provider,
@@ -720,6 +742,7 @@ def generate_schemair_draft(
             response_text=response_text,
             candidate_text=artifact_content,
             error=exc,
+            subcall_response_texts=subcall_response_texts,
         ) from exc
 
 
@@ -746,7 +769,7 @@ def generate_interface_standard_draft(
         standard_version=standard_version,
         rule_package_version=rule_package.version,
     )
-    artifact_content, review_notes, metadata, response_text, _, _ = _provider_content(
+    artifact_content, review_notes, metadata, response_text, _, _, _ = _provider_content(
         provider,
         request,
         _json_context(schemair_final, rule_package),
@@ -841,7 +864,7 @@ def generate_interface_template_draft(
         template_version=template_version,
         rule_package_version=rule_package.version,
     )
-    artifact_content, review_notes, metadata, response_text, _, _ = _provider_content(
+    artifact_content, review_notes, metadata, response_text, _, _, _ = _provider_content(
         provider,
         request,
         _json_context(standard_final, rule_package),
@@ -907,8 +930,32 @@ def _post_provider_materialization_failure(
     response_text: str,
     candidate_text: str,
     error: DraftGenerationError,
+    subcall_response_texts: tuple[str, ...] = (),
 ) -> DraftProviderDiagnosticError:
     detail = f"{request.artifact_kind} candidate cannot be materialized: {error}"
+    if metadata.schemair_field_batch_size is not None:
+        call_evidence = tuple(
+            ProviderFailureCallEvidence(call, response)
+            for call, response in zip(
+                metadata.calls, subcall_response_texts, strict=True
+            )
+        )
+        return DraftProviderDiagnosticError(
+            detail,
+            evidence=ProviderFailureEvidence(
+                request=request,
+                metadata=metadata,
+                failure_stage="materialization",
+                failure_detail=detail,
+                error_type=type(error).__name__,
+                response_complete=True,
+                response_text=None,
+                finish_reason=None,
+                candidate_text=candidate_text,
+                calls=call_evidence,
+                failed_segment=None,
+            ),
+        )
     # 此处的 response_text 是 canonical provider envelope，不是 metadata.calls
     # 所引用的原始 chat 内容；为 envelope 单独建 evidence，避免把 hash 绑定到不同字节。
     call_evidence = (
@@ -1292,6 +1339,7 @@ def _provider_call_result(generated: GeneratedDraft) -> dict[str, Any]:
         "startedAt": metadata.started_at,
         "completedAt": metadata.completed_at,
         "docirFieldBatchSize": metadata.docir_field_batch_size,
+        "schemairFieldBatchSize": metadata.schemair_field_batch_size,
         "usage": {
             "promptTokens": metadata.prompt_tokens,
             "completionTokens": metadata.completion_tokens,
@@ -1323,6 +1371,7 @@ def _provider_failure_result(evidence: ProviderFailureEvidence) -> dict[str, Any
         "startedAt": metadata.started_at,
         "completedAt": metadata.completed_at,
         "docirFieldBatchSize": metadata.docir_field_batch_size,
+        "schemairFieldBatchSize": metadata.schemair_field_batch_size,
         "failureStage": evidence.failure_stage,
         "failureDetail": evidence.failure_detail,
         "errorType": evidence.error_type,
@@ -1432,6 +1481,7 @@ def _provider_content(
     str,
     str | None,
     str | None,
+    tuple[str, ...],
 ]:
     provider_name = getattr(provider, "name", None)
     if not isinstance(provider_name, str) or not provider_name:
@@ -1555,6 +1605,29 @@ def _provider_content(
         raise DraftGenerationError(
             "provider materializer_contract_version must be non-empty"
         )
+    if not isinstance(provider_result.subcall_response_texts, tuple) or any(
+        not isinstance(response, str) or not response
+        for response in provider_result.subcall_response_texts
+    ):
+        raise DraftGenerationError(
+            "provider subcall_response_texts must be a tuple of non-empty text"
+        )
+    if provider_result.metadata.schemair_field_batch_size is not None:
+        if len(provider_result.subcall_response_texts) != len(
+            provider_result.metadata.calls
+        ):
+            raise DraftGenerationError(
+                "segmented SchemaIR provider responses must match metadata calls"
+            )
+        for call, response in zip(
+            provider_result.metadata.calls,
+            provider_result.subcall_response_texts,
+            strict=True,
+        ):
+            if call.response_content_hash != _text_hash(response):
+                raise DraftGenerationError(
+                    "segmented SchemaIR provider response hash does not match call metadata"
+                )
     return (
         artifact_content,
         review_notes,
@@ -1562,6 +1635,7 @@ def _provider_content(
         provider_result.response_text,
         provider_result.candidate_content,
         provider_result.materializer_contract_version,
+        provider_result.subcall_response_texts,
     )
 
 
