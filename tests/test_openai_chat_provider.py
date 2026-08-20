@@ -657,6 +657,7 @@ def test_openai_chat_provider_segments_docir_with_default_bounded_batches() -> N
         task_id="phase0-test",
         artifact_kind="docir",
         source_hash="sha256:" + "1" * 64,
+        interface_code="b2e0061",
     )
     context = DraftGenerationContext(
         source_content="# Raw bank document\n",
@@ -677,11 +678,43 @@ def test_openai_chat_provider_segments_docir_with_default_bounded_batches() -> N
     assert result.metadata.total_tokens == 150
     for call in client.completions.calls:
         assert "# Raw bank document" in call["messages"][1]["content"]
-        assert "Prompt contract: draft-prompt/v17" in call["messages"][1]["content"]
+        assert "Prompt contract: draft-prompt/v18" in call["messages"][1]["content"]
     envelope = json.loads(result.response_text)
     assert envelope["contractVersion"] == "draft-provider-response/v1"
     assert "| 2.26 |" in envelope["artifactContent"]
     assert "| 3.9 |" in envelope["artifactContent"]
+
+
+def test_docir_locks_task_interface_code_before_segment_validation() -> None:
+    responses = docir_segment_responses(assembly_count=2, parse_count=2)
+    responses[0]["interface"]["metadata"][0] = model_metadata(
+        "Interface Code",
+        "",
+        "原文为通用接口规范，未指定单一接口代码，需人工确认",
+    )
+    client = QueuedFakeClient(
+        [chat_stream(json.dumps(response, ensure_ascii=False)) for response in responses]
+    )
+    provider = OpenAIChatDraftProvider(
+        api_key="test-key",
+        base_url="https://example.invalid/v1",
+        model="qwen-test-snapshot",
+        attempt_id="docir-026",
+        client=client,
+    )
+
+    generated = generate_docir_draft(
+        raw_doc="# Raw bank document\n",
+        provider=provider,
+        task_id="phase0-test",
+        interface_code="b2e0061",
+    )
+
+    assert generated.request.case_fingerprint()["interfaceCode"] == "b2e0061"
+    assert "| Interface Code | b2e0061 |  |" in generated.artifact
+    first_user_prompt = client.completions.calls[0]["messages"][1]["content"]
+    assert '"interfaceCode": "b2e0061"' in first_user_prompt
+    assert "Prompt contract: draft-prompt/v18" in first_user_prompt
 
 
 def test_openai_chat_provider_respects_configured_docir_batch_size() -> None:
@@ -1071,7 +1104,7 @@ def test_docir_prompt_requests_structured_extraction_and_preserves_source_scope(
     system_prompt = messages[0]["content"]
     user_prompt = messages[1]["content"]
     normalized_system_prompt = " ".join(system_prompt.split())
-    assert "Prompt contract: draft-prompt/v17" in user_prompt
+    assert "Prompt contract: draft-prompt/v18" in user_prompt
     assert "Segment: interface-envelope" in user_prompt
     assert "docir-interface-envelope-tree-segment/v2" in system_prompt
     assert "`contractVersion`, `interface`, `sourceContext`, `envelope`" in system_prompt

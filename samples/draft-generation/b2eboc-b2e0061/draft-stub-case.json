@@ -5,7 +5,8 @@
     {
       "request": {
         "artifactKind": "docir",
-        "sourceHash": "sha256:0d5ccd0e33ed70c1a8d0d9dda6426328a0ad82b67140c05bf64cb21ae68c489e"
+        "sourceHash": "sha256:0d5ccd0e33ed70c1a8d0d9dda6426328a0ad82b67140c05bf64cb21ae68c489e",
+        "interfaceCode": "b2e0061"
       },
       "artifactFile": "artifacts/docir-draft.md",
       "reviewNotesFile": "notes/docir-review.md"

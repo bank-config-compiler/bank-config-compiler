@@ -566,7 +566,12 @@ def test_controlled_b2e0061_fixture_generates_all_six_drafts() -> None:
     standard_rules = load_rule_package(REPO_ROOT / "configuration-rules/v1")
     template_rules = load_rule_package(REPO_ROOT / "configuration-rules/v2")
 
-    docir = generate_docir_draft(raw_doc=raw_doc, provider=provider, task_id="fixture-test")
+    docir = generate_docir_draft(
+        raw_doc=raw_doc,
+        provider=provider,
+        task_id="fixture-test",
+        interface_code="b2e0061",
+    )
     schemair = generate_schemair_draft(
         docir_final=docir_candidate,
         provider=provider,

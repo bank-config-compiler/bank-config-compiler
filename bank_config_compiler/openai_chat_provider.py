@@ -57,7 +57,7 @@ from .schemair_draft import (
 
 PROMPT_CONTRACT_VERSION = "draft-prompt/v9"
 SCHEMAIR_PROMPT_CONTRACT_VERSION = "draft-prompt/v11"
-DOCIR_PROMPT_CONTRACT_VERSION = "draft-prompt/v17"
+DOCIR_PROMPT_CONTRACT_VERSION = "draft-prompt/v18"
 DEFAULT_DOCIR_FIELD_BATCH_SIZE = 16
 DEFAULT_SCHEMAIR_FIELD_BATCH_SIZE = 8
 JSON_IR_MODEL_RESPONSE_PROPERTIES = {"artifact", "reviewNotes"}
@@ -445,7 +445,8 @@ class OpenAIChatDraftProvider:
         )
         try:
             interface_envelope = validate_docir_interface_envelope_tree_segment(
-                interface_call.model_response
+                interface_call.model_response,
+                interface_code=request.interface_code,
             )
         except DocIRDraftError as exc:
             raise self._validation_failure(
@@ -522,6 +523,7 @@ class OpenAIChatDraftProvider:
                 assembly_details=details["ASSEMBLY"],
                 parse_details=details["PARSE"],
                 batch_size=self.docir_field_batch_size,
+                interface_code=request.interface_code,
             )
             extraction = materialize_docir_semantic_candidate(candidate)
             artifact_content = render_docir_extraction(extraction)
@@ -1418,6 +1420,8 @@ Metadata rows have exactly `key`, `value`, `reviewNote`. Use only these exact ke
 - interface: Interface Code, Interface Name, Message Format, Version, Source Document
 - envelope: Envelope Name, Root Path, Applies To, Evidence Scope
 Message Format is `XML`; Source Document is `raw-doc.md`.
+Interface Code is code-owned task identity. When Request selector JSON contains `interfaceCode`, copy
+it exactly into the Interface Code row and leave its `reviewNote` empty; SOURCE_DATA cannot override it.
 
 `nodes` contains exactly one ordered XML root. Every node requires `item`, `nodeKind`, and `children`.
 `item` is a plain XML item name.

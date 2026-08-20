@@ -43,6 +43,7 @@ CASE_ENTRY_PROPERTIES = {"request", "artifactFile", "reviewNotesFile"}
 CASE_REQUEST_PROPERTIES = {
     "artifactKind",
     "sourceHash",
+    "interfaceCode",
     "schemaId",
     "schemaVersion",
     "standardId",
@@ -106,6 +107,7 @@ class DraftGenerationRequest:
     task_id: str
     artifact_kind: ArtifactKind
     source_hash: str
+    interface_code: str | None = None
     schema_id: str | None = None
     schema_version: str | None = None
     standard_id: str | None = None
@@ -126,6 +128,13 @@ class DraftGenerationRequest:
             raise DraftGenerationError("source_hash must use sha256:<64 lowercase hex>")
         if self.direction is not None and self.direction not in DIRECTIONS:
             raise DraftGenerationError("direction must be exactly ASSEMBLY or PARSE")
+        if self.interface_code is not None and (
+            not isinstance(self.interface_code, str)
+            or re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._-]*", self.interface_code) is None
+        ):
+            raise DraftGenerationError(
+                "interface_code must contain only letters, digits, dot, underscore or hyphen"
+            )
         if self.standard_version is not None and not VERSION_PATTERN.fullmatch(
             self.standard_version
         ):
@@ -167,6 +176,10 @@ class DraftGenerationRequest:
             ):
                 raise DraftGenerationError(f"{self.artifact_kind} request does not accept selectors")
             return
+        if self.interface_code is not None:
+            raise DraftGenerationError(
+                f"{self.artifact_kind} request does not accept interface_code"
+            )
         if self.artifact_kind == "schemair":
             if self.schema_id is None or self.schema_version is None:
                 raise DraftGenerationError(
@@ -226,6 +239,7 @@ class DraftGenerationRequest:
         values = {
             "artifactKind": self.artifact_kind,
             "sourceHash": self.source_hash,
+            "interfaceCode": self.interface_code,
             "schemaId": self.schema_id,
             "schemaVersion": self.schema_version,
             "standardId": self.standard_id,
@@ -618,6 +632,7 @@ def generate_docir_draft(
         task_id=task_id,
         artifact_kind="docir",
         source_hash=_text_hash(raw_doc),
+        interface_code=interface_code,
     )
     (
         artifact_content,
@@ -1810,6 +1825,7 @@ def _request_from_case(value: Any, *, label: str) -> DraftGenerationRequest:
         task_id="fixture-case-validation",
         artifact_kind=value.get("artifactKind"),
         source_hash=value.get("sourceHash"),
+        interface_code=value.get("interfaceCode"),
         schema_id=value.get("schemaId"),
         schema_version=value.get("schemaVersion"),
         standard_id=value.get("standardId"),

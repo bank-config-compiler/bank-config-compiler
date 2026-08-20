@@ -171,7 +171,11 @@ def prepare_docir_case(tmp_path: Path) -> tuple[Path, Path]:
                 "caseId": "cli-docir-case",
                 "responses": [
                     {
-                        "request": {"artifactKind": "docir", "sourceHash": source_hash},
+                        "request": {
+                            "artifactKind": "docir",
+                            "sourceHash": source_hash,
+                            "interfaceCode": "b2e0061",
+                        },
                         "artifactFile": "docir.md",
                         "reviewNotesFile": "notes.md",
                     }

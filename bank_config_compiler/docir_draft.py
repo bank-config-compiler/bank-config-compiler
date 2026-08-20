@@ -168,7 +168,9 @@ def _lock_interface_code(metadata: list[dict[str, str]], interface_code: str) ->
     raise DocIRDraftError("DocIR interface metadata is missing Interface Code")
 
 
-def validate_docir_interface_envelope_tree_segment(value: Any) -> dict[str, Any]:
+def validate_docir_interface_envelope_tree_segment(
+    value: Any, *, interface_code: str | None = None
+) -> dict[str, Any]:
     segment = _require_object(value, label="DocIR interface-envelope tree segment")
     _require_exact_properties(
         segment,
@@ -200,7 +202,13 @@ def validate_docir_interface_envelope_tree_segment(value: Any) -> dict[str, Any]
         "contractVersion": SEMANTIC_INTERFACE_ENVELOPE_SEGMENT_CONTRACT,
         "interface": {
             "metadata": _validated_metadata(
-                interface.get("metadata"), section_name="interface"
+                interface.get("metadata"),
+                section_name="interface",
+                locked_values=(
+                    {"Interface Code": interface_code}
+                    if interface_code is not None
+                    else None
+                ),
             )
         },
         "sourceContext": _require_string_array(
@@ -346,8 +354,11 @@ def merge_docir_semantic_segments(
     assembly_details: list[Any],
     parse_details: list[Any],
     batch_size: int = 16,
+    interface_code: str | None = None,
 ) -> dict[str, Any]:
-    envelope_segment = validate_docir_interface_envelope_tree_segment(interface_envelope)
+    envelope_segment = validate_docir_interface_envelope_tree_segment(
+        interface_envelope, interface_code=interface_code
+    )
     messages_segment = validate_docir_messages_tree_segment(messages_tree)
     detail_values = {"ASSEMBLY": assembly_details, "PARSE": parse_details}
     completed_nodes: dict[str, list[dict[str, Any]]] = {}
@@ -1720,7 +1731,12 @@ def _validated_section(
     return result
 
 
-def _validated_metadata(value: Any, *, section_name: str) -> list[dict[str, str]]:
+def _validated_metadata(
+    value: Any,
+    *,
+    section_name: str,
+    locked_values: dict[str, str] | None = None,
+) -> list[dict[str, str]]:
     if not isinstance(value, list):
         raise DocIRDraftError(f"DocIR extraction {section_name}.metadata must be an array")
     indexed: dict[str, dict[str, str]] = {}
@@ -1733,6 +1749,13 @@ def _validated_metadata(value: Any, *, section_name: str) -> list[dict[str, str]
             raise DocIRDraftError(f"{label}.key is duplicated: {key}")
         metadata_value = _require_string(row.get("value"), label=f"{label}.value")
         review_note = _require_string(row.get("reviewNote"), label=f"{label}.reviewNote")
+        if locked_values is not None and key in locked_values:
+            locked_value = locked_values[key]
+            if not isinstance(locked_value, str) or not locked_value:
+                raise DocIRDraftError(f"locked {key} must be a non-empty string")
+            # task identity 在 provider 信任边界生效；原始响应仍由 attempt evidence 原样保存。
+            metadata_value = locked_value
+            review_note = ""
         if not metadata_value and UNKNOWN_REVIEW_MARKER not in review_note:
             raise DocIRDraftError(
                 f"{label}.reviewNote must contain {UNKNOWN_REVIEW_MARKER} when value is empty"
