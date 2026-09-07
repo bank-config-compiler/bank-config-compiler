@@ -1380,6 +1380,12 @@ def test_default_schemair_prompt_defines_exact_metadata_segment_shape() -> None:
     assert "schemair-metadata-segment/v1" in system_prompt
     assert "Envelope `description` is the only Envelope property" in system_prompt
     assert "must not return `fields`" in system_prompt
+    assert "`xmlEncoding` must be exactly `UTF-8`" in system_prompt
+    assert "`sourceKind` is one of" in system_prompt
+    assert "`disposition` is one of" in system_prompt
+    assert "`operator` is `EQUALS` or `IS_EMPTY`" in system_prompt
+    assert "`effect` is exactly `REQUIRED`" in system_prompt
+    assert "`kind` is `ASSUMED`, `DERIVED`, or `DIRECT`" in system_prompt
     assert "VALIDATED_SCHEMAIR_PATH_CATALOG_JSON" in user_prompt
 
 

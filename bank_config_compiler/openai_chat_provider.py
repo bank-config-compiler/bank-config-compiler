@@ -1366,6 +1366,18 @@ schema identity or lifecycle properties. ENCODING_EVIDENCE has exactly `sourceKi
 its `evidence` has exactly `kind` and `note`. Condition paths must be copied exactly from the supplied
 path catalog for the corresponding direction: Envelope plus ASSEMBLY for ASSEMBLY, and Envelope plus
 PARSE for PARSE. Do not return a condition whose path is absent from that catalog.
+
+`xmlEncoding` must be exactly `UTF-8`, the only canonical encoding supported by SchemaIR v2.
+For ENCODING_EVIDENCE, `sourceKind` is one of `HUMAN_BANK_CONFIRMATION`, `SOURCE_DOCUMENT`,
+or `XML_DECLARATION`; `disposition` is one of `SUPPORTS`, `UNRESOLVED_CONFLICT`, or
+`RESOLVED_CONFLICT`. Use `HUMAN_BANK_CONFIRMATION` only when the Final DocIR explicitly records
+that confirmation. Evidence with `SUPPORTS` must observe UTF-8. Preserve an explicit non-UTF-8
+source value as `UNRESOLVED_CONFLICT`; use `RESOLVED_CONFLICT` only when the Final DocIR records
+the resolution and return its non-empty reason in `reviewNote`.
+
+For CONDITIONAL_CONSTRAINT, `operator` is `EQUALS` or `IS_EMPTY`; `EQUALS` requires a string
+`literal`, while `IS_EMPTY` requires a null `literal`. `effect` is exactly `REQUIRED`. Condition
+evidence `kind` is `ASSUMED`, `DERIVED`, or `DIRECT`; use only the value supported by Final DocIR.
 """.strip()
         return f"{common}\n\n{contract}"
 

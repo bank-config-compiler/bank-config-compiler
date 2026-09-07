@@ -7,7 +7,12 @@ from typing import Any
 
 from .artifact_validation import content_hash
 from .configuration_rules import RulePackage
-from .docir_draft import FIELDS_HEADER, METADATA_HEADER
+from .docir_draft import (
+    FIELDS_HEADER,
+    METADATA_HEADER,
+    DocIRDraftError,
+    canonical_docir_root_path,
+)
 from .draft_generation import DraftGenerationError
 
 
@@ -629,12 +634,10 @@ def _split_row(line: str) -> list[str]:
 
 
 def _canonical_root_path(value: str) -> str:
-    value = value.strip()
-    if not value:
-        raise DraftGenerationError("Final DocIR Root Path must be non-empty")
-    if value == "Root" or value.startswith("Root."):
-        return value
-    return f"Root.{value.replace('/', '.')}"
+    try:
+        return canonical_docir_root_path(value)
+    except DocIRDraftError as exc:
+        raise DraftGenerationError(f"Final {exc}") from exc
 
 
 def _occurs(value: str) -> tuple[int | None, int | str | None]:

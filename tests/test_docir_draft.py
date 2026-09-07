@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from copy import deepcopy
+from pathlib import Path
 
 import pytest
 
@@ -77,7 +78,7 @@ def docir_extraction() -> dict:
         "assembly": {
             "metadata": [
                 metadata("Description", "请求报文"),
-                metadata("Root Path", "bocb2e/trans/trn-test-rq", "derived path"),
+                metadata("Root Path", "bocb2e/trn-test-rq", "derived path"),
                 metadata("Function Type", "ASSEMBLY"),
                 metadata("Message Name", "test-rq"),
             ],
@@ -90,7 +91,7 @@ def docir_extraction() -> dict:
         "parse": {
             "metadata": [
                 metadata("Description", "响应报文"),
-                metadata("Root Path", "bocb2e/trans/trn-test-rs", "derived path"),
+                metadata("Root Path", "bocb2e/trn-test-rs", "derived path"),
                 metadata("Function Type", "PARSE"),
                 metadata("Message Name", "test-rs"),
             ],
@@ -134,6 +135,55 @@ def test_historical_non_repeating_ranges_remain_valid() -> None:
     result = validate_docir_markdown(render_docir_extraction(docir_extraction()))
 
     assert result["summary"]["errorCount"] == 0
+
+
+def test_markdown_validator_rejects_message_root_outside_envelope_tree() -> None:
+    rendered = render_docir_extraction(docir_extraction()).replace(
+        "| Root Path | bocb2e/trn-test-rq | derived path |",
+        "| Root Path | /trn-test-rq | derived path |",
+        1,
+    )
+
+    result = validate_docir_markdown(rendered)
+
+    issue = next(
+        item
+        for item in result["issues"]
+        if item["code"] == "DOCIR_MESSAGE_ROOT_PARENT"
+    )
+    assert issue["path"] == "ASSEMBLY.Metadata[Root Path]"
+    assert "Root.trn-test-rq" in issue["message"]
+
+
+@pytest.mark.parametrize(
+    "invalid_parent",
+    [
+        "Root.bocb2e.head.termid",
+        "Root.bocb2e.@version",
+    ],
+)
+def test_markdown_validator_rejects_message_root_under_non_container_envelope_field(
+    invalid_parent: str,
+) -> None:
+    source = (
+        Path(__file__).resolve().parents[1]
+        / "samples/golden/b2eboc-b2e0061/docir.expected.md"
+    ).read_text(encoding="utf-8")
+    rendered = source.replace(
+        "Root.bocb2e.trans.trn-b2e0061-rq",
+        f"{invalid_parent}.trn-b2e0061-rq",
+        1,
+    )
+
+    result = validate_docir_markdown(rendered)
+
+    issue = next(
+        item
+        for item in result["issues"]
+        if item["code"] == "DOCIR_MESSAGE_ROOT_PARENT_TYPE"
+    )
+    assert issue["path"] == "ASSEMBLY.Metadata[Root Path]"
+    assert invalid_parent in issue["message"]
 
 
 def test_markdown_validator_rejects_type_that_conflicts_with_tree() -> None:

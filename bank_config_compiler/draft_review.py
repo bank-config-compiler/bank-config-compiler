@@ -74,6 +74,20 @@ def load_approved_docir_final(
     try:
         approval = read_json_artifact(workspace, "docir-approval-result.json")
         _validate_docir_approval(approval, task=locked_task, final_hash=final_hash)
+        validation = validate_docir_markdown(final_text)
+        summary = validation.get("summary", {})
+        if summary.get("errorCount", 0) or summary.get("blockingCount", 0):
+            blocking_codes = sorted(
+                {
+                    issue.get("code")
+                    for issue in validation.get("issues", [])
+                    if issue.get("blocking") is True and isinstance(issue.get("code"), str)
+                }
+            )
+            raise DraftReviewError(
+                "current DocIR Validator rejected the approved Final"
+                + (f": {', '.join(blocking_codes)}" if blocking_codes else "")
+            )
     except (DraftReviewError, WorkspaceError) as exc:
         LOGGER.warning(
             "DocIR approval evidence rejected",

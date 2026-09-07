@@ -1167,6 +1167,45 @@ def test_schemair_generation_rejects_untrusted_docir_final_before_provider_call(
     assert not (workspace / "schemair-draft.json").exists()
 
 
+def test_schemair_generation_revalidates_approved_docir_before_provider_call(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    workspace = tmp_path / "approved-but-currently-invalid-docir"
+    workspace.mkdir()
+    (workspace / "raw-doc.md").write_text("# Raw\n", encoding="utf-8", newline="")
+    bind_task(workspace)
+    source = REPO_ROOT / "samples/golden/b2eboc-b2e0061/docir.expected.md"
+    invalid_source = tmp_path / "invalid-approved-docir.md"
+    invalid_source.write_text(
+        source.read_text(encoding="utf-8").replace(
+            "Root.bocb2e.trans.trn-b2e0061-rq",
+            "/trn-b2e0061-rq",
+            1,
+        ),
+        encoding="utf-8",
+        newline="",
+    )
+    bind_approved_docir_final(workspace, invalid_source)
+
+    provider = UnexpectedProvider("schemair-invalid-current-docir")
+    monkeypatch.setattr(cli, "_draft_provider", lambda args: provider)
+    args = SimpleNamespace(
+        workspace=workspace,
+        draft_kind="schemair",
+        provider="openai-chat",
+        overwrite=False,
+        schema_id="b2eboc-b2e0061-schema",
+        schema_version="v1",
+    )
+
+    with pytest.raises(cli.DraftReviewError, match="current DocIR Validator"):
+        cli._generate_draft(args)
+
+    assert provider.calls == 0
+    assert not (workspace / "schemair-draft.json").exists()
+
+
 def test_generate_draft_cli_completes_controlled_b2e0061_workflow(tmp_path: Path) -> None:
     workspace = tmp_path / "workspace"
     workspace.mkdir()
