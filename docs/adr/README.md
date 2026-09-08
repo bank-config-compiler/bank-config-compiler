@@ -32,3 +32,4 @@ ADR 只记录已经形成工程约束或需要被反复解释的选择。尚未�
 - `ADR-0018-docir-object-required-not-applicable.md`：DocIR Object Required 固定为空且不从叶子反推；Object 出现性转由 SchemaIR candidate 与 Human Gate 确认，标量缺失使用明确 Required marker。
 - `ADR-0019-docir-explicit-condition-branches.md`：DocIR Conditions 只保留 raw doc 明确表达的条件分支；最大笔数、格式、唯一性和一般字段校验留在 Fields。
 - `ADR-0020-schemair-bounded-segmented-extraction.md`：SchemaIR 使用联合 metadata 和基于 Final DocIR selector 的 Envelope/双方向有界字段批次，attempt 原子 fail-fast；仅 supersede ADR-0014 的 SchemaIR 单调用约束。
+- `ADR-0021-schemair-recoverable-segments-and-layered-validation.md`：SchemaIR 使用默认 batch 16、单段重试、完整 fingerprint 显式复用和分层验证；引入内置 Bank XML Profile，并局部 supersede ADR-0020。

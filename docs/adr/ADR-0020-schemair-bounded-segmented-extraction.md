@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted. 本 ADR 仅 supersede ADR-0014 中“非 DocIR artifact 仍记录一个 `complete-artifact` call”的 SchemaIR 部分；Standard 与 Template 继续使用单次 `complete-artifact` 调用。
+Accepted. 本 ADR 仅 supersede ADR-0014 中“非 DocIR artifact 仍记录一个 `complete-artifact` call”的 SchemaIR 部分；Standard 与 Template 继续使用单次 `complete-artifact` 调用。默认 batch、retry/resume、成功段复用和 segment hard-fail 边界已由 ADR-0021 局部 supersede。
 
 ## Date
 

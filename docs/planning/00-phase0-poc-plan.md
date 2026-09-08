@@ -2,9 +2,9 @@
 
 ## Status
 
-**In Progress。F-007 SchemaIR 有界分段已离线实现并完成 `schemair-004` 真实调用；该 attempt 发布 Invalid Draft，当前停在修正后 DocIR 的新一轮 Human Review/approval Gate，完成前不得进入 `schemair-005`。**
+**In Progress。修正后的 Final DocIR 已获批；`schemair-005` 至 `schemair-007` 已消费且未形成可批准 SchemaIR。当前实施 F-007 修订版：可恢复分段、完整 fingerprint 复用和分层验证；离线完成前不得准备新的真实调用。**
 
-P0-T3 trusted chain、P0-T4 deterministic Draft-to-Workbook closure 与历史 P0-T5 真实 DocIR Human Gate 已完成。`docir-020` 至 `docir-025` 与 `schemair-001` 至 `schemair-003` 均已消费且不得复用。`docir-026` 的 5 个 subcall 使用 53,508 tokens 生成 49 字段 Draft；Human 修订后以准确 hash `sha256:eec05b25374187ee726295babd2b2765c5c3b0ddbb163ec23f0d6db40ef716c3` 获批。随后 `schemair-004` 以 batch 8 完成 9 个 subcall，真实 coverage 为 Envelope 12、ASSEMBLY 27、PARSE 10，使用 77,742 tokens并发布 Draft；Validator 为 16 ERROR、4 WARNING。错误包括 Final DocIR 的前导 `/` 被投影为双点路径、两个报文根未直接挂接 Envelope 字段树，以及模型返回不受支持的 encoding/condition/evidence 枚举。离线修复现在统一规范化 `Root.a.b`、`/a/b` 与 `a/b`，在 DocIR Human Gate 阻止不一致根字段、未知 Envelope 父路径以及 scalar/attribute 父字段，并在 SchemaIR metadata prompt 明确公开枚举；Final DocIR 消费入口也会重新运行当前 Validator，避免历史 approval 绕过新门禁后触发付费调用。修正后的 DocIR Draft 补回 raw-doc 中 UTF-8 建议与 GB2312 样例冲突，完整 Root Path 已校验通过；当前 hash 为 `sha256:04e8e71b773dfb3f2203fe4ed10a30475fdbf1876d481bbe5fd9db9d1040258b`，0 ERROR、1 个非阻塞 `actacn` WARNING，等待新的 Human approval。`schemair-004` evidence 保持 immutable，不得 retry/resume；批准新 DocIR 前不得发起 `schemair-005`。
+P0-T3 trusted chain、P0-T4 deterministic Draft-to-Workbook closure 与历史 P0-T5 真实 DocIR Human Gate 已完成。`docir-026` 经 Human 修订后形成准确 Final DocIR `sha256:04e8e71b773dfb3f2203fe4ed10a30475fdbf1876d481bbe5fd9db9d1040258b`，0 ERROR、1 个已接受的非阻塞 `actacn` WARNING。`schemair-004` 以 batch 8 完成 9 个 subcall，使用 77,742 tokens并发布 16 ERROR、4 WARNING 的 Invalid Draft。`schemair-005` 在 metadata 调用超时，`schemair-006` 因已下架模型被拒绝，均未形成 Draft。更新模型后，`schemair-007` 已获得前 7 个有效段和完整第 8 段，但旧 validator 因 PARSE scalar 回显 `required:null` hard fail，第 9 段未执行；该 attempt 使用 109,896 tokens、耗时 28 分 59 秒。所有历史 attempt 保持 immutable；修订版 F-007 只离线验证兼容恢复，不自动调用 provider。
 
 ## 1. 目标与可信边界
 
@@ -22,7 +22,7 @@ Raw Docs
 - 代码负责显式身份和可唯一重算的机械投影，不创造银行或目标系统业务事实。
 - Validator 证明结构、引用、生命周期和确定性 invariant，不证明 raw-doc 完整性或业务正确。
 - Human approval 必须绑定当前准确内容 hash；任何修改都令旧 validation/approval 失效。
-- 真实 provider attempt 不自动 retry/resume，不复用旧 attempt ID；临时 response/candidate 不进入 Git。
+- DocIR、Standard、Template 的真实 provider attempt 不自动 retry/resume。SchemaIR 只允许 ADR-0021 规定的当前段有界重试和显式 fingerprint 复用；临时 response/candidate 不进入 Git。
 
 ## 2. Task 状态
 
@@ -71,7 +71,7 @@ P0-T6 只能消费 P0-T5 获批的 Final DocIR，并按以下顺序执行：
 
 每一小节必须等待上一层准确 Final，不能集中到最后一次批准。
 
-SchemaIR、Standard、Template 的 semantic materializer、统一 validate/approve CLI 和离线回归已经实现。SchemaIR generation/validation/approval 会重新校验 `docir-approval-result.json` 的 task/interface、artifact kind/path、Draft→Final hash 映射和当前 Final 准确 bytes hash。F-007 已按 ADR-0020 将 SchemaIR 升级为 `draft-prompt/v11`：一个联合 metadata segment 加按 Final DocIR selector 覆盖的 Envelope/ASSEMBLY/PARSE 有界字段批次，默认 batch size 为 8；离线 fixture 的 13/27/10 字段与本次真实链的 12/27/10 字段都形成 9 个 subcall。严格 segment Validator 与 merge 仍输出既有 candidate shape，`schemair-materializer/v2` 和公开 SchemaIR v2 不变；metadata prompt 现在明确 encoding/evidence/condition 枚举，Standard/Template 仍为单次 `complete-artifact`。该实现不改变执行依赖，也不把 Invalid Draft 记为 P0-T6.1 真实验收完成。
+SchemaIR、Standard、Template 的 semantic materializer、统一 validate/approve CLI 和离线回归已经实现。SchemaIR generation/validation/approval 会重新校验 `docir-approval-result.json` 的 task/interface、artifact kind/path、Draft→Final hash 映射和当前 Final 准确 bytes hash。F-007 原实现按 ADR-0020 使用 `draft-prompt/v11`：一个联合 metadata segment 加按 Final DocIR selector 覆盖的 Envelope/ASSEMBLY/PARSE 有界字段批次。ADR-0021 将其修订为默认 batch 16、当前段最多重试一次、显式完整 fingerprint 复用，以及通用 Kernel 与内置 `BankXmlSchemaIRProfile` 的分层验证。`schemair-materializer/v2`、公开 SchemaIR v2 和 Standard/Template 单次 `complete-artifact` 均保持不变。该修订不把 Invalid Draft 记为 P0-T6.1 真实验收完成。
 
 ## 5. Commit Plan
 
@@ -87,7 +87,8 @@ SchemaIR、Standard、Template 的 semantic materializer、统一 validate/appro
 | 4D | ADR-0019、DocIR v17 Prompt 与 Conditions Validator | 最大笔数、格式、唯一性和一般校验不再污染 Conditions；明确条件分支与无条件占位符回归通过 | 可继续 `docir-022` Conditions Human Gate |
 | 5 | 非敏感 P0-T5 真实验收摘要 | 真实 Final DocIR 与 approval evidence 确认 | P0-T6 开始 |
 | 5A | P0-T6.1 DocIR approval gate、失败证据与 SchemaIR candidate contract 修复 | 审批前置、attempt evidence、v10 prompt/strict materialization 离线门禁通过；`schemair-003` 已验证 hard-fail 边界 | F-007 开始 |
-| 5B | ADR-0020 与 F-007 有界 SchemaIR 分段提取 | Done：联合 metadata、默认 8 字段批次、Envelope/ASSEMBLY/PARSE selector coverage、原子 evidence、离线回归/docs-sync/review；`schemair-004` 已完成并暴露 Root Path/prompt 缺口 | 修正后的 DocIR 必须重新获批，才可发起 `schemair-005` |
+| 5B | ADR-0020 与 F-007 有界 SchemaIR 分段提取 | Done：联合 metadata、默认 8 字段批次、Envelope/ASSEMBLY/PARSE selector coverage、原子 evidence、离线回归/docs-sync/review；`schemair-004` 已完成并暴露 Root Path/prompt 缺口 | 已满足；真实后续验证暴露的恢复成本转入 5C |
+| 5C | ADR-0021 与 F-007 可恢复分段及分层验证 | In Progress：默认 batch 16、当前段有界重试、完整 fingerprint 显式复用、attempt budget、evidence v3、内置 Bank XML Profile | 离线 replay、全量测试、docs-sync 和独立 review 全绿后，才可准备 `schemair-008` 授权摘要 |
 | 6 | SchemaIR 闭环 | 真实 Final SchemaIR | Standard 开始 |
 | 7 | 两个 Standard 闭环 | 两个真实 Final Standard | Template 开始 |
 | 8 | 两个 Template 闭环 | 两个真实 Final Template | closure 开始 |
@@ -111,8 +112,8 @@ git diff --check
 ## 7. 当前阻塞
 
 - 历史 P0-T5 已完成且 `docir-022` approval 事实保持不变；当前执行 workspace 按操作者决策不恢复该链，必须由新的 DocIR Draft 重新经过 Human Gate。`docir-023`/`docir-024`/`docir-025` 和 `schemair-001`/`schemair-002`/`schemair-003` 均已消费且不得复用。
-- F-007 已消除 P0-T6.1 的离线实现阻塞：SchemaIR 使用联合 metadata 加默认 8 字段的 Envelope/ASSEMBLY/PARSE 有界批次，并按 Final DocIR selector 确定性 merge；不得通过填充缺失语义、复用 `schemair-003`、无条件重试或成功前缀复用绕过门禁。
-- `schemair-004` 已消费且不得复用。当前直接阻塞是修正后的 DocIR Draft `sha256:04e8e71b773dfb3f2203fe4ed10a30475fdbf1876d481bbe5fd9db9d1040258b` 尚未获批；其 Validator 为 0 ERROR、1 个已接受过的非阻塞 `actacn` WARNING。Human 还必须确认完整 Root Path、UTF-8/GB2312 冲突已被准确保留，并重新批准准确 hash。在新的 Final DocIR 形成前不得发起 `schemair-005`。
+- F-007 修订版正在消除分段失败导致的整体重跑成本：SchemaIR 将使用默认 16 字段批次、当前段有界重试、显式 fingerprint 复用和分层验证；不得覆盖 selector、猜测 Object required，或自动选择历史 evidence 绕过门禁。
+- `schemair-004` 至 `schemair-007` 均已消费且保持 immutable。`schemair-007` 仅允许作为显式 resume 的离线兼容样本，预计前 8 段可由当前 Profile 重新验证且只缺 PARSE 第 2 批；不得在本轮真实续跑。修订版离线实现、docs-sync 和独立 review 完成后，只能准备 `schemair-008` 精确外发摘要，并等待新的真实调用授权。
 - P0-T6 的每一层均受前一层 Human-approved Final 阻塞。
 - Phase0 Done 仍受五份下游真实 Final、双方向 `check --profile phase0` 和 Workbook 验收阻塞。
 
