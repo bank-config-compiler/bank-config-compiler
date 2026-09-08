@@ -2,7 +2,7 @@
 
 ## Status
 
-In Progress. P0-T3 trusted chain、P0-T4 deterministic Draft-to-Workbook closure 与历史 P0-T5 真实 DocIR Human Gate 已完成。当前执行链的 `docir-026` 已经 Human 修订、校验并以准确 hash `sha256:04e8e71b773dfb3f2203fe4ed10a30475fdbf1876d481bbe5fd9db9d1040258b` 获批，校验为 0 ERROR、1 个已接受的非阻塞 WARNING。`schemair-004` 至 `schemair-007` 已消费且未形成可批准 SchemaIR。F-007 修订版已经完成实现、目标与全量测试、lock/build、docs-sync、独立 code review 和 `schemair-007` 离线 replay：前 8 段可由当前 Profile 重校验，唯一缺口为 `schemair-parse-fields-002`。下一步仅可准备 `schemair-008` 精确外发摘要；真实调用以及其余五类下游真实 Final、双方向 Workbook、最终门禁仍需各自授权与 Human Gate。
+In Progress. P0-T3 trusted chain、P0-T4 deterministic Draft-to-Workbook closure 与历史 P0-T5 真实 DocIR Human Gate 已完成。当前执行链的 `docir-026` 已经 Human 修订、校验并以准确 hash `sha256:04e8e71b773dfb3f2203fe4ed10a30475fdbf1876d481bbe5fd9db9d1040258b` 获批，校验为 0 ERROR、1 个已接受的非阻塞 WARNING。`schemair-004` 至 `schemair-007` 已消费且未形成可批准 SchemaIR。F-007 修订版完成全部离线门禁后，经明确授权执行 `schemair-008`：复用前 8 段，只真实调用 `schemair-parse-fields-002`，生成 Draft hash `sha256:f767ce9eeb1cc8ae3b72de469d833783ddc250f3aece9669237527d68ee6ec42`。该 Draft 为 0 ERROR、37 WARNING、28 blocking，必须经过 Human review；其余五类下游真实 Final、双方向 Workbook和最终门禁仍需各自授权与 Human Gate。
 
 ## 1. 阶段目标
 
