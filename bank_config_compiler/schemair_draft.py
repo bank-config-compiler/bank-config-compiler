@@ -4,6 +4,13 @@ from copy import deepcopy
 from typing import Any, Mapping
 
 from .draft_generation import DraftGenerationError
+from .segmented_artifact import (
+    NormalizationDiagnostic,
+    SegmentDisposition,
+    SegmentSpec,
+    SegmentValidationResult,
+    canonical_segment_hash,
+)
 
 
 SCHEMAIR_METADATA_SEGMENT_CONTRACT = "schemair-metadata-segment/v1"
@@ -58,6 +65,590 @@ _FIELD_SEGMENT_PROPERTIES = {
     "fields",
 }
 _SELECTOR_PROPERTIES = {"selector", "fieldName", "path", "nodeKind", "dataType"}
+_NULLABLE_FIELD_PROPERTIES = {
+    "format",
+    "conditionText",
+    "uncertainReason",
+    "reviewNote",
+}
+_CODE_OWNED_FIELD_PROPERTIES = {
+    "path",
+    "parentPath",
+    "nodeKind",
+    "dataType",
+    "fieldId",
+    "level",
+    "multiple",
+    "hasChildren",
+    "occurs",
+    "identity",
+    "lifecycle",
+}
+
+
+class BankXmlSchemaIRProfile:
+    """银行 XML SchemaIR 的内置规则；只归一化可由代码证明的属性。"""
+
+    def build_segment_plan(
+        self, structure: Mapping[str, Any], *, batch_size: int
+    ) -> tuple[SegmentSpec, ...]:
+        batches = build_schemair_field_batches(structure, batch_size=batch_size)
+        path_catalogs = {
+            section: [selector["path"] for batch in batches[section] for selector in batch]
+            for section in SCHEMAIR_SECTIONS
+        }
+        metadata_payload = {"pathCatalogs": path_catalogs}
+        specs = [
+            SegmentSpec(
+                segment_id="schemair-metadata",
+                contract_version=SCHEMAIR_METADATA_SEGMENT_CONTRACT,
+                payload=metadata_payload,
+                payload_hash=canonical_segment_hash(metadata_payload),
+            )
+        ]
+        for section in SCHEMAIR_SECTIONS:
+            for batch_index, selectors in enumerate(batches[section], start=1):
+                payload = {
+                    "section": section,
+                    "batchIndex": batch_index,
+                    "selectors": selectors,
+                }
+                specs.append(
+                    SegmentSpec(
+                        segment_id=(
+                            f"schemair-{section.lower()}-fields-{batch_index:03d}"
+                        ),
+                        contract_version=SCHEMAIR_FIELD_SEMANTICS_SEGMENT_CONTRACT,
+                        payload=payload,
+                        payload_hash=canonical_segment_hash(payload),
+                        selector_hash=canonical_segment_hash({"selectors": selectors}),
+                        dependencies=("schemair-metadata",),
+                    )
+                )
+        return tuple(specs)
+
+    def validate_segment(
+        self,
+        spec: SegmentSpec,
+        value: Any,
+        *,
+        structure: Mapping[str, Any],
+    ) -> SegmentValidationResult:
+        if spec.segment_id == "schemair-metadata":
+            return _profile_validate_metadata_segment(
+                value,
+                structure=structure,
+                segment_name=spec.segment_id,
+            )
+        payload = spec.payload
+        section = payload.get("section")
+        batch_index = payload.get("batchIndex")
+        selectors = payload.get("selectors")
+        if (
+            section not in SCHEMAIR_SECTIONS
+            or not isinstance(batch_index, int)
+            or not isinstance(selectors, list)
+        ):
+            return SegmentValidationResult(
+                SegmentDisposition.HARD_FAIL,
+                None,
+                detail=f"invalid code-owned segment spec: {spec.segment_id}",
+            )
+        return self.validate_field_segment(
+            value,
+            section=section,
+            batch_index=batch_index,
+            expected_selectors=selectors,
+            segment_id=spec.segment_id,
+        )
+
+    def validate_field_segment(
+        self,
+        value: Any,
+        *,
+        section: str,
+        batch_index: int,
+        expected_selectors: list[dict[str, str]],
+        segment_id: str | None = None,
+    ) -> SegmentValidationResult:
+        segment_name = segment_id or f"schemair-{section.lower()}-fields-{batch_index:03d}"
+        if not isinstance(value, dict):
+            return SegmentValidationResult(
+                SegmentDisposition.RETRY_SEGMENT,
+                None,
+                detail="SchemaIR field semantics segment must be an object",
+            )
+        normalized = deepcopy(value)
+        fields = normalized.get("fields")
+        if not isinstance(fields, list) or len(fields) != len(expected_selectors):
+            return SegmentValidationResult(
+                SegmentDisposition.RETRY_SEGMENT,
+                None,
+                detail="SchemaIR field semantics segment must exactly cover target selectors",
+            )
+        diagnostics: list[NormalizationDiagnostic] = []
+        invalid_draft = False
+        for position, (field_value, expected) in enumerate(
+            zip(fields, expected_selectors, strict=True)
+        ):
+            if not isinstance(field_value, dict):
+                return SegmentValidationResult(
+                    SegmentDisposition.RETRY_SEGMENT,
+                    None,
+                    detail=f"SchemaIR {section} fields[{position}] must be an object",
+                )
+            if field_value.get("selector") != expected["selector"]:
+                return SegmentValidationResult(
+                    SegmentDisposition.RETRY_SEGMENT,
+                    None,
+                    detail=f"SchemaIR {section} fields[{position}] selector does not match",
+                )
+            if field_value.get("fieldName") != expected["fieldName"]:
+                return SegmentValidationResult(
+                    SegmentDisposition.RETRY_SEGMENT,
+                    None,
+                    detail=f"SchemaIR {section} fields[{position}] fieldName does not match",
+                )
+            selector = expected["selector"]
+            for property_name in sorted(_CODE_OWNED_FIELD_PROPERTIES & field_value.keys()):
+                field_value.pop(property_name)
+                diagnostics.append(
+                    NormalizationDiagnostic(
+                        segment=segment_name,
+                        selector=selector,
+                        path=expected["path"],
+                        code="CODE_OWNED_PROPERTY_REMOVED",
+                        action=f"removed {property_name}",
+                        severity="WARNING",
+                    )
+                )
+            if expected["dataType"] != "object" and "required" in field_value:
+                field_value.pop("required")
+                diagnostics.append(
+                    NormalizationDiagnostic(
+                        segment=segment_name,
+                        selector=selector,
+                        path=expected["path"],
+                        code="SCALAR_REQUIRED_REMOVED",
+                        action="removed required",
+                        severity="WARNING",
+                    )
+                )
+            allowed = set(SCHEMAIR_CANDIDATE_FIELD_PROPERTIES) | {"selector"}
+            if expected["dataType"] == "object":
+                allowed.add("required")
+            unknown = sorted(field_value.keys() - allowed)
+            if unknown:
+                return SegmentValidationResult(
+                    SegmentDisposition.RETRY_SEGMENT,
+                    None,
+                    tuple(diagnostics),
+                    detail=(
+                        f"SchemaIR {section} fields[{position}] has unknown properties: "
+                        + ", ".join(unknown)
+                    ),
+                )
+            for property_name in sorted(
+                SCHEMAIR_CANDIDATE_FIELD_PROPERTIES - field_value.keys()
+            ):
+                if property_name == "length":
+                    field_value[property_name] = {"min": None, "max": None, "raw": None}
+                elif property_name == "evidence":
+                    field_value[property_name] = {"kind": None, "note": None}
+                else:
+                    field_value[property_name] = None
+                severity = (
+                    "WARNING" if property_name in _NULLABLE_FIELD_PROPERTIES else "ERROR"
+                )
+                invalid_draft = invalid_draft or severity == "ERROR"
+                diagnostics.append(
+                    NormalizationDiagnostic(
+                        segment=segment_name,
+                        selector=selector,
+                        path=expected["path"],
+                        code="MISSING_SEMANTIC_PROPERTY_FILLED_NULL",
+                        action=f"filled {property_name} with null placeholder",
+                        severity=severity,
+                    )
+                )
+            if expected["dataType"] == "object" and not isinstance(
+                field_value.get("required"), bool
+            ):
+                field_value["required"] = None
+                invalid_draft = True
+                diagnostics.append(
+                    NormalizationDiagnostic(
+                        segment=segment_name,
+                        selector=selector,
+                        path=expected["path"],
+                        code="OBJECT_REQUIRED_UNKNOWN",
+                        action="replaced required with null placeholder",
+                        severity="ERROR",
+                    )
+                )
+            retry_detail = self._normalize_nested_field_slots(
+                field_value,
+                segment_name=segment_name,
+                selector=selector,
+                path=expected["path"],
+                diagnostics=diagnostics,
+            )
+            if retry_detail is not None:
+                return SegmentValidationResult(
+                    SegmentDisposition.RETRY_SEGMENT,
+                    None,
+                    tuple(diagnostics),
+                    detail=retry_detail,
+                )
+            invalid_draft = invalid_draft or any(
+                diagnostic.severity == "ERROR"
+                for diagnostic in diagnostics
+                if diagnostic.selector == selector
+            )
+        try:
+            validated = validate_schemair_field_semantics_segment(
+                normalized,
+                section=section,
+                batch_index=batch_index,
+                expected_selectors=expected_selectors,
+            )
+        except DraftGenerationError as exc:
+            return SegmentValidationResult(
+                SegmentDisposition.RETRY_SEGMENT,
+                None,
+                tuple(diagnostics),
+                detail=str(exc),
+            )
+        disposition = (
+            SegmentDisposition.INVALID_DRAFT
+            if invalid_draft
+            else SegmentDisposition.NORMALIZED
+            if diagnostics
+            else SegmentDisposition.ACCEPT
+        )
+        return SegmentValidationResult(disposition, validated, tuple(diagnostics))
+
+    @staticmethod
+    def _normalize_nested_field_slots(
+        field: dict[str, Any],
+        *,
+        segment_name: str,
+        selector: str,
+        path: str,
+        diagnostics: list[NormalizationDiagnostic],
+    ) -> str | None:
+        for property_name, slots in (
+            ("length", SCHEMAIR_CANDIDATE_LENGTH_PROPERTIES),
+            ("evidence", SCHEMAIR_CANDIDATE_EVIDENCE_PROPERTIES),
+        ):
+            nested = field[property_name]
+            if not isinstance(nested, dict):
+                field[property_name] = {slot: None for slot in slots}
+                diagnostics.append(
+                    NormalizationDiagnostic(
+                        segment=segment_name,
+                        selector=selector,
+                        path=path,
+                        code="INVALID_NESTED_VALUE_REPLACED",
+                        action=f"replaced {property_name} with null placeholders",
+                        severity="ERROR",
+                    )
+                )
+                continue
+            unknown = sorted(nested.keys() - slots)
+            if unknown:
+                return (
+                    f"SchemaIR field {selector} {property_name} has unknown properties: "
+                    + ", ".join(unknown)
+                )
+            for slot in sorted(slots - nested.keys()):
+                nested[slot] = None
+                diagnostics.append(
+                    NormalizationDiagnostic(
+                        segment=segment_name,
+                        selector=selector,
+                        path=path,
+                        code="MISSING_NESTED_SLOT_FILLED_NULL",
+                        action=f"filled {property_name}.{slot} with null placeholder",
+                        severity="ERROR",
+                    )
+                )
+        return None
+
+    def merge(
+        self,
+        segments: Mapping[str, dict[str, Any]],
+        *,
+        structure: Mapping[str, Any],
+        batch_size: int,
+    ) -> dict[str, Any]:
+        metadata = segments.get("schemair-metadata")
+        field_segments: dict[str, list[dict[str, Any]]] = {
+            section: [] for section in SCHEMAIR_SECTIONS
+        }
+        plan = self.build_segment_plan(structure, batch_size=batch_size)
+        for spec in plan[1:]:
+            segment = segments.get(spec.segment_id)
+            if segment is None:
+                raise DraftGenerationError(
+                    f"SchemaIR segment is missing during merge: {spec.segment_id}"
+                )
+            section = spec.payload["section"]
+            field_segments[section].append(segment)
+        return merge_schemair_semantic_segments(
+            metadata=metadata,
+            field_segments=field_segments,
+            structure=structure,
+            batch_size=batch_size,
+            metadata_is_profile_validated=True,
+        )
+
+
+def _profile_validate_metadata_segment(
+    value: Any,
+    *,
+    structure: Mapping[str, Any],
+    segment_name: str,
+) -> SegmentValidationResult:
+    if not isinstance(value, dict):
+        return _retry_segment("SchemaIR metadata segment must be an object")
+    metadata = deepcopy(value)
+    if set(metadata) != _METADATA_PROPERTIES:
+        return _retry_segment(_property_mismatch(metadata, _METADATA_PROPERTIES))
+    if metadata.get("contractVersion") != SCHEMAIR_METADATA_SEGMENT_CONTRACT:
+        return _retry_segment("SchemaIR metadata segment contractVersion does not match")
+    envelope = metadata.get("envelope")
+    if not isinstance(envelope, dict):
+        return _retry_segment("SchemaIR metadata envelope must be an object")
+    unknown_envelope = sorted(envelope.keys() - _METADATA_ENVELOPE_PROPERTIES)
+    if unknown_envelope:
+        return _retry_segment(
+            "SchemaIR metadata envelope has unknown properties: "
+            + ", ".join(unknown_envelope)
+        )
+
+    diagnostics: list[NormalizationDiagnostic] = []
+    if "description" not in envelope:
+        envelope["description"] = None
+        diagnostics.append(
+            _normalization_diagnostic(
+                segment_name,
+                "MISSING_METADATA_PROPERTY_FILLED_NULL",
+                "filled envelope.description with null placeholder",
+                path="envelope.description",
+            )
+        )
+    messages = metadata.get("messages")
+    if not isinstance(messages, list) or len(messages) != 2:
+        return _retry_segment(
+            "SchemaIR metadata segment must contain exactly ASSEMBLY and PARSE messages"
+        )
+    allowed_paths = {
+        direction: _structure_paths(structure, "envelope")
+        | _structure_paths(structure, direction.lower())
+        for direction in ("ASSEMBLY", "PARSE")
+    }
+    by_direction: dict[str, dict[str, Any]] = {}
+    for index, message_value in enumerate(messages):
+        if not isinstance(message_value, dict):
+            return _retry_segment(f"SchemaIR metadata messages[{index}] must be an object")
+        direction = message_value.get("functionType")
+        if direction not in {"ASSEMBLY", "PARSE"} or direction in by_direction:
+            return _retry_segment(
+                "SchemaIR metadata segment must contain one unambiguous ASSEMBLY and PARSE message"
+            )
+        unknown = sorted(message_value.keys() - _METADATA_MESSAGE_PROPERTIES)
+        if unknown:
+            return _retry_segment(
+                f"SchemaIR metadata messages[{direction}] has unknown properties: "
+                + ", ".join(unknown)
+            )
+        for property_name in sorted(
+            _METADATA_MESSAGE_PROPERTIES - message_value.keys() - {"functionType"}
+        ):
+            message_value[property_name] = None
+            diagnostics.append(
+                _normalization_diagnostic(
+                    segment_name,
+                    "MISSING_METADATA_PROPERTY_FILLED_NULL",
+                    f"filled messages[{direction}].{property_name} with null placeholder",
+                    path=f"messages[{direction}].{property_name}",
+                )
+            )
+        retry_detail = _normalize_metadata_list(
+            message_value,
+            property_name="xmlEncodingEvidence",
+            slots=SCHEMAIR_CANDIDATE_ENCODING_EVIDENCE_PROPERTIES,
+            segment_name=segment_name,
+            direction=direction,
+            diagnostics=diagnostics,
+        )
+        if retry_detail is not None:
+            return _retry_segment(retry_detail, diagnostics)
+        retry_detail = _normalize_metadata_list(
+            message_value,
+            property_name="conditionalConstraints",
+            slots=SCHEMAIR_CANDIDATE_CONDITION_PROPERTIES,
+            segment_name=segment_name,
+            direction=direction,
+            diagnostics=diagnostics,
+            nested_evidence=True,
+        )
+        if retry_detail is not None:
+            return _retry_segment(retry_detail, diagnostics)
+        conditions = message_value.get("conditionalConstraints")
+        if isinstance(conditions, list):
+            for condition_index, condition in enumerate(conditions):
+                if not isinstance(condition, dict):
+                    continue
+                for property_name in ("controllingFieldPath", "targetFieldPath"):
+                    path_value = condition.get(property_name)
+                    if path_value not in allowed_paths[direction]:
+                        diagnostics.append(
+                            _normalization_diagnostic(
+                                segment_name,
+                                "UNKNOWN_CONDITION_PATH",
+                                f"preserved {property_name} for public Validator",
+                                path=(
+                                    f"messages[{direction}].conditionalConstraints"
+                                    f"[{condition_index}].{property_name}"
+                                ),
+                            )
+                        )
+        by_direction[direction] = message_value
+    metadata["messages"] = [by_direction[direction] for direction in ("ASSEMBLY", "PARSE")]
+    disposition = (
+        SegmentDisposition.INVALID_DRAFT
+        if diagnostics
+        else SegmentDisposition.ACCEPT
+    )
+    return SegmentValidationResult(disposition, metadata, tuple(diagnostics))
+
+
+def _normalize_metadata_list(
+    message: dict[str, Any],
+    *,
+    property_name: str,
+    slots: set[str],
+    segment_name: str,
+    direction: str,
+    diagnostics: list[NormalizationDiagnostic],
+    nested_evidence: bool = False,
+) -> str | None:
+    value = message.get(property_name)
+    if value is None:
+        return None
+    if not isinstance(value, list):
+        diagnostics.append(
+            _normalization_diagnostic(
+                segment_name,
+                "INVALID_METADATA_COLLECTION_PRESERVED",
+                f"preserved invalid {property_name} for public Validator",
+                path=f"messages[{direction}].{property_name}",
+            )
+        )
+        return None
+    for index, item in enumerate(value):
+        item_path = f"messages[{direction}].{property_name}[{index}]"
+        if not isinstance(item, dict):
+            value[index] = {slot: None for slot in slots}
+            diagnostics.append(
+                _normalization_diagnostic(
+                    segment_name,
+                    "INVALID_METADATA_ITEM_REPLACED",
+                    f"replaced {property_name} item with null placeholders",
+                    path=item_path,
+                )
+            )
+            item = value[index]
+        unknown = sorted(item.keys() - slots)
+        if unknown:
+            return f"{item_path} has unknown properties: {', '.join(unknown)}"
+        for slot in sorted(slots - item.keys()):
+            item[slot] = None
+            diagnostics.append(
+                _normalization_diagnostic(
+                    segment_name,
+                    "MISSING_NESTED_SLOT_FILLED_NULL",
+                    f"filled {property_name}.{slot} with null placeholder",
+                    path=f"{item_path}.{slot}",
+                )
+            )
+        if nested_evidence:
+            evidence = item.get("evidence")
+            if not isinstance(evidence, dict):
+                item["evidence"] = {
+                    slot: None for slot in SCHEMAIR_CANDIDATE_EVIDENCE_PROPERTIES
+                }
+                diagnostics.append(
+                    _normalization_diagnostic(
+                        segment_name,
+                        "INVALID_NESTED_VALUE_REPLACED",
+                        "replaced condition evidence with null placeholders",
+                        path=f"{item_path}.evidence",
+                    )
+                )
+            else:
+                unknown_evidence = sorted(
+                    evidence.keys() - SCHEMAIR_CANDIDATE_EVIDENCE_PROPERTIES
+                )
+                if unknown_evidence:
+                    return (
+                        f"{item_path}.evidence has unknown properties: "
+                        + ", ".join(unknown_evidence)
+                    )
+                for slot in sorted(
+                    SCHEMAIR_CANDIDATE_EVIDENCE_PROPERTIES - evidence.keys()
+                ):
+                    evidence[slot] = None
+                    diagnostics.append(
+                        _normalization_diagnostic(
+                            segment_name,
+                            "MISSING_NESTED_SLOT_FILLED_NULL",
+                            f"filled condition evidence.{slot} with null placeholder",
+                            path=f"{item_path}.evidence.{slot}",
+                        )
+                    )
+    return None
+
+
+def _normalization_diagnostic(
+    segment: str,
+    code: str,
+    action: str,
+    *,
+    path: str,
+) -> NormalizationDiagnostic:
+    return NormalizationDiagnostic(
+        segment=segment,
+        code=code,
+        action=action,
+        severity="ERROR",
+        path=path,
+    )
+
+
+def _retry_segment(
+    detail: str,
+    diagnostics: list[NormalizationDiagnostic] | None = None,
+) -> SegmentValidationResult:
+    return SegmentValidationResult(
+        SegmentDisposition.RETRY_SEGMENT,
+        None,
+        tuple(diagnostics or ()),
+        detail=detail,
+    )
+
+
+def _property_mismatch(value: Mapping[str, Any], expected: set[str]) -> str:
+    missing = sorted(expected - value.keys())
+    unknown = sorted(value.keys() - expected)
+    details = []
+    if missing:
+        details.append("missing properties: " + ", ".join(missing))
+    if unknown:
+        details.append("unknown properties: " + ", ".join(unknown))
+    return "SchemaIR metadata segment has invalid properties (" + "; ".join(details) + ")"
 
 
 def build_schemair_field_batches(
@@ -213,7 +804,7 @@ def validate_schemair_field_semantics_segment(
             required=required,
             label=f"SchemaIR {section} field segment fields[{position}]",
         )
-        if expected["dataType"] == "object" and not isinstance(field.get("required"), bool):
+        if expected["dataType"] == "object" and field.get("required") is not None and not isinstance(field.get("required"), bool):
             raise DraftGenerationError(
                 f"SchemaIR {section} field segment fields[{position}] Object required must be boolean"
             )
@@ -244,8 +835,13 @@ def merge_schemair_semantic_segments(
     field_segments: Mapping[str, list[dict[str, Any]]],
     structure: Mapping[str, Any],
     batch_size: int,
+    metadata_is_profile_validated: bool = False,
 ) -> dict[str, Any]:
-    validated_metadata = validate_schemair_metadata_segment(metadata, structure=structure)
+    validated_metadata = (
+        deepcopy(metadata)
+        if metadata_is_profile_validated
+        else validate_schemair_metadata_segment(metadata, structure=structure)
+    )
     expected_batches = build_schemair_field_batches(structure, batch_size=batch_size)
     if set(field_segments) != set(SCHEMAIR_SECTIONS):
         raise DraftGenerationError(
@@ -289,7 +885,10 @@ def merge_schemair_semantic_segments(
 
 
 def render_schemair_review_notes(
-    candidate: Mapping[str, Any], validation_result: Mapping[str, Any] | None = None
+    candidate: Mapping[str, Any],
+    validation_result: Mapping[str, Any] | None = None,
+    *,
+    normalization_diagnostics: tuple[NormalizationDiagnostic, ...] = (),
 ) -> str:
     parts = ["# SchemaIR Candidate Review Notes", "", "## Candidate Review Items", ""]
     review_items: list[str] = []
@@ -354,6 +953,16 @@ def render_schemair_review_notes(
                 f"- {section_label}.fields[{index}] `{field_name}`: " + "; ".join(details)
             )
     parts.extend(review_items or ["- Candidate 未声明额外不确定项；Human 仍需对照 Final DocIR 审查语义。"])
+    parts.extend(["", "## Normalization Diagnostics", ""])
+    if not normalization_diagnostics:
+        parts.append("- 未执行确定性归一化。")
+    else:
+        for diagnostic in normalization_diagnostics:
+            location = diagnostic.selector or diagnostic.path or "segment"
+            parts.append(
+                f"- [{diagnostic.severity}] `{diagnostic.code}` "
+                f"`{diagnostic.segment}` `{location}`: {diagnostic.action}"
+            )
     parts.extend(["", "## Validator Issues", ""])
     issues = validation_result.get("issues") if isinstance(validation_result, Mapping) else None
     if not isinstance(issues, list) or not issues:

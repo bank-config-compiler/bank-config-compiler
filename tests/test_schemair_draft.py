@@ -10,6 +10,7 @@ from bank_config_compiler.ir_materialization import (
     parse_final_docir_structure,
 )
 from bank_config_compiler.schemair_draft import (
+    BankXmlSchemaIRProfile,
     SCHEMAIR_FIELD_SEMANTICS_SEGMENT_CONTRACT,
     SCHEMAIR_METADATA_SEGMENT_CONTRACT,
     build_schemair_field_batches,
@@ -17,6 +18,10 @@ from bank_config_compiler.schemair_draft import (
     render_schemair_review_notes,
     validate_schemair_field_semantics_segment,
     validate_schemair_metadata_segment,
+)
+from bank_config_compiler.segmented_artifact import (
+    NormalizationDiagnostic,
+    SegmentDisposition,
 )
 from bank_config_compiler.schemair_validator import validate_schemair
 
@@ -89,6 +94,22 @@ def test_schemair_field_batches_are_bounded_and_code_owned() -> None:
         "nodeKind": "XML_ELEMENT",
         "dataType": "object",
     }
+
+
+def test_bank_xml_profile_default_sized_plan_has_five_logical_segments() -> None:
+    structure = parse_final_docir_structure(_docir())
+
+    plan = BankXmlSchemaIRProfile().build_segment_plan(structure, batch_size=16)
+
+    assert [spec.segment_id for spec in plan] == [
+        "schemair-metadata",
+        "schemair-envelope-fields-001",
+        "schemair-assembly-fields-001",
+        "schemair-assembly-fields-002",
+        "schemair-parse-fields-001",
+    ]
+    assert all(spec.payload_hash.startswith("sha256:") for spec in plan)
+    assert plan[1].selector_hash is not None
 
 
 def test_schemair_segments_merge_to_existing_candidate_and_materialize() -> None:
@@ -234,6 +255,91 @@ def test_schemair_field_segment_enforces_object_and_scalar_required_shape() -> N
         )
 
 
+def test_bank_xml_profile_normalizes_scalar_required_with_diagnostic() -> None:
+    structure = parse_final_docir_structure(_docir())
+    selectors = build_schemair_field_batches(structure, batch_size=8)["ENVELOPE"][0]
+    segment = deepcopy(_field_segments(_candidate(), structure)["ENVELOPE"][0])
+    segment["fields"][1]["required"] = None
+
+    result = BankXmlSchemaIRProfile().validate_field_segment(
+        segment,
+        section="ENVELOPE",
+        batch_index=1,
+        expected_selectors=selectors,
+    )
+
+    assert result.disposition == SegmentDisposition.NORMALIZED
+    assert result.value is not None
+    assert "required" not in result.value["fields"][1]
+    assert [diagnostic.code for diagnostic in result.diagnostics] == [
+        "SCALAR_REQUIRED_REMOVED"
+    ]
+    assert result.diagnostics[0].selector == "envelope:2"
+
+
+def test_bank_xml_profile_materializes_unknown_object_required_as_invalid_draft() -> None:
+    docir = _docir()
+    structure = parse_final_docir_structure(docir)
+    candidate = _candidate()
+    segments = _field_segments(candidate, structure)
+    segments["ENVELOPE"][0]["fields"][0].pop("required")
+    profile = BankXmlSchemaIRProfile()
+    normalized = profile.validate_field_segment(
+        segments["ENVELOPE"][0],
+        section="ENVELOPE",
+        batch_index=1,
+        expected_selectors=build_schemair_field_batches(structure, batch_size=8)[
+            "ENVELOPE"
+        ][0],
+    )
+
+    assert normalized.disposition == SegmentDisposition.INVALID_DRAFT
+    assert normalized.value is not None
+    assert normalized.value["fields"][0]["required"] is None
+    segments["ENVELOPE"][0] = normalized.value
+    merged = merge_schemair_semantic_segments(
+        metadata=_metadata_segment(candidate),
+        field_segments=segments,
+        structure=structure,
+        batch_size=8,
+    )
+    draft = materialize_schemair_candidate(
+        merged,
+        docir_final=docir,
+        schema_id="b2eboc-b2e0061-schema",
+        schema_version="v1",
+        interface_code="b2e0061",
+    )
+
+    root = draft["envelope"]["fields"][0]
+    assert root["required"] is None
+    assert root["occurs"] is None
+    validation = validate_schemair(draft)
+    assert validation["summary"]["errorCount"] >= 2
+    assert {issue["code"] for issue in validation["issues"]} >= {
+        "INVALID_FIELD_TYPE",
+        "INVALID_OCCURS",
+    }
+
+
+def test_bank_xml_profile_retries_unknown_non_code_owned_property() -> None:
+    structure = parse_final_docir_structure(_docir())
+    selectors = build_schemair_field_batches(structure, batch_size=8)["ENVELOPE"][0]
+    segment = deepcopy(_field_segments(_candidate(), structure)["ENVELOPE"][0])
+    segment["fields"][1]["inventedBankFact"] = "do not keep"
+
+    result = BankXmlSchemaIRProfile().validate_field_segment(
+        segment,
+        section="ENVELOPE",
+        batch_index=1,
+        expected_selectors=selectors,
+    )
+
+    assert result.disposition == SegmentDisposition.RETRY_SEGMENT
+    assert result.value is None
+    assert "inventedBankFact" in (result.detail or "")
+
+
 def test_schemair_metadata_rejects_condition_paths_outside_direction_scope() -> None:
     structure = parse_final_docir_structure(_docir())
     metadata = _metadata_segment(_candidate())
@@ -244,6 +350,31 @@ def test_schemair_metadata_rejects_condition_paths_outside_direction_scope() -> 
 
     with pytest.raises(DraftGenerationError, match="unknown targetFieldPath"):
         validate_schemair_metadata_segment(metadata, structure=structure)
+
+
+def test_bank_xml_profile_keeps_unknown_condition_path_for_invalid_draft() -> None:
+    structure = parse_final_docir_structure(_docir())
+    metadata = _metadata_segment(_candidate())
+    assembly = next(
+        message for message in metadata["messages"] if message["functionType"] == "ASSEMBLY"
+    )
+    assembly["conditionalConstraints"][0]["targetFieldPath"] = "unknown.path"
+    spec = BankXmlSchemaIRProfile().build_segment_plan(structure, batch_size=16)[0]
+
+    result = BankXmlSchemaIRProfile().validate_segment(
+        spec, metadata, structure=structure
+    )
+
+    assert result.disposition == SegmentDisposition.INVALID_DRAFT
+    assert result.value is not None
+    assert (
+        result.value["messages"][0]["conditionalConstraints"][0]["targetFieldPath"]
+        == "unknown.path"
+    )
+    assert any(
+        diagnostic.code == "UNKNOWN_CONDITION_PATH"
+        for diagnostic in result.diagnostics
+    )
 
 
 def test_schemair_review_notes_are_deterministic_and_include_validator_issues() -> None:
@@ -266,6 +397,26 @@ def test_schemair_review_notes_are_deterministic_and_include_validator_issues() 
     assert "envelope.fields[1] `@version`" in first
     assert "TEST_ISSUE" in first
     assert "Test validation issue." in first
+
+
+def test_schemair_review_notes_include_normalization_diagnostics_without_values() -> None:
+    diagnostic = NormalizationDiagnostic(
+        segment="schemair-parse-fields-001",
+        selector="parse:2",
+        path="Root.bocb2e.trans.trn-b2e0061-rs.status",
+        code="SCALAR_REQUIRED_REMOVED",
+        action="removed required",
+        severity="WARNING",
+    )
+
+    notes = render_schemair_review_notes(
+        _candidate(), normalization_diagnostics=(diagnostic,)
+    )
+
+    assert "## Normalization Diagnostics" in notes
+    assert "SCALAR_REQUIRED_REMOVED" in notes
+    assert "parse:2" in notes
+    assert "removed required" in notes
 
 
 def test_schemair_review_notes_include_metadata_notes_and_non_direct_conditions() -> None:
