@@ -26,6 +26,7 @@ Accepted。本 ADR 将 SchemaIR Prompt 从 `draft-prompt/v11` 升级为 `draft-p
 - Blocking 项按 Envelope、ASSEMBLY、PARSE、生命周期排序；无法绑定字段的问题按 path 与 code 稳定排序。
 - `CONDITIONAL_FIELD` INFO 按方向汇总字段名和数量，完整逐条路径仍以 `schemair-validation-result.json` 为准。
 - `确定性归一化记录` 使用中文动作说明，不复制被删除的原始属性值。`显式 Review 证据` 只展示未在问题清单中重复呈现的 review/evidence。
+- 模型原始 review/evidence 仍按原语言呈现，但必须折叠换行并做 Markdown-safe 编码，使标题、列表、链接、HTML 和反引号不能逃逸其所属审查项或伪装成 renderer 输出。
 - Validator JSON、issue code、path、计数和公开 SchemaIR contract 不变。renderer 为已知 code 提供中文解释；未知 code 使用中文兜底并指向原始 Validation Result，不直接把未知英文 message 当作中文说明。
 
 ### `validate-draft` 的 evidence 信任边界

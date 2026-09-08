@@ -209,7 +209,7 @@ SchemaIR 使用 JSON。`Final SchemaIR` 是银行 XML 报文结构与银行原�
 
 当前 SchemaIR v2 runtime 已明确拒绝 legacy contract、`JSON` message format 和 JSON node kind。P0-T2 expected SchemaIR/result 保留为历史 Review baseline，不再作为 v2 Validator 的成功输入。
 
-SchemaIR generation 与 `validate-draft schemair` 使用同一个中文、hash-bound Review Notes renderer：先给出 Validation 摘要，再按 Envelope、ASSEMBLY、PARSE、生命周期排序必须处理项，将同字段的不确定性、低置信度和非直接证据合并，并把 `CONDITIONAL_FIELD` INFO 按方向汇总。归一化记录只从匹配当前 generation lineage 的 v3 attempt evidence 读取；evidence 缺失或错配不改变 Validator 结果。已有 v11 模型原文保持历史 evidence，不由 renderer 翻译；新的 `draft-prompt/v12` 只在 Prompt 中要求人类可读语义使用简体中文，不增加语言代码门禁。
+SchemaIR generation 与 `validate-draft schemair` 使用同一个中文、hash-bound Review Notes renderer：先给出 Validation 摘要，再按 Envelope、ASSEMBLY、PARSE、生命周期排序必须处理项，将同字段的不确定性、低置信度和非直接证据合并，并把 `CONDITIONAL_FIELD` INFO 按方向汇总。归一化记录只从匹配当前 generation lineage 的 v3 attempt evidence 读取；evidence 缺失或错配不改变 Validator 结果。已有 v11 模型原文保持历史 evidence，不由 renderer 翻译；渲染时折叠其换行并做 Markdown-safe 编码，防止不可信原文伪造标题或审查条目。新的 `draft-prompt/v12` 只在 Prompt 中要求人类可读语义使用简体中文，不增加语言代码门禁。
 
 ### 3.4 字段结构
 

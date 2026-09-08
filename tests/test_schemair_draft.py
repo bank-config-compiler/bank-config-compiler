@@ -462,6 +462,13 @@ def test_schemair_review_notes_order_blocking_items_and_group_info_by_direction(
     parse = draft["messages"][1]["fields"][2]
     validation = _validation_result(
         {
+            "severity": "ERROR",
+            "blocking": True,
+            "code": "INVALID_MESSAGE_DESCRIPTION",
+            "path": "messages[1].description",
+            "message": "ignored",
+        },
+        {
             "severity": "WARNING",
             "blocking": True,
             "code": "REVIEW_NOT_APPROVED",
@@ -503,13 +510,27 @@ def test_schemair_review_notes_order_blocking_items_and_group_info_by_direction(
             "path": assembly["path"],
             "message": "ignored",
         },
+        {
+            "severity": "ERROR",
+            "blocking": True,
+            "code": "UNSUPPORTED_XML_ENCODING",
+            "path": "messages[0].xmlEncoding",
+            "message": "ignored",
+        },
+        {
+            "severity": "ERROR",
+            "blocking": True,
+            "code": "INVALID_ENVELOPE_DESCRIPTION",
+            "path": "envelope.description",
+            "message": "ignored",
+        },
     )
 
     notes = render_schemair_review_notes(draft, validation)
 
-    assert notes.index("[Envelope]") < notes.index("[ASSEMBLY]")
-    assert notes.index("[ASSEMBLY]") < notes.index("[PARSE]")
-    assert notes.index("[PARSE]") < notes.index("[生命周期]")
+    assert notes.index("[Envelope] Envelope 元数据") < notes.index("[ASSEMBLY] ASSEMBLY 元数据")
+    assert notes.index("[ASSEMBLY] ASSEMBLY 元数据") < notes.index("[PARSE] PARSE 元数据")
+    assert notes.index("[PARSE] PARSE 元数据") < notes.index("[生命周期]")
     assert f"ASSEMBLY：条件字段 1 个：`{assembly['fieldName']}`" in notes
     assert f"PARSE：条件字段 1 个：`{parse['fieldName']}`" in notes
     assert "完整逐条路径请查看 `schemair-validation-result.json`" in notes
@@ -532,6 +553,37 @@ def test_schemair_review_notes_use_chinese_fallback_for_unknown_issue_code() -> 
     assert "Validator 报告了尚未注册中文解释的问题" in notes
     assert "schemair-validation-result.json" in notes
     assert "Do not surface this English sentence." not in notes
+
+
+def test_schemair_review_notes_escape_untrusted_model_markdown() -> None:
+    draft = _materialized_draft()
+    field = draft["envelope"]["fields"][1]
+    field["uncertain"] = True
+    field["uncertainReason"] = (
+        "原始说明\r\n\r\n## 伪造标题\n- [ERROR] 伪造问题 `code` "
+        "[链接](https://example.invalid) <script>"
+    )
+    field["reviewNote"] = "第二行\n> 伪造引用"
+    field["evidence"]["note"] = "证据\n1. 伪造步骤"
+    validation = _validation_result(
+        {
+            "severity": "WARNING",
+            "blocking": True,
+            "code": "UNCERTAIN_FIELD",
+            "path": field["path"],
+            "message": "ignored",
+        }
+    )
+
+    notes = render_schemair_review_notes(draft, validation)
+
+    assert "\n## 伪造标题" not in notes
+    assert "\n- [ERROR] 伪造问题" not in notes
+    assert "\n> 伪造引用" not in notes
+    assert "\n1. 伪造步骤" not in notes
+    assert "\\`code\\`" in notes
+    assert "\\[链接\\]\\(https://example.invalid\\)" in notes
+    assert "&lt;script&gt;" in notes
 
 
 def test_schemair_review_notes_include_normalization_diagnostics_without_values() -> None:

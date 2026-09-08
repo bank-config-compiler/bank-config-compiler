@@ -899,9 +899,9 @@ def render_schemair_review_notes(
     parts = [
         "# SchemaIR Draft 校验审查说明",
         "",
-        f"内容 hash: `{content_hash or '未提供'}`",
+        f"内容 hash: {_markdown_code(content_hash or '未提供')}",
         "",
-        f"状态: `{status or 'unknown'}`",
+        f"状态: {_markdown_code(status or 'unknown')}",
         "",
         (
             "校验汇总: "
@@ -986,8 +986,9 @@ def render_schemair_review_notes(
         for diagnostic in normalization_diagnostics:
             location = diagnostic.selector or diagnostic.path or "segment"
             parts.append(
-                f"- [{diagnostic.severity}] `{diagnostic.code}` "
-                f"`{diagnostic.segment}` `{location}`：{_normalization_action_zh(diagnostic.code)}"
+                f"- [{diagnostic.severity}] {_markdown_code(diagnostic.code)} "
+                f"{_markdown_code(diagnostic.segment)} {_markdown_code(location)}："
+                f"{_normalization_action_zh(diagnostic.code)}"
             )
 
     parts.extend(["", "## 显式 Review 证据", ""])
@@ -1040,6 +1041,7 @@ def _schemair_review_contexts(
     envelope = artifact.get("envelope")
     sections: list[tuple[str, Mapping[str, Any], int | None]] = []
     if isinstance(envelope, Mapping):
+        add("envelope", "Envelope", "Envelope 元数据", envelope, 0)
         sections.append(("Envelope", envelope, None))
     messages = artifact.get("messages")
     if isinstance(messages, list):
@@ -1048,6 +1050,13 @@ def _schemair_review_contexts(
                 continue
             direction = message.get("functionType")
             if direction in {"ASSEMBLY", "PARSE"}:
+                add(
+                    f"messages[{message_index}]",
+                    str(direction),
+                    f"{direction} 元数据",
+                    message,
+                    0,
+                )
                 sections.append((str(direction), message, message_index))
     for section, value, message_index in sections:
         fields = value.get("fields")
@@ -1059,7 +1068,7 @@ def _schemair_review_contexts(
                 add(
                     str(field["path"]),
                     section,
-                    f"字段 `{field_name}`",
+                    f"字段 {_markdown_code(field_name)}",
                     field,
                     1000 + index,
                 )
@@ -1107,14 +1116,14 @@ def _append_schemair_issue_entry(
     )
     issue_path = str(issues[0].get("path") or "未提供")
     if context is None:
-        parts.append(f"- [未绑定] `{issue_path}`")
+        parts.append(f"- [未绑定] {_markdown_code(issue_path)}")
         value: Mapping[str, Any] = {}
     else:
         parts.append(
-            f"- [{context['section']}] {context['label']} `{context['path']}`"
+            f"- [{context['section']}] {context['label']} {_markdown_code(context['path'])}"
         )
         value = context["value"] if isinstance(context.get("value"), Mapping) else {}
-    parts.append("  - Issue code: " + "、".join(f"`{code}`" for code in codes))
+    parts.append("  - Issue code: " + "、".join(_markdown_code(code) for code in codes))
     explanations: list[str] = []
     actions: list[str] = []
     for code in codes:
@@ -1160,7 +1169,7 @@ def _schemair_structured_values(value: Mapping[str, Any]) -> list[str]:
     details: list[str] = []
     evidence = value.get("evidence")
     if isinstance(evidence, Mapping):
-        details.append(f"evidence.kind=`{evidence.get('kind')}`")
+        details.append(f"evidence.kind={_markdown_code(evidence.get('kind'))}")
     for key in ("confidence", "uncertain", "required", "occurs"):
         if key not in value:
             continue
@@ -1171,11 +1180,11 @@ def _schemair_structured_values(value: Mapping[str, Any]) -> list[str]:
             rendered = "null"
         else:
             rendered = str(current)
-        details.append(f"{key}=`{rendered}`")
+        details.append(f"{key}={_markdown_code(rendered)}")
     for key in ("sourceKind", "observedValue", "disposition", "operator", "literal", "effect"):
         if key in value:
             current = "null" if value.get(key) is None else str(value.get(key))
-            details.append(f"{key}=`{current}`")
+            details.append(f"{key}={_markdown_code(current)}")
     return details
 
 
@@ -1188,19 +1197,40 @@ def _schemair_model_notes(value: Mapping[str, Any]) -> list[str]:
     for label, raw in candidates:
         text = _optional_text(raw)
         if text is not None:
-            notes.append(f"{label}={text}")
+            notes.append(f"{label}={_markdown_safe_prose(text)}")
     return notes
 
 
 def _schemair_evidence_notes(value: Mapping[str, Any]) -> list[str]:
     evidence = value.get("evidence")
     note = _optional_text(evidence.get("note")) if isinstance(evidence, Mapping) else None
-    return [note] if note is not None else []
+    return [_markdown_safe_prose(note)] if note is not None else []
 
 
 def _join_chinese_sentences(values: list[str]) -> str:
     normalized = [value.rstrip("。；") for value in values]
     return "；".join(normalized) + "。"
+
+
+def _markdown_safe_prose(value: str) -> str:
+    """将不可信原文约束在当前 Markdown 列表项内，不改变其语言。"""
+
+    flattened = " ".join(
+        line.strip() for line in value.replace("\r\n", "\n").replace("\r", "\n").split("\n") if line.strip()
+    )
+    escaped = flattened.replace("\\", "\\\\")
+    for character in ("`", "*", "_", "[", "]", "(", ")", "#"):
+        escaped = escaped.replace(character, f"\\{character}")
+    return escaped.replace("<", "&lt;").replace(">", "&gt;")
+
+
+def _markdown_code(value: Any) -> str:
+    text = str(value).replace("\r", " ").replace("\n", " ")
+    fence = "`"
+    while fence in text:
+        fence += "`"
+    padding = " " if text.startswith("`") or text.endswith("`") else ""
+    return f"{fence}{padding}{text}{padding}{fence}"
 
 
 def _append_schemair_info_summary(
@@ -1228,7 +1258,7 @@ def _append_schemair_info_summary(
         if not names:
             continue
         emitted = True
-        rendered = "、".join(f"`{name}`" for name in names)
+        rendered = "、".join(_markdown_code(name) for name in names)
         parts.append(
             f"- {section}：条件字段 {len(names)} 个：{rendered}。完整逐条路径请查看 `schemair-validation-result.json`。"
         )
@@ -1236,7 +1266,8 @@ def _append_schemair_info_summary(
         emitted = True
         explanation, _ = _schemair_issue_text(str(issue.get("code") or "UNKNOWN"))
         parts.append(
-            f"- [未绑定] `{issue.get('code')}` `{issue.get('path') or '未提供'}`：{explanation}"
+            f"- [未绑定] {_markdown_code(issue.get('code'))} "
+            f"{_markdown_code(issue.get('path') or '未提供')}：{explanation}"
         )
     for issue in sorted(
         other_issues,
@@ -1248,7 +1279,8 @@ def _append_schemair_info_summary(
         section = context.get("section") if context is not None else "未绑定"
         explanation, _ = _schemair_issue_text(str(issue.get("code") or "UNKNOWN"))
         parts.append(
-            f"- [{section}] `{issue.get('code')}` `{issue.get('path') or '未提供'}`：{explanation}"
+            f"- [{section}] {_markdown_code(issue.get('code'))} "
+            f"{_markdown_code(issue.get('path') or '未提供')}：{explanation}"
         )
     if not emitted:
         parts.append("- Validator 未报告 INFO。")
@@ -1291,14 +1323,15 @@ def _schemair_explicit_review_evidence(
         if evidence_kind is not None:
             details.append(f"evidence.kind=`{evidence_kind}`")
         if review_note is not None:
-            details.append(f"reviewNote={review_note}")
+            details.append(f"reviewNote={_markdown_safe_prose(review_note)}")
         if uncertain_reason is not None:
-            details.append(f"uncertainReason={uncertain_reason}")
+            details.append(f"uncertainReason={_markdown_safe_prose(uncertain_reason)}")
         if evidence_note is not None:
-            details.append(f"evidence.note={evidence_note}")
+            details.append(f"evidence.note={_markdown_safe_prose(evidence_note)}")
         if details:
             items.append(
-                f"- [{context['section']}] {context['label']} `{path}`：" + "；".join(details)
+                f"- [{context['section']}] {context['label']} {_markdown_code(path)}："
+                + "；".join(details)
             )
     return items
 
