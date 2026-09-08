@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import logging
 import sys
+from dataclasses import replace
 from pathlib import Path
 from threading import Event
 from types import SimpleNamespace
@@ -18,13 +19,25 @@ from bank_config_compiler.draft_generation import (
     DraftGenerationError,
     DraftGenerationRequest,
     generate_docir_draft,
+    generate_schemair_draft,
+    load_schemair_resume_evidence,
+    publish_generated_draft,
 )
 from bank_config_compiler.openai_chat_provider import (
     OpenAIChatDraftProvider,
     build_chat_messages,
 )
 from bank_config_compiler.ir_materialization import parse_final_docir_structure
-from bank_config_compiler.schemair_draft import build_schemair_field_batches
+from bank_config_compiler.schemair_draft import (
+    BankXmlSchemaIRProfile,
+    build_schemair_field_batches,
+)
+from bank_config_compiler.segmented_artifact import (
+    ResumeAttemptEvidence,
+    ResumeSegmentCandidate,
+    SegmentFingerprint,
+)
+from bank_config_compiler.workspace import ingest_raw_doc
 
 
 SAMPLE_ROOT = Path("samples/draft-generation/b2eboc-b2e0061")
@@ -55,7 +68,10 @@ class QueuedFakeCompletions:
         self.calls.append(kwargs)
         if not self.responses:
             raise AssertionError("unexpected extra chat completion call")
-        return self.responses.pop(0)
+        response = self.responses.pop(0)
+        if isinstance(response, BaseException):
+            raise response
+        return response
 
 
 class QueuedFakeClient:
@@ -70,6 +86,16 @@ class FailingClient:
 
     def create(self, **kwargs: object) -> SimpleNamespace:
         raise TimeoutError("SECRET-BANK-PAYLOAD")
+
+
+class FakeHttpError(Exception):
+    def __init__(self, status_code: int, retry_after: str | None = None) -> None:
+        super().__init__(f"HTTP {status_code}")
+        self.status_code = status_code
+        self.response = SimpleNamespace(
+            status_code=status_code,
+            headers={} if retry_after is None else {"Retry-After": retry_after},
+        )
 
 
 def chat_chunk(
@@ -347,7 +373,7 @@ def queued_docir_client(
     )
 
 
-def schemair_segment_responses(*, batch_size: int = 8) -> list[dict]:
+def schemair_segment_responses(*, batch_size: int = 16) -> list[dict]:
     docir_final = (SAMPLE_ROOT / "docir-final.md").read_text(encoding="utf-8")
     candidate = json.loads(
         (SAMPLE_ROOT / "artifacts/schemair-draft.json").read_text(encoding="utf-8")
@@ -393,7 +419,7 @@ def schemair_segment_responses(*, batch_size: int = 8) -> list[dict]:
     return responses
 
 
-def queued_schemair_client(*, batch_size: int = 8) -> QueuedFakeClient:
+def queued_schemair_client(*, batch_size: int = 16) -> QueuedFakeClient:
     return QueuedFakeClient(
         [
             chat_stream(json.dumps(response, ensure_ascii=False))
@@ -419,6 +445,57 @@ def schemair_request_and_context() -> tuple[DraftGenerationRequest, DraftGenerat
     )
 
 
+def schemair_resume_evidence_for_first_segment(
+    request: DraftGenerationRequest,
+    context: DraftGenerationContext,
+    *,
+    base_url: str = "https://example.invalid/v1",
+    model: str = "qwen-test-snapshot",
+) -> ResumeAttemptEvidence:
+    structure = parse_final_docir_structure(context.source_content)
+    spec = BankXmlSchemaIRProfile().build_segment_plan(structure, batch_size=16)[0]
+    response_text = json.dumps(schemair_segment_responses()[0], ensure_ascii=False)
+    endpoint_fingerprint = openai_chat_provider._sha256_text(base_url)
+    fingerprint = SegmentFingerprint.build(
+        source_hash=request.source_hash,
+        request=request.case_fingerprint(),
+        prompt_contract_version="draft-prompt/v11",
+        segment_contract_version=spec.contract_version,
+        requested_model=model,
+        endpoint_fingerprint=endpoint_fingerprint,
+        generation_parameters=openai_chat_provider.SCHEMAIR_GENERATION_PARAMETERS,
+        segment_payload=spec.payload,
+    )
+    selectors = request.case_fingerprint()
+    selectors.pop("artifactKind")
+    selectors.pop("sourceHash")
+    return ResumeAttemptEvidence(
+        contract_version="draft-provider-call-result/v3",
+        task_id=request.task_id,
+        source_hash=request.source_hash,
+        requested_model=model,
+        endpoint_fingerprint=endpoint_fingerprint,
+        prompt_contract_version="draft-prompt/v11",
+        schemair_field_batch_size=16,
+        attempt_id="schemair-previous",
+        selectors=selectors,
+        segments=(
+            ResumeSegmentCandidate(
+                segment_id=spec.segment_id,
+                response_text=response_text,
+                response_hash=openai_chat_provider._sha256_text(response_text),
+                origin_attempt_id="schemair-previous",
+                origin_call_sequence=1,
+                segment_contract_version=spec.contract_version,
+                prompt_tokens=10,
+                completion_tokens=20,
+                total_tokens=30,
+                fingerprint=fingerprint.as_dict(),
+            ),
+        ),
+    )
+
+
 def test_openai_chat_provider_segments_schemair_with_default_bounded_batches() -> None:
     client = queued_schemair_client()
     provider = OpenAIChatDraftProvider(
@@ -432,50 +509,115 @@ def test_openai_chat_provider_segments_schemair_with_default_bounded_batches() -
 
     result = provider.generate(request, context)
 
-    assert len(client.completions.calls) == 9
+    assert len(client.completions.calls) == 5
     assert [call.segment for call in result.metadata.calls] == [
         "schemair-metadata",
         "schemair-envelope-fields-001",
-        "schemair-envelope-fields-002",
         "schemair-assembly-fields-001",
         "schemair-assembly-fields-002",
-        "schemair-assembly-fields-003",
-        "schemair-assembly-fields-004",
         "schemair-parse-fields-001",
-        "schemair-parse-fields-002",
     ]
-    assert result.metadata.schemair_field_batch_size == 8
+    assert result.metadata.schemair_field_batch_size == 16
     assert result.metadata.docir_field_batch_size is None
     assert result.metadata.prompt_contract_version == "draft-prompt/v11"
-    assert result.metadata.total_tokens == 270
+    assert result.metadata.total_tokens == 150
     envelope = json.loads(result.response_text)
     expected_candidate = json.loads(
         (SAMPLE_ROOT / "artifacts/schemair-draft.json").read_text(encoding="utf-8")
     )
     assert json.loads(envelope["artifactContent"]) == expected_candidate
     assert result.candidate_content == envelope["artifactContent"]
-    assert len(result.subcall_response_texts) == 9
+    assert len(result.subcall_response_texts) == 5
     for call in client.completions.calls:
         assert context.source_content in call["messages"][1]["content"]
         assert "Prompt contract: draft-prompt/v11" in call["messages"][1]["content"]
 
 
 def test_openai_chat_provider_respects_configured_schemair_batch_size() -> None:
-    client = queued_schemair_client(batch_size=16)
+    client = queued_schemair_client(batch_size=8)
     provider = OpenAIChatDraftProvider(
         api_key="test-key",
         base_url="https://example.invalid/v1",
         model="qwen-test-snapshot",
         attempt_id="schemair-004",
-        schemair_field_batch_size=16,
+        schemair_field_batch_size=8,
         client=client,
     )
     request, context = schemair_request_and_context()
 
     result = provider.generate(request, context)
 
-    assert len(client.completions.calls) == 5
-    assert result.metadata.schemair_field_batch_size == 16
+    assert len(client.completions.calls) == 9
+    assert result.metadata.schemair_field_batch_size == 8
+
+
+def test_openai_chat_provider_reuses_proven_segment_without_counting_attempt_usage() -> None:
+    request, context = schemair_request_and_context()
+    evidence = schemair_resume_evidence_for_first_segment(request, context)
+    responses = schemair_segment_responses()[1:]
+    client = QueuedFakeClient(
+        [chat_stream(json.dumps(response, ensure_ascii=False)) for response in responses]
+    )
+    provider = OpenAIChatDraftProvider(
+        api_key="test-key",
+        base_url="https://example.invalid/v1",
+        model="qwen-test-snapshot",
+        attempt_id="schemair-current",
+        resume_from_attempt="schemair-previous",
+        resume_evidence=evidence,
+        client=client,
+    )
+
+    result = provider.generate(request, context)
+
+    assert len(client.completions.calls) == 4
+    assert len(result.metadata.calls) == 4
+    assert result.metadata.total_tokens == 120
+    assert result.metadata.effective_total_tokens == 150
+    assert [segment.source for segment in result.metadata.segments] == [
+        "REUSED",
+        "LIVE",
+        "LIVE",
+        "LIVE",
+        "LIVE",
+    ]
+    assert result.metadata.segments[0].origin_attempt_id == "schemair-previous"
+
+
+@pytest.mark.parametrize(
+    ("field", "value", "message"),
+    (
+        ("source_hash", "sha256:" + "f" * 64, "source hash"),
+        ("requested_model", "other-model", "requested model"),
+        ("endpoint_fingerprint", "sha256:" + "e" * 64, "endpoint fingerprint"),
+        ("schemair_field_batch_size", 8, "field batch size"),
+    ),
+)
+def test_openai_chat_provider_rejects_resume_mismatch_before_external_call(
+    field: str, value: object, message: str
+) -> None:
+    request, context = schemair_request_and_context()
+    evidence = replace(
+        schemair_resume_evidence_for_first_segment(request, context),
+        **{field: value},
+    )
+    client = QueuedFakeClient([])
+    provider = OpenAIChatDraftProvider(
+        api_key="test-key",
+        base_url="https://example.invalid/v1",
+        model="qwen-test-snapshot",
+        attempt_id="schemair-current",
+        resume_from_attempt="schemair-previous",
+        resume_evidence=evidence,
+        client=client,
+    )
+
+    with pytest.raises(DraftProviderDiagnosticError, match=message) as caught:
+        provider.generate(request, context)
+
+    assert client.completions.calls == []
+    assert caught.value.evidence is not None
+    assert caught.value.evidence.failure_stage == "resume-validation"
 
 
 def test_schemair_segment_prompts_keep_metadata_and_field_responsibilities_separate() -> None:
@@ -520,11 +662,127 @@ def test_schemair_segment_prompts_keep_metadata_and_field_responsibilities_separ
     assert "golden" not in field_user.split("<SOURCE_DATA>", maxsplit=1)[0].lower()
 
 
-def test_openai_chat_provider_schemair_fails_fast_after_invalid_later_segment() -> None:
+def test_openai_chat_provider_schemair_retries_only_invalid_segment() -> None:
     responses = schemair_segment_responses()
-    responses[2]["fields"][0]["selector"] = "envelope:unexpected"
+    invalid = json.loads(json.dumps(responses[1]))
+    invalid["fields"][0]["selector"] = "envelope:unexpected"
     client = QueuedFakeClient(
-        [chat_stream(json.dumps(response, ensure_ascii=False)) for response in responses]
+        [
+            chat_stream(json.dumps(responses[0], ensure_ascii=False)),
+            chat_stream(json.dumps(invalid, ensure_ascii=False)),
+            *[
+                chat_stream(json.dumps(response, ensure_ascii=False))
+                for response in responses[1:]
+            ],
+        ]
+    )
+    provider = OpenAIChatDraftProvider(
+        api_key="test-key",
+        base_url="https://example.invalid/v1",
+        model="qwen-test-snapshot",
+        attempt_id="schemair-004",
+        client=client,
+    )
+    request, context = schemair_request_and_context()
+
+    result = provider.generate(request, context)
+
+    assert len(client.completions.calls) == 6
+    assert [call.outcome for call in result.metadata.calls[:3]] == [
+        "succeeded",
+        "failed",
+        "succeeded",
+    ]
+    assert [call.segment_attempt for call in result.metadata.calls[:3]] == [1, 1, 2]
+    assert len(result.metadata.segments) == 5
+
+
+def test_schemair_v3_evidence_preserves_retry_lineage_and_loads_for_resume(
+    tmp_path: Path,
+) -> None:
+    responses = schemair_segment_responses()
+    invalid = json.loads(json.dumps(responses[1]))
+    invalid["fields"][0]["selector"] = "envelope:unexpected"
+    client = QueuedFakeClient(
+        [
+            chat_stream(json.dumps(responses[0], ensure_ascii=False)),
+            chat_stream(json.dumps(invalid, ensure_ascii=False)),
+            *[
+                chat_stream(json.dumps(response, ensure_ascii=False))
+                for response in responses[1:]
+            ],
+        ]
+    )
+    provider = OpenAIChatDraftProvider(
+        api_key="test-key",
+        base_url="https://example.invalid/v1",
+        model="qwen-test-snapshot",
+        attempt_id="schemair-v3",
+        client=client,
+    )
+    docir_final = (SAMPLE_ROOT / "docir-final.md").read_text(encoding="utf-8")
+    generated = generate_schemair_draft(
+        docir_final=docir_final,
+        provider=provider,
+        task_id="phase0-test",
+        interface_code="b2e0061",
+        schema_id="b2eboc-b2e0061-schema",
+        schema_version="v2",
+    )
+    workspace = tmp_path / "workspace"
+    raw_doc = tmp_path / "raw.md"
+    raw_doc.write_text("# Raw bank document\n", encoding="utf-8", newline="")
+    ingest_raw_doc(
+        raw_doc,
+        workspace,
+        task_id="phase0-test",
+        interface_code="b2e0061",
+    )
+
+    publish_generated_draft(workspace, generated)
+
+    attempt_root = workspace / "provider-attempts/schemair/schemair-v3"
+    summary = json.loads(
+        (attempt_root / "provider-call-result.json").read_text(encoding="utf-8")
+    )
+    assert summary["contractVersion"] == "draft-provider-call-result/v3"
+    assert summary["attemptUsage"]["totalTokens"] == 180
+    assert summary["effectiveUsage"]["totalTokens"] == 150
+    assert [call["segmentAttempt"] for call in summary["calls"][:3]] == [1, 1, 2]
+    assert [segment["source"] for segment in summary["segments"]] == ["LIVE"] * 5
+    assert len(list(attempt_root.glob("response-*-attempt-*.txt"))) == 6
+    assert (
+        attempt_root
+        / "response-002-schemair-envelope-fields-001-attempt-01.txt"
+    ).is_file()
+    assert (
+        attempt_root
+        / "response-003-schemair-envelope-fields-001-attempt-02.txt"
+    ).is_file()
+
+    loaded = load_schemair_resume_evidence(workspace, "schemair-v3")
+
+    assert len(loaded.segments) == 5
+    assert [candidate.origin_call_sequence for candidate in loaded.segments] == [
+        1,
+        3,
+        4,
+        5,
+        6,
+    ]
+    assert all(candidate.fingerprint is not None for candidate in loaded.segments)
+
+
+def test_openai_chat_provider_schemair_hard_fails_after_binding_retry_exhausted() -> None:
+    responses = schemair_segment_responses()
+    invalid = json.loads(json.dumps(responses[1]))
+    invalid["fields"][0]["selector"] = "envelope:unexpected"
+    client = QueuedFakeClient(
+        [
+            chat_stream(json.dumps(responses[0], ensure_ascii=False)),
+            chat_stream(json.dumps(invalid, ensure_ascii=False)),
+            chat_stream(json.dumps(invalid, ensure_ascii=False)),
+        ]
     )
     provider = OpenAIChatDraftProvider(
         api_key="test-key",
@@ -542,12 +800,134 @@ def test_openai_chat_provider_schemair_fails_fast_after_invalid_later_segment() 
     assert evidence is not None
     assert len(client.completions.calls) == 3
     assert evidence.failure_stage == "segment-validation"
-    assert evidence.failed_segment == "schemair-envelope-fields-002"
-    assert [call.metadata.outcome for call in evidence.calls] == [
-        "succeeded",
-        "succeeded",
-        "failed",
-    ]
+    assert evidence.failed_segment == "schemair-envelope-fields-001"
+    assert [call.metadata.segment_attempt for call in evidence.calls] == [1, 1, 2]
+
+
+def test_openai_chat_provider_schemair_does_not_retry_auth_failure() -> None:
+    waits: list[float] = []
+    client = QueuedFakeClient([FakeHttpError(403)])
+    provider = OpenAIChatDraftProvider(
+        api_key="test-key",
+        base_url="https://example.invalid/v1",
+        model="qwen-test-snapshot",
+        attempt_id="schemair-004",
+        retry_wait=waits.append,
+        client=client,
+    )
+    request, context = schemair_request_and_context()
+
+    with pytest.raises(DraftProviderDiagnosticError, match="chat request failed"):
+        provider.generate(request, context)
+
+    assert len(client.completions.calls) == 1
+    assert waits == []
+
+
+def test_openai_chat_provider_schemair_retries_transient_http_with_retry_after() -> None:
+    responses = schemair_segment_responses()
+    waits: list[float] = []
+    client = QueuedFakeClient(
+        [
+            FakeHttpError(429, "3"),
+            *[
+                chat_stream(json.dumps(response, ensure_ascii=False))
+                for response in responses
+            ],
+        ]
+    )
+    provider = OpenAIChatDraftProvider(
+        api_key="test-key",
+        base_url="https://example.invalid/v1",
+        model="qwen-test-snapshot",
+        attempt_id="schemair-004",
+        retry_wait=waits.append,
+        client=client,
+    )
+    request, context = schemair_request_and_context()
+
+    result = provider.generate(request, context)
+
+    assert len(client.completions.calls) == 6
+    assert waits == [3.0]
+    assert [call.segment_attempt for call in result.metadata.calls[:2]] == [1, 2]
+
+
+def test_openai_chat_provider_schemair_stops_before_call_when_token_budget_reached() -> None:
+    responses = schemair_segment_responses()
+    client = QueuedFakeClient(
+        [chat_stream(json.dumps(response, ensure_ascii=False)) for response in responses]
+    )
+    provider = OpenAIChatDraftProvider(
+        api_key="test-key",
+        base_url="https://example.invalid/v1",
+        model="qwen-test-snapshot",
+        attempt_id="schemair-004",
+        attempt_token_budget=30,
+        client=client,
+    )
+    request, context = schemair_request_and_context()
+
+    with pytest.raises(DraftProviderDiagnosticError, match="token budget") as caught:
+        provider.generate(request, context)
+
+    evidence = caught.value.evidence
+    assert evidence is not None
+    assert len(client.completions.calls) == 1
+    assert evidence.failure_stage == "attempt-budget"
+    assert evidence.failed_segment == "schemair-envelope-fields-001"
+    assert evidence.metadata.total_tokens == 30
+    assert len(evidence.metadata.segments) == 1
+
+
+def test_openai_chat_provider_schemair_stops_before_call_when_attempt_deadline_expires() -> None:
+    responses = schemair_segment_responses()
+    client = QueuedFakeClient(
+        [chat_stream(json.dumps(response, ensure_ascii=False)) for response in responses]
+    )
+    clock_values = iter((0.0, 0.0, 2.0))
+    provider = OpenAIChatDraftProvider(
+        api_key="test-key",
+        base_url="https://example.invalid/v1",
+        model="qwen-test-snapshot",
+        attempt_id="schemair-004",
+        attempt_deadline_seconds=1.0,
+        attempt_clock=lambda: next(clock_values),
+        client=client,
+    )
+    request, context = schemair_request_and_context()
+
+    with pytest.raises(DraftProviderDiagnosticError, match="attempt deadline") as caught:
+        provider.generate(request, context)
+
+    assert len(client.completions.calls) == 1
+    assert caught.value.evidence is not None
+    assert caught.value.evidence.failure_stage == "attempt-budget"
+    assert caught.value.evidence.failed_segment == "schemair-envelope-fields-001"
+
+
+def test_openai_chat_provider_schemair_semantic_unknown_is_invalid_not_retried() -> None:
+    responses = schemair_segment_responses()
+    responses[1]["fields"][0].pop("required")
+    client = QueuedFakeClient(
+        [chat_stream(json.dumps(response, ensure_ascii=False)) for response in responses]
+    )
+    provider = OpenAIChatDraftProvider(
+        api_key="test-key",
+        base_url="https://example.invalid/v1",
+        model="qwen-test-snapshot",
+        attempt_id="schemair-004",
+        client=client,
+    )
+    request, context = schemair_request_and_context()
+
+    result = provider.generate(request, context)
+
+    assert len(client.completions.calls) == 5
+    assert result.metadata.segments[1].disposition.value == "INVALID_DRAFT"
+    candidate = json.loads(json.loads(result.response_text)["artifactContent"])
+    assert candidate["envelope"]["fields"][0]["required"] is None
+    assert "OBJECT_REQUIRED_UNKNOWN" in json.loads(result.response_text)["reviewNotes"]
 
 
 def test_openai_chat_provider_schemair_preserves_prefix_when_later_stream_fails() -> None:
@@ -556,6 +936,7 @@ def test_openai_chat_provider_schemair_preserves_prefix_when_later_stream_fails(
         [
             chat_stream(json.dumps(responses[0], ensure_ascii=False)),
             chat_stream(json.dumps(responses[1], ensure_ascii=False)),
+            InterruptedStream(),
             InterruptedStream(),
         ]
     )
@@ -573,9 +954,9 @@ def test_openai_chat_provider_schemair_preserves_prefix_when_later_stream_fails(
 
     evidence = caught.value.evidence
     assert evidence is not None
-    assert len(client.completions.calls) == 3
+    assert len(client.completions.calls) == 4
     assert evidence.failure_stage == "stream"
-    assert evidence.failed_segment == "schemair-envelope-fields-002"
+    assert evidence.failed_segment == "schemair-assembly-fields-001"
     assert evidence.calls[0].response_text == json.dumps(
         responses[0], ensure_ascii=False
     )
@@ -583,6 +964,7 @@ def test_openai_chat_provider_schemair_preserves_prefix_when_later_stream_fails(
         responses[1], ensure_ascii=False
     )
     assert evidence.calls[2].response_text == '{"artifact":"SECRET-BANK-PAYLOAD'
+    assert evidence.calls[3].response_text == '{"artifact":"SECRET-BANK-PAYLOAD'
 
 
 def test_openai_chat_provider_schemair_stops_after_later_invalid_json() -> None:
@@ -591,6 +973,7 @@ def test_openai_chat_provider_schemair_stops_after_later_invalid_json() -> None:
         [
             chat_stream(json.dumps(responses[0], ensure_ascii=False)),
             chat_stream(json.dumps(responses[1], ensure_ascii=False)),
+            chat_stream("{"),
             chat_stream("{"),
         ]
     )
@@ -608,10 +991,11 @@ def test_openai_chat_provider_schemair_stops_after_later_invalid_json() -> None:
 
     evidence = caught.value.evidence
     assert evidence is not None
-    assert len(client.completions.calls) == 3
+    assert len(client.completions.calls) == 4
     assert evidence.failure_stage == "model-response"
-    assert evidence.failed_segment == "schemair-envelope-fields-002"
+    assert evidence.failed_segment == "schemair-assembly-fields-001"
     assert evidence.calls[2].response_text == "{"
+    assert evidence.calls[3].response_text == "{"
 
 
 def test_openai_chat_provider_schemair_records_merge_failure_after_all_subcalls(
@@ -630,18 +1014,18 @@ def test_openai_chat_provider_schemair_records_merge_failure_after_all_subcalls(
     def fail_merge(*args: object, **kwargs: object) -> dict:
         raise DraftGenerationError("forced SchemaIR coverage failure")
 
-    monkeypatch.setattr(openai_chat_provider, "merge_schemair_semantic_segments", fail_merge)
+    monkeypatch.setattr(BankXmlSchemaIRProfile, "merge", fail_merge)
 
     with pytest.raises(DraftProviderDiagnosticError, match="coverage failure") as caught:
         provider.generate(request, context)
 
     evidence = caught.value.evidence
     assert evidence is not None
-    assert len(client.completions.calls) == 9
+    assert len(client.completions.calls) == 5
     assert evidence.failure_stage == "merge-validation"
     assert evidence.failed_segment is None
     assert all(call.metadata.outcome == "succeeded" for call in evidence.calls)
-    assert evidence.metadata.schemair_field_batch_size == 8
+    assert evidence.metadata.schemair_field_batch_size == 16
 
 
 def test_openai_chat_provider_segments_docir_with_default_bounded_batches() -> None:

@@ -2,7 +2,7 @@
 
 ## Status
 
-**In Progress。修正后的 Final DocIR 已获批；`schemair-005` 至 `schemair-007` 已消费且未形成可批准 SchemaIR。当前实施 F-007 修订版：可恢复分段、完整 fingerprint 复用和分层验证；离线完成前不得准备新的真实调用。**
+**In Progress。修正后的 Final DocIR 已获批；`schemair-005` 至 `schemair-007` 已消费且未形成可批准 SchemaIR。F-007 修订版的实现、目标测试、docs-sync 与 `schemair-007` 离线 replay 已完成，仍需全量门禁和独立 code review；在此之前不得准备新的真实调用。**
 
 P0-T3 trusted chain、P0-T4 deterministic Draft-to-Workbook closure 与历史 P0-T5 真实 DocIR Human Gate 已完成。`docir-026` 经 Human 修订后形成准确 Final DocIR `sha256:04e8e71b773dfb3f2203fe4ed10a30475fdbf1876d481bbe5fd9db9d1040258b`，0 ERROR、1 个已接受的非阻塞 `actacn` WARNING。`schemair-004` 以 batch 8 完成 9 个 subcall，使用 77,742 tokens并发布 16 ERROR、4 WARNING 的 Invalid Draft。`schemair-005` 在 metadata 调用超时，`schemair-006` 因已下架模型被拒绝，均未形成 Draft。更新模型后，`schemair-007` 已获得前 7 个有效段和完整第 8 段，但旧 validator 因 PARSE scalar 回显 `required:null` hard fail，第 9 段未执行；该 attempt 使用 109,896 tokens、耗时 28 分 59 秒。所有历史 attempt 保持 immutable；修订版 F-007 只离线验证兼容恢复，不自动调用 provider。
 
@@ -88,7 +88,7 @@ SchemaIR、Standard、Template 的 semantic materializer、统一 validate/appro
 | 5 | 非敏感 P0-T5 真实验收摘要 | 真实 Final DocIR 与 approval evidence 确认 | P0-T6 开始 |
 | 5A | P0-T6.1 DocIR approval gate、失败证据与 SchemaIR candidate contract 修复 | 审批前置、attempt evidence、v10 prompt/strict materialization 离线门禁通过；`schemair-003` 已验证 hard-fail 边界 | F-007 开始 |
 | 5B | ADR-0020 与 F-007 有界 SchemaIR 分段提取 | Done：联合 metadata、默认 8 字段批次、Envelope/ASSEMBLY/PARSE selector coverage、原子 evidence、离线回归/docs-sync/review；`schemair-004` 已完成并暴露 Root Path/prompt 缺口 | 已满足；真实后续验证暴露的恢复成本转入 5C |
-| 5C | ADR-0021 与 F-007 可恢复分段及分层验证 | In Progress：默认 batch 16、当前段有界重试、完整 fingerprint 显式复用、attempt budget、evidence v3、内置 Bank XML Profile | 离线 replay、全量测试、docs-sync 和独立 review 全绿后，才可准备 `schemair-008` 授权摘要 |
+| 5C | ADR-0021 与 F-007 可恢复分段及分层验证 | In Progress：实现、目标测试、docs-sync 和 `schemair-007` 离线 replay 已通过；默认 batch 16、当前段有界重试、完整 fingerprint 显式复用、attempt budget、evidence v3、内置 Bank XML Profile 均已落地 | 全量测试和独立 review 全绿后，才可准备 `schemair-008` 授权摘要 |
 | 6 | SchemaIR 闭环 | 真实 Final SchemaIR | Standard 开始 |
 | 7 | 两个 Standard 闭环 | 两个真实 Final Standard | Template 开始 |
 | 8 | 两个 Template 闭环 | 两个真实 Final Template | closure 开始 |
@@ -112,8 +112,8 @@ git diff --check
 ## 7. 当前阻塞
 
 - 历史 P0-T5 已完成且 `docir-022` approval 事实保持不变；当前执行 workspace 按操作者决策不恢复该链，必须由新的 DocIR Draft 重新经过 Human Gate。`docir-023`/`docir-024`/`docir-025` 和 `schemair-001`/`schemair-002`/`schemair-003` 均已消费且不得复用。
-- F-007 修订版正在消除分段失败导致的整体重跑成本：SchemaIR 将使用默认 16 字段批次、当前段有界重试、显式 fingerprint 复用和分层验证；不得覆盖 selector、猜测 Object required，或自动选择历史 evidence 绕过门禁。
-- `schemair-004` 至 `schemair-007` 均已消费且保持 immutable。`schemair-007` 仅允许作为显式 resume 的离线兼容样本，预计前 8 段可由当前 Profile 重新验证且只缺 PARSE 第 2 批；不得在本轮真实续跑。修订版离线实现、docs-sync 和独立 review 完成后，只能准备 `schemair-008` 精确外发摘要，并等待新的真实调用授权。
+- F-007 修订版已实现默认 16 字段批次、当前段有界重试、显式 fingerprint 复用和分层验证；不得覆盖 selector、猜测 Object required，或自动选择历史 evidence 绕过门禁。当前仅剩全量门禁和独立 review。
+- `schemair-004` 至 `schemair-007` 均已消费且保持 immutable。`schemair-007` 仅作为显式 resume 的离线兼容样本；本次 replay 已确认前 8 段可由当前 Profile 重新验证，第 8 段产生 4 条 `SCALAR_REQUIRED_REMOVED` 诊断，唯一缺口为 `schemair-parse-fields-002`。不得在本轮真实续跑；独立 review 完成后也只能准备 `schemair-008` 精确外发摘要，并等待新的真实调用授权。
 - P0-T6 的每一层均受前一层 Human-approved Final 阻塞。
 - Phase0 Done 仍受五份下游真实 Final、双方向 `check --profile phase0` 和 Workbook 验收阻塞。
 

@@ -439,7 +439,7 @@ def test_docir_batch_size_is_not_available_to_other_artifacts() -> None:
         )
 
 
-@pytest.mark.parametrize(("configured", "expected"), [(None, 8), (5, 5)])
+@pytest.mark.parametrize(("configured", "expected"), [(None, 16), (5, 5)])
 def test_schemair_batch_size_is_forwarded_with_default(
     configured: int | None,
     expected: int,
@@ -463,10 +463,17 @@ def test_schemair_batch_size_is_forwarded_with_default(
             chat_timeout_seconds=45.5,
             attempt_id="schemair-004",
             schemair_field_batch_size=configured,
+            segment_max_retries=None,
+            attempt_deadline_seconds=None,
+            attempt_token_budget=None,
+            resume_from_attempt=None,
         )
     )
 
     assert captured["schemair_field_batch_size"] == expected
+    assert captured["segment_max_retries"] == 1
+    assert captured["attempt_deadline_seconds"] == 3600.0
+    assert captured["attempt_token_budget"] == 150000
     assert "docir_field_batch_size" not in captured
 
 
@@ -500,6 +507,54 @@ def test_schemair_batch_size_is_not_available_to_other_artifacts() -> None:
                 "8",
             ]
         )
+
+
+@pytest.mark.parametrize(
+    ("argument", "value"),
+    [
+        ("--segment-max-retries", "-1"),
+        ("--attempt-deadline-seconds", "0"),
+        ("--attempt-token-budget", "0"),
+    ],
+)
+def test_schemair_attempt_limits_reject_invalid_values(
+    argument: str, value: str
+) -> None:
+    with pytest.raises(SystemExit):
+        cli.build_parser().parse_args(
+            [
+                "generate-draft",
+                "schemair",
+                "--workspace",
+                "workspace",
+                "--provider",
+                "openai-chat",
+                argument,
+                value,
+            ]
+        )
+
+
+def test_schemair_recovery_arguments_are_not_available_to_other_artifacts() -> None:
+    for argument, value in (
+        ("--segment-max-retries", "1"),
+        ("--attempt-deadline-seconds", "3600"),
+        ("--attempt-token-budget", "150000"),
+        ("--resume-from-attempt", "schemair-007"),
+    ):
+        with pytest.raises(SystemExit):
+            cli.build_parser().parse_args(
+                [
+                    "generate-draft",
+                    "standard",
+                    "--workspace",
+                    "workspace",
+                    "--provider",
+                    "openai-chat",
+                    argument,
+                    value,
+                ]
+            )
 
 
 def test_fixture_provider_rejects_explicit_schemair_batch_size(tmp_path: Path) -> None:
