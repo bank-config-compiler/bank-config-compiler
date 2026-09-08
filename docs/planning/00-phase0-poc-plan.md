@@ -2,7 +2,7 @@
 
 ## Status
 
-**In Progress。修正后的 Final DocIR 已获批；`schemair-005` 至 `schemair-007` 已消费且未形成可批准 SchemaIR。F-007 修订版已完成全部离线门禁；经明确授权执行的 `schemair-008` 已原子发布完整 Draft。当前先离线实施 ADR-0022 的 SchemaIR 中文审查输出，完成后仍由准确 hash 上的 Human review 阻塞，不自动继续调用 provider。**
+**In Progress。修正后的 Final DocIR 已获批；`schemair-005` 至 `schemair-007` 已消费且未形成可批准 SchemaIR。F-007 修订版与 ADR-0022 中文审查输出均已完成全部离线门禁；经明确授权执行的 `schemair-008` 已原子发布完整 Draft并离线重建 Review Notes。当前仍由准确 hash 上的 Human review 阻塞，不自动继续调用 provider。**
 
 P0-T3 trusted chain、P0-T4 deterministic Draft-to-Workbook closure 与历史 P0-T5 真实 DocIR Human Gate 已完成。`docir-026` 经 Human 修订后形成准确 Final DocIR `sha256:04e8e71b773dfb3f2203fe4ed10a30475fdbf1876d481bbe5fd9db9d1040258b`，0 ERROR、1 个已接受的非阻塞 `actacn` WARNING。`schemair-004` 以 batch 8 完成 9 个 subcall，使用 77,742 tokens并发布 16 ERROR、4 WARNING 的 Invalid Draft。`schemair-005` 在 metadata 调用超时，`schemair-006` 因已下架模型被拒绝，均未形成 Draft。更新模型后，`schemair-007` 已获得前 7 个有效段和完整第 8 段，但旧 validator 因 PARSE scalar 回显 `required:null` hard fail，第 9 段未执行；该 attempt 使用 109,896 tokens、耗时 28 分 59 秒。所有历史 attempt 保持 immutable。修订版 F-007 经离线验证和独立 review 后，显式从 `schemair-007` 恢复执行 `schemair-008`：8 段复用、1 段 LIVE、无重试，本 attempt 使用 6,547 tokens，effective usage 为 116,443 tokens。生成 Draft hash 为 `sha256:f767ce9eeb1cc8ae3b72de469d833783ddc250f3aece9669237527d68ee6ec42`，0 ERROR、37 WARNING、28 blocking。
 
@@ -89,7 +89,7 @@ SchemaIR、Standard、Template 的 semantic materializer、统一 validate/appro
 | 5A | P0-T6.1 DocIR approval gate、失败证据与 SchemaIR candidate contract 修复 | 审批前置、attempt evidence、v10 prompt/strict materialization 离线门禁通过；`schemair-003` 已验证 hard-fail 边界 | F-007 开始 |
 | 5B | ADR-0020 与 F-007 有界 SchemaIR 分段提取 | Done：联合 metadata、默认 8 字段批次、Envelope/ASSEMBLY/PARSE selector coverage、原子 evidence、离线回归/docs-sync/review；`schemair-004` 已完成并暴露 Root Path/prompt 缺口 | 已满足；真实后续验证暴露的恢复成本转入 5C |
 | 5C | ADR-0021 与 F-007 可恢复分段及分层验证 | Done：默认 batch 16、当前段有界重试、完整 fingerprint 显式复用、attempt budget、evidence v3、内置 Bank XML Profile、全量门禁、docs-sync、独立 review 均已完成；`schemair-008` 已验证 8 段复用加 1 段 LIVE | 对 `schemair-008` Draft 做 Human review；不得自动进入 Standard |
-| 5D | ADR-0022 与 SchemaIR 中文审查输出 | In Progress：Prompt v12、中文行动导向 Notes、可信 v3 diagnostics 读取、离线重建和回归门禁 | 离线实现与独立 review 完成后，仅准备全新 `schemair-009` 摘要并等待授权 |
+| 5D | ADR-0022 与 SchemaIR 中文审查输出 | Done：Prompt v12、中文行动导向 Notes、可信 v3 diagnostics 读取、Markdown-safe 原始 evidence、`schemair-008` 离线重建、全量门禁和独立 review 均通过 | 仅准备全新 `schemair-009` 摘要并等待真实调用授权 |
 | 6 | SchemaIR 闭环 | 真实 Final SchemaIR | Standard 开始 |
 | 7 | 两个 Standard 闭环 | 两个真实 Final Standard | Template 开始 |
 | 8 | 两个 Template 闭环 | 两个真实 Final Template | closure 开始 |
