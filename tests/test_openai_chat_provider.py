@@ -461,7 +461,7 @@ def schemair_resume_evidence_for_first_segment(
     fingerprint = SegmentFingerprint.build(
         source_hash=request.source_hash,
         request=request.case_fingerprint(),
-        prompt_contract_version="draft-prompt/v11",
+        prompt_contract_version="draft-prompt/v12",
         segment_contract_version=spec.contract_version,
         requested_model=model,
         endpoint_fingerprint=endpoint_fingerprint,
@@ -477,7 +477,7 @@ def schemair_resume_evidence_for_first_segment(
         source_hash=request.source_hash,
         requested_model=model,
         endpoint_fingerprint=endpoint_fingerprint,
-        prompt_contract_version="draft-prompt/v11",
+        prompt_contract_version="draft-prompt/v12",
         schemair_field_batch_size=16,
         attempt_id="schemair-previous",
         selectors=selectors,
@@ -521,7 +521,7 @@ def test_openai_chat_provider_segments_schemair_with_default_bounded_batches() -
     ]
     assert result.metadata.schemair_field_batch_size == 16
     assert result.metadata.docir_field_batch_size is None
-    assert result.metadata.prompt_contract_version == "draft-prompt/v11"
+    assert result.metadata.prompt_contract_version == "draft-prompt/v12"
     assert result.metadata.total_tokens == 150
     envelope = json.loads(result.response_text)
     expected_candidate = json.loads(
@@ -532,7 +532,7 @@ def test_openai_chat_provider_segments_schemair_with_default_bounded_batches() -
     assert len(result.subcall_response_texts) == 5
     for call in client.completions.calls:
         assert context.source_content in call["messages"][1]["content"]
-        assert "Prompt contract: draft-prompt/v11" in call["messages"][1]["content"]
+        assert "Prompt contract: draft-prompt/v12" in call["messages"][1]["content"]
 
 
 def test_openai_chat_provider_respects_configured_schemair_batch_size() -> None:
@@ -593,6 +593,7 @@ def test_openai_chat_provider_reuses_proven_segment_without_counting_attempt_usa
         ("requested_model", "other-model", "requested model"),
         ("endpoint_fingerprint", "sha256:" + "e" * 64, "endpoint fingerprint"),
         ("schemair_field_batch_size", 8, "field batch size"),
+        ("prompt_contract_version", "draft-prompt/v11", "prompt contract"),
     ),
 )
 def test_openai_chat_provider_rejects_resume_mismatch_before_external_call(
@@ -658,6 +659,9 @@ def test_schemair_segment_prompts_keep_metadata_and_field_responsibilities_separ
     assert "only the requested field semantics" in field_system
     assert "must not return metadata" in field_system
     assert "must not return metadata, path" in field_system
+    assert "Simplified Chinese" in metadata_system
+    assert "Simplified Chinese" in field_system
+    assert "identifiers, paths, enums and technical literals" in metadata_system
     assert "VALIDATED_SCHEMAIR_SELECTOR_JSON" in field_user
     assert '"path":"Root.bocb2e"' in field_user
     assert "golden" not in field_system.lower()
@@ -1930,7 +1934,7 @@ def test_default_schemair_prompt_defines_exact_metadata_segment_shape() -> None:
     system_prompt = " ".join(messages[0]["content"].split())
     user_prompt = messages[1]["content"]
 
-    assert "Prompt contract: draft-prompt/v11" in user_prompt
+    assert "Prompt contract: draft-prompt/v12" in user_prompt
     assert "schemair-metadata-segment/v1" in system_prompt
     assert "Envelope `description` is the only Envelope property" in system_prompt
     assert "must not return `fields`" in system_prompt
@@ -1940,6 +1944,9 @@ def test_default_schemair_prompt_defines_exact_metadata_segment_shape() -> None:
     assert "`operator` is `EQUALS` or `IS_EMPTY`" in system_prompt
     assert "`effect` is exactly `REQUIRED`" in system_prompt
     assert "`kind` is `ASSUMED`, `DERIVED`, or `DIRECT`" in system_prompt
+    assert "Simplified Chinese" in system_prompt
+    assert "description" in system_prompt
+    assert "reviewNote" in system_prompt
     assert "VALIDATED_SCHEMAIR_PATH_CATALOG_JSON" in user_prompt
 
 

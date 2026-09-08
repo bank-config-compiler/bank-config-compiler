@@ -394,7 +394,7 @@ def test_publish_segmented_schemair_records_batch_size_and_ordered_subcalls(
             started_at=f"2026-08-20T10:00:{sequence:02d}+08:00",
             completed_at=f"2026-08-20T10:00:{sequence + 1:02d}+08:00",
             finish_reason="stop",
-            prompt_contract_version="draft-prompt/v11",
+            prompt_contract_version="draft-prompt/v12",
             segment_contract_version=(
                 "schemair-metadata-segment/v1"
                 if sequence == 1
@@ -442,7 +442,7 @@ def test_publish_segmented_schemair_records_batch_size_and_ordered_subcalls(
                     started_at=calls[0].started_at,
                     completed_at=calls[-1].completed_at,
                     endpoint_fingerprint="sha256:" + "4" * 64,
-                    prompt_contract_version="draft-prompt/v11",
+                    prompt_contract_version="draft-prompt/v12",
                     calls=calls,
                     schemair_field_batch_size=8,
                 ),

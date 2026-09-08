@@ -212,6 +212,9 @@ def test_schemair_generator_validates_pending_draft_and_rejects_final_output() -
 
     assert generated.artifact["status"] == "DRAFT"
     assert generated.artifact["review"]["status"] == "PENDING"
+    assert generated.review_notes.startswith("# SchemaIR Draft 校验审查说明\n")
+    assert "# Generated Draft Review Context" not in generated.review_notes
+    assert f"内容 hash: `{generated.content_hash}`" in generated.review_notes
 
 
 def test_schemair_generator_keeps_materializable_validator_errors_as_invalid_draft() -> None:
@@ -236,7 +239,7 @@ def test_schemair_generator_keeps_materializable_validator_errors_as_invalid_dra
 
     assert generated.publication_state == "invalid"
     assert generated.validation_result["summary"]["errorCount"] > 0
-    assert "Validator Issues" in generated.review_notes
+    assert "## 问题清单" in generated.review_notes
 
 
 def test_standard_and_template_generators_require_exact_final_dependencies() -> None:

@@ -842,7 +842,7 @@ def generate_schemair_draft(
             for diagnostic in segment.normalization_diagnostics
         )
         review_notes = render_schemair_review_notes(
-            candidate,
+            artifact,
             result,
             normalization_diagnostics=normalization_diagnostics,
         )
@@ -858,6 +858,7 @@ def generate_schemair_draft(
             materializer_contract_version=SCHEMAIR_MATERIALIZER_CONTRACT,
             candidate_content=artifact_content,
             subcall_response_texts=subcall_response_texts,
+            review_notes_are_hash_bound=True,
         )
     except DraftGenerationError as exc:
         if metadata.attempt_id is None:
@@ -2190,6 +2191,7 @@ def _generated_json(
     materializer_contract_version: str,
     candidate_content: str,
     subcall_response_texts: tuple[str | None, ...] = (),
+    review_notes_are_hash_bound: bool = False,
 ) -> GeneratedDraft:
     validated = result.get("validatedArtifact")
     draft_hash = validated.get("contentHash") if isinstance(validated, dict) else None
@@ -2208,6 +2210,7 @@ def _generated_json(
         materializer_contract_version=materializer_contract_version,
         candidate_content=candidate_content,
         subcall_response_texts=subcall_response_texts,
+        review_notes_are_hash_bound=review_notes_are_hash_bound,
     )
 
 
@@ -2225,15 +2228,19 @@ def _generated(
     materializer_contract_version: str,
     candidate_content: str | None = None,
     subcall_response_texts: tuple[str | None, ...] = (),
+    review_notes_are_hash_bound: bool = False,
 ) -> GeneratedDraft:
-    bound_notes = (
-        "# Generated Draft Review Context\n\n"
-        f"Artifact content hash: `{draft_hash}`\n\n"
-        f"Provider: `{provider.name}`\n\n"
-        f"Artifact kind: `{request.artifact_kind}`\n\n"
-        "---\n\n"
-        f"{review_notes.strip()}\n"
-    )
+    if review_notes_are_hash_bound:
+        bound_notes = f"{review_notes.strip()}\n"
+    else:
+        bound_notes = (
+            "# Generated Draft Review Context\n\n"
+            f"Artifact content hash: `{draft_hash}`\n\n"
+            f"Provider: `{provider.name}`\n\n"
+            f"Artifact kind: `{request.artifact_kind}`\n\n"
+            "---\n\n"
+            f"{review_notes.strip()}\n"
+        )
     generated = GeneratedDraft(
         request=request,
         provider_name=provider.name,

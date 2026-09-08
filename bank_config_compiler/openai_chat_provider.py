@@ -69,7 +69,7 @@ from .segmented_artifact import (
 
 
 PROMPT_CONTRACT_VERSION = "draft-prompt/v9"
-SCHEMAIR_PROMPT_CONTRACT_VERSION = "draft-prompt/v11"
+SCHEMAIR_PROMPT_CONTRACT_VERSION = "draft-prompt/v12"
 DOCIR_PROMPT_CONTRACT_VERSION = "draft-prompt/v18"
 DEFAULT_DOCIR_FIELD_BATCH_SIZE = 16
 DEFAULT_SCHEMAIR_FIELD_BATCH_SIZE = 16
@@ -1764,6 +1764,9 @@ Use only facts present in the Final DocIR source. Do not use model knowledge to 
 business facts. Return exactly one JSON object, without Markdown fences, outer provider envelope,
 artifact identity, lifecycle state or separate review notes. Every JSON object property must appear
 exactly once. Preserve unsupported or conflicting facts as reviewable uncertainty.
+Write human-readable prose in Simplified Chinese. This includes `description`, `conditionText`,
+`uncertainReason`, `reviewNote`, and evidence `note` values. Preserve identifiers, paths, enums and
+technical literals exactly as supported by the source.
 """.strip()
     if prompt.segment == "schemair-metadata":
         contract = f"""

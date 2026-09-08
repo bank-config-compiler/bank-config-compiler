@@ -973,7 +973,7 @@ def test_schemair_materialization_failure_saves_candidate_and_consumes_attempt(
                     started_at="2026-08-12T10:00:00+08:00",
                     completed_at="2026-08-12T10:00:01+08:00",
                     endpoint_fingerprint="sha256:" + "a" * 64,
-                    prompt_contract_version="draft-prompt/v11",
+                    prompt_contract_version="draft-prompt/v12",
                     schemair_field_batch_size=8,
                     calls=tuple(
                         ProviderSubcallMetadata(
@@ -990,7 +990,7 @@ def test_schemair_materialization_failure_saves_candidate_and_consumes_attempt(
                             started_at="2026-08-12T10:00:00+08:00",
                             completed_at="2026-08-12T10:00:01+08:00",
                             finish_reason="stop",
-                            prompt_contract_version="draft-prompt/v11",
+                            prompt_contract_version="draft-prompt/v12",
                         )
                         for sequence, (segment, response) in enumerate(
                             zip(

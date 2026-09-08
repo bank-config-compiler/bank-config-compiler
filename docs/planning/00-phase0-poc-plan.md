@@ -71,7 +71,7 @@ P0-T6 只能消费 P0-T5 获批的 Final DocIR，并按以下顺序执行：
 
 每一小节必须等待上一层准确 Final，不能集中到最后一次批准。
 
-SchemaIR、Standard、Template 的 semantic materializer、统一 validate/approve CLI 和离线回归已经实现。SchemaIR generation/validation/approval 会重新校验 `docir-approval-result.json` 的 task/interface、artifact kind/path、Draft→Final hash 映射和当前 Final 准确 bytes hash。F-007 原实现按 ADR-0020 使用 `draft-prompt/v11`：一个联合 metadata segment 加按 Final DocIR selector 覆盖的 Envelope/ASSEMBLY/PARSE 有界字段批次。ADR-0021 将其修订为默认 batch 16、当前段最多重试一次、显式完整 fingerprint 复用，以及通用 Kernel 与内置 `BankXmlSchemaIRProfile` 的分层验证。`schemair-materializer/v2`、公开 SchemaIR v2 和 Standard/Template 单次 `complete-artifact` 均保持不变。该修订不把 Invalid Draft 记为 P0-T6.1 真实验收完成。
+SchemaIR、Standard、Template 的 semantic materializer、统一 validate/approve CLI 和离线回归已经实现。SchemaIR generation/validation/approval 会重新校验 `docir-approval-result.json` 的 task/interface、artifact kind/path、Draft→Final hash 映射和当前 Final 准确 bytes hash。F-007 原实现按 ADR-0020 使用 `draft-prompt/v11`：一个联合 metadata segment 加按 Final DocIR selector 覆盖的 Envelope/ASSEMBLY/PARSE 有界字段批次。ADR-0021 将其修订为默认 batch 16、当前段最多重试一次、显式完整 fingerprint 复用，以及通用 Kernel 与内置 `BankXmlSchemaIRProfile` 的分层验证。ADR-0022 再将当前 Prompt 升级为 v12，只通过 Prompt 要求人类可读语义使用简体中文，并让 generation/`validate-draft schemair` 共用中文、hash-bound、行动导向的专用 Review Notes；v11 evidence 不能恢复到 v12。`schemair-materializer/v2`、公开 SchemaIR v2、Validation Result 和 Standard/Template 单次 `complete-artifact` 均保持不变。该修订不把 Invalid Draft 记为 P0-T6.1 真实验收完成。
 
 ## 5. Commit Plan
 
@@ -115,6 +115,7 @@ git diff --check
 - 历史 P0-T5 已完成且 `docir-022` approval 事实保持不变；当前执行 workspace 按操作者决策不恢复该链，必须由新的 DocIR Draft 重新经过 Human Gate。`docir-023`/`docir-024`/`docir-025` 和 `schemair-001`/`schemair-002`/`schemair-003` 均已消费且不得复用。
 - F-007 修订版已完成默认 16 字段批次、当前段有界重试、显式 fingerprint 复用和分层验证，并通过目标与全量测试、lock/build、docs-sync 和独立 review；不得覆盖 selector、猜测 Object required，或自动选择历史 evidence 绕过门禁。
 - `schemair-004` 至 `schemair-007` 均已消费且保持 immutable。经明确授权执行的 `schemair-008` 从 `schemair-007` 复用前 8 段，第 8 段保留 4 条 `SCALAR_REQUIRED_REMOVED` 诊断；唯一 LIVE 段 `schemair-parse-fields-002` 已接受且无重试。当前 Draft 为 0 ERROR、37 WARNING、28 blocking，必须由 Human 在准确 hash 上逐项处置，不能继续调用 provider 自动修复或进入 Standard。
+- `schemair-008` Review Notes 已通过离线 `validate-draft schemair` 重建为中文行动导向结构，准确 Draft bytes/hash `sha256:f767ce9eeb1cc8ae3b72de469d833783ddc250f3aece9669237527d68ee6ec42` 与 0 ERROR、37 WARNING、28 INFO、28 blocking 计数均未改变。既有 v11 英文模型说明保持历史原始 evidence；完整中文模型语义只能由另行授权的全新 v12 `schemair-009` 验证。
 - P0-T6 的每一层均受前一层 Human-approved Final 阻塞。
 - Phase0 Done 仍受五份下游真实 Final、双方向 `check --profile phase0` 和 Workbook 验收阻塞。
 

@@ -885,97 +885,422 @@ def merge_schemair_semantic_segments(
 
 
 def render_schemair_review_notes(
-    candidate: Mapping[str, Any],
+    artifact: Mapping[str, Any],
     validation_result: Mapping[str, Any] | None = None,
     *,
-    normalization_diagnostics: tuple[NormalizationDiagnostic, ...] = (),
+    normalization_diagnostics: tuple[NormalizationDiagnostic, ...] | None = (),
 ) -> str:
-    parts = ["# SchemaIR Candidate Review Notes", "", "## Candidate Review Items", ""]
-    review_items: list[str] = []
-    sections: list[tuple[str, Any]] = [("envelope", candidate.get("envelope"))]
-    messages = candidate.get("messages")
-    if isinstance(messages, list):
-        for message in messages:
-            if isinstance(message, dict):
-                direction = message.get("functionType")
-                label = direction.lower() if isinstance(direction, str) else "message"
-                sections.append((label, message))
-    for section_label, section_value in sections:
-        if not isinstance(section_value, dict):
+    validation = validation_result if isinstance(validation_result, Mapping) else {}
+    validated = validation.get("validatedArtifact")
+    summary = validation.get("summary")
+    content_hash = validated.get("contentHash") if isinstance(validated, Mapping) else None
+    status = validation.get("status")
+    counts = summary if isinstance(summary, Mapping) else {}
+    parts = [
+        "# SchemaIR Draft 校验审查说明",
+        "",
+        f"内容 hash: `{content_hash or '未提供'}`",
+        "",
+        f"状态: `{status or 'unknown'}`",
+        "",
+        (
+            "校验汇总: "
+            f"ERROR={counts.get('errorCount', 0)}，"
+            f"WARNING={counts.get('warningCount', 0)}，"
+            f"INFO={counts.get('infoCount', 0)}，"
+            f"BLOCKING={counts.get('blockingCount', 0)}"
+        ),
+        "",
+        "## 问题清单",
+        "",
+    ]
+
+    contexts, ordered_contexts = _schemair_review_contexts(artifact)
+    raw_issues = validation.get("issues")
+    issues = [item for item in raw_issues if isinstance(item, Mapping)] if isinstance(raw_issues, list) else []
+    grouped: dict[str, list[Mapping[str, Any]]] = {}
+    unbound: list[Mapping[str, Any]] = []
+    conditional_info: list[Mapping[str, Any]] = []
+    other_info: list[Mapping[str, Any]] = []
+    for issue in issues:
+        if issue.get("severity") == "INFO":
+            if issue.get("code") == "CONDITIONAL_FIELD":
+                conditional_info.append(issue)
+            else:
+                other_info.append(issue)
             continue
-        encoding_evidence = section_value.get("xmlEncodingEvidence")
-        if isinstance(encoding_evidence, list):
-            for index, evidence in enumerate(encoding_evidence):
-                if not isinstance(evidence, dict):
-                    continue
-                review_note = _optional_text(evidence.get("reviewNote"))
-                if review_note is not None:
-                    review_items.append(
-                        f"- {section_label}.xmlEncodingEvidence[{index}]: "
-                        f"review={review_note}"
-                    )
-        conditions = section_value.get("conditionalConstraints")
-        if isinstance(conditions, list):
-            for index, condition in enumerate(conditions):
-                if not isinstance(condition, dict):
-                    continue
-                evidence = condition.get("evidence")
-                if not isinstance(evidence, dict) or evidence.get("kind") == "DIRECT":
-                    continue
-                evidence_kind = evidence.get("kind") or "UNKNOWN"
-                evidence_note = _optional_text(evidence.get("note"))
-                detail = f"evidence={evidence_kind}"
-                if evidence_note is not None:
-                    detail += f"; note={evidence_note}"
-                review_items.append(
-                    f"- {section_label}.conditionalConstraints[{index}]: {detail}"
-                )
-        fields = section_value.get("fields")
-        if not isinstance(fields, list):
-            continue
-        for index, field in enumerate(fields):
-            if not isinstance(field, dict):
-                continue
-            evidence = field.get("evidence")
-            evidence_kind = evidence.get("kind") if isinstance(evidence, dict) else None
-            uncertain = field.get("uncertain") is True
-            uncertain_reason = _optional_text(field.get("uncertainReason"))
-            review_note = _optional_text(field.get("reviewNote"))
-            if not uncertain and evidence_kind == "DIRECT" and review_note is None:
-                continue
-            field_name = field.get("fieldName")
-            details = [f"evidence={evidence_kind or 'UNKNOWN'}", f"uncertain={str(uncertain).lower()}"]
-            if uncertain_reason is not None:
-                details.append(f"reason={uncertain_reason}")
-            if review_note is not None:
-                details.append(f"review={review_note}")
-            review_items.append(
-                f"- {section_label}.fields[{index}] `{field_name}`: " + "; ".join(details)
-            )
-    parts.extend(review_items or ["- Candidate 未声明额外不确定项；Human 仍需对照 Final DocIR 审查语义。"])
-    parts.extend(["", "## Normalization Diagnostics", ""])
-    if not normalization_diagnostics:
+        context_key = _matching_schemair_context_key(issue.get("path"), contexts)
+        if context_key is None:
+            unbound.append(issue)
+        else:
+            grouped.setdefault(context_key, []).append(issue)
+
+    detailed_contexts: set[str] = set()
+    blocking_entries: list[tuple[tuple[Any, ...], str | None, list[Mapping[str, Any]]]] = []
+    reminder_entries: list[tuple[tuple[Any, ...], str | None, list[Mapping[str, Any]]]] = []
+    for context_key, context_issues in grouped.items():
+        context = contexts[context_key]
+        entry = (context["sortKey"], context_key, context_issues)
+        if any(item.get("blocking") is True for item in context_issues):
+            blocking_entries.append(entry)
+        elif any(item.get("severity") != "INFO" for item in context_issues):
+            reminder_entries.append(entry)
+    for issue in unbound:
+        entry = (
+            (4, str(issue.get("path") or ""), str(issue.get("code") or "")),
+            None,
+            [issue],
+        )
+        if issue.get("blocking") is True:
+            blocking_entries.append(entry)
+        elif issue.get("severity") != "INFO":
+            reminder_entries.append(entry)
+
+    parts.extend(["### 必须处理（Blocking）", ""])
+    if not blocking_entries:
+        parts.append("- 无 blocking issue。")
+    else:
+        for _, context_key, entry_issues in sorted(blocking_entries, key=lambda item: item[0]):
+            _append_schemair_issue_entry(parts, contexts.get(context_key), entry_issues)
+            if context_key is not None:
+                detailed_contexts.add(context_key)
+
+    parts.extend(["", "### 非阻塞提醒", ""])
+    if not reminder_entries:
+        parts.append("- 无非阻塞 WARNING。")
+    else:
+        for _, context_key, entry_issues in sorted(reminder_entries, key=lambda item: item[0]):
+            _append_schemair_issue_entry(parts, contexts.get(context_key), entry_issues)
+            if context_key is not None:
+                detailed_contexts.add(context_key)
+
+    parts.extend(["", "### 信息项（按方向汇总）", ""])
+    _append_schemair_info_summary(parts, conditional_info, other_info, contexts)
+
+    parts.extend(["", "## 确定性归一化记录", ""])
+    if normalization_diagnostics is None:
+        parts.append("- 未取得可信归一化记录；Validator 结果不受影响，请核对当前 generation lineage 对应的 attempt evidence。")
+    elif not normalization_diagnostics:
         parts.append("- 未执行确定性归一化。")
     else:
         for diagnostic in normalization_diagnostics:
             location = diagnostic.selector or diagnostic.path or "segment"
             parts.append(
                 f"- [{diagnostic.severity}] `{diagnostic.code}` "
-                f"`{diagnostic.segment}` `{location}`: {diagnostic.action}"
+                f"`{diagnostic.segment}` `{location}`：{_normalization_action_zh(diagnostic.code)}"
             )
-    parts.extend(["", "## Validator Issues", ""])
-    issues = validation_result.get("issues") if isinstance(validation_result, Mapping) else None
-    if not isinstance(issues, list) or not issues:
-        parts.append("- Validator 未报告 issue。")
-    else:
-        for issue in issues:
-            if not isinstance(issue, dict):
-                continue
-            path = f" `{issue.get('path')}`" if issue.get("path") else ""
-            parts.append(
-                f"- [{issue.get('severity')}] `{issue.get('code')}`{path}: {issue.get('message')}"
-            )
+
+    parts.extend(["", "## 显式 Review 证据", ""])
+    evidence_items = _schemair_explicit_review_evidence(
+        ordered_contexts, detailed_contexts=detailed_contexts
+    )
+    parts.extend(evidence_items or ["- 未发现未重复呈现的显式 Review 证据。"])
     return "\n".join(parts) + "\n"
+
+
+_SCHEMAIR_SECTION_RANK = {"Envelope": 0, "ASSEMBLY": 1, "PARSE": 2, "生命周期": 3}
+_SCHEMAIR_ISSUE_CODE_RANK = {
+    "UNCERTAIN_FIELD": 0,
+    "LOW_CONFIDENCE": 1,
+    "NON_DIRECT_EVIDENCE": 2,
+}
+_SCHEMAIR_ISSUE_TEXT = {
+    "UNCERTAIN_FIELD": ("字段被标记为不确定，不能进入 Final。", "对照 Final DocIR 确认语义后，更新不确定性标记和说明。"),
+    "LOW_CONFIDENCE": ("字段置信度低于当前审查阈值。", "复核来源证据，并确认置信度是否准确。"),
+    "NON_DIRECT_EVIDENCE": ("字段证据不是直接证据。", "确认推导或假设是否成立；必要时补充直接证据。"),
+    "XML_ENCODING_CONFLICT": ("XML encoding 证据与规范值存在未解决冲突。", "确认银行实际编码并记录冲突处置。"),
+    "RESOLVED_XML_ENCODING_CONFLICT": ("XML encoding 冲突已声明解决，仍需人工复核。", "核对解决依据和 Review Note。"),
+    "CONDITION_REVIEW_NOT_APPROVED": ("结构化条件尚未通过 Human Review。", "逐项核对控制字段、目标字段和条件后批准该条件。"),
+    "REVIEW_NOT_APPROVED": ("SchemaIR 尚未通过 Human Review。", "先清除全部 blocking issue，再对准确 Draft hash 执行批准。"),
+    "ARTIFACT_NOT_FINAL": ("当前产物仍为 Draft，不能进入可信链。", "完成校验和 Human Review 后再生成 Final。"),
+    "CONDITIONAL_FIELD": ("字段包含条件语义。", "按方向核对 conditionText；完整路径以 Validation Result 为准。"),
+    "DOCIR_APPROVAL_EVIDENCE_INVALID": ("上游 Final DocIR 的批准证据无效。", "恢复准确的 DocIR approval evidence 后重新校验。"),
+    "DRAFT_GENERATION_LINEAGE_MISSING": ("缺少 Draft generation lineage。", "恢复与当前 Draft 匹配的 generation result。"),
+    "DRAFT_GENERATION_LINEAGE_MISMATCH": ("Draft generation lineage 与当前任务或依赖不一致。", "核对 task、source、selector 和当前 Draft 后重新生成或恢复正确 lineage。"),
+}
+
+
+def _schemair_review_contexts(
+    artifact: Mapping[str, Any],
+) -> tuple[dict[str, dict[str, Any]], list[dict[str, Any]]]:
+    contexts: dict[str, dict[str, Any]] = {}
+    ordered: list[dict[str, Any]] = []
+
+    def add(path: str, section: str, label: str, value: Mapping[str, Any], order: int) -> None:
+        context = {
+            "path": path,
+            "section": section,
+            "label": label,
+            "value": value,
+            "sortKey": (_SCHEMAIR_SECTION_RANK[section], order, path),
+        }
+        contexts[path] = context
+        ordered.append(context)
+
+    envelope = artifact.get("envelope")
+    sections: list[tuple[str, Mapping[str, Any], int | None]] = []
+    if isinstance(envelope, Mapping):
+        sections.append(("Envelope", envelope, None))
+    messages = artifact.get("messages")
+    if isinstance(messages, list):
+        for message_index, message in enumerate(messages):
+            if not isinstance(message, Mapping):
+                continue
+            direction = message.get("functionType")
+            if direction in {"ASSEMBLY", "PARSE"}:
+                sections.append((str(direction), message, message_index))
+    for section, value, message_index in sections:
+        fields = value.get("fields")
+        if isinstance(fields, list):
+            for index, field in enumerate(fields):
+                if not isinstance(field, Mapping) or not isinstance(field.get("path"), str):
+                    continue
+                field_name = field.get("fieldName")
+                add(
+                    str(field["path"]),
+                    section,
+                    f"字段 `{field_name}`",
+                    field,
+                    1000 + index,
+                )
+        if section == "Envelope":
+            continue
+        assert message_index is not None
+        encoding = value.get("xmlEncodingEvidence")
+        if isinstance(encoding, list):
+            for index, item in enumerate(encoding):
+                if isinstance(item, Mapping):
+                    path = f"messages[{message_index}].xmlEncodingEvidence[{index}]"
+                    add(path, section, f"XML encoding 证据 {index + 1}", item, 100 + index)
+        conditions = value.get("conditionalConstraints")
+        if isinstance(conditions, list):
+            for index, item in enumerate(conditions):
+                if isinstance(item, Mapping):
+                    path = f"messages[{message_index}].conditionalConstraints[{index}]"
+                    add(path, section, f"条件 {index + 1}", item, 500 + index)
+    lifecycle = artifact.get("review")
+    if isinstance(lifecycle, Mapping):
+        add("review.status", "生命周期", "Review 状态", lifecycle, 1)
+    add("status", "生命周期", "Artifact 状态", artifact, 0)
+    return contexts, ordered
+
+
+def _matching_schemair_context_key(
+    path: Any, contexts: Mapping[str, Mapping[str, Any]]
+) -> str | None:
+    if not isinstance(path, str):
+        return None
+    matches = [
+        key for key in contexts if path == key or path.startswith(f"{key}.")
+    ]
+    return max(matches, key=len) if matches else None
+
+
+def _append_schemair_issue_entry(
+    parts: list[str],
+    context: Mapping[str, Any] | None,
+    issues: list[Mapping[str, Any]],
+) -> None:
+    codes = sorted(
+        {str(item.get("code") or "UNKNOWN") for item in issues},
+        key=lambda code: (_SCHEMAIR_ISSUE_CODE_RANK.get(code, 100), code),
+    )
+    issue_path = str(issues[0].get("path") or "未提供")
+    if context is None:
+        parts.append(f"- [未绑定] `{issue_path}`")
+        value: Mapping[str, Any] = {}
+    else:
+        parts.append(
+            f"- [{context['section']}] {context['label']} `{context['path']}`"
+        )
+        value = context["value"] if isinstance(context.get("value"), Mapping) else {}
+    parts.append("  - Issue code: " + "、".join(f"`{code}`" for code in codes))
+    explanations: list[str] = []
+    actions: list[str] = []
+    for code in codes:
+        explanation, action = _schemair_issue_text(code)
+        if explanation not in explanations:
+            explanations.append(explanation)
+        if action not in actions:
+            actions.append(action)
+    parts.append("  - 说明：" + _join_chinese_sentences(explanations))
+    structured = _schemair_structured_values(value)
+    if structured:
+        parts.append("  - 当前结构化值：" + "；".join(structured))
+    model_notes = _schemair_model_notes(value)
+    if model_notes:
+        parts.append("  - 模型原始说明：" + "；".join(model_notes))
+    evidence_notes = _schemair_evidence_notes(value)
+    if evidence_notes:
+        parts.append("  - 来源证据：" + "；".join(evidence_notes))
+    parts.append("  - 建议动作：" + _join_chinese_sentences(actions))
+
+
+def _schemair_issue_text(code: str) -> tuple[str, str]:
+    known = _SCHEMAIR_ISSUE_TEXT.get(code)
+    if known is not None:
+        return known
+    if code.startswith("MISSING_"):
+        return ("SchemaIR 缺少公开 contract 要求的属性或证据。", "在不伪造事实的前提下补齐该属性并重新校验。")
+    if code.startswith("UNKNOWN_"):
+        return ("SchemaIR 含有公开 contract 未声明的属性或引用。", "核对来源并删除或修正未声明内容。")
+    if code.startswith("INVALID_"):
+        return ("SchemaIR 的结构化值不符合公开 contract。", "按 issue code/path 修正结构化值后重新校验。")
+    if "DUPLICATE" in code:
+        return ("SchemaIR 存在不允许的重复结构或引用。", "定位重复项并保留唯一、来源准确的表达。")
+    if code.endswith("_MISMATCH") or code.endswith("_CONFLICT"):
+        return ("SchemaIR 的相关结构化事实彼此不一致。", "对照 Final DocIR 解决冲突后重新校验。")
+    return (
+        "Validator 报告了尚未注册中文解释的问题；原始详情保留在 `schemair-validation-result.json`。",
+        "按相同 issue code/path 查看原始 Validation Result，并由 Human 决定处置。",
+    )
+
+
+def _schemair_structured_values(value: Mapping[str, Any]) -> list[str]:
+    details: list[str] = []
+    evidence = value.get("evidence")
+    if isinstance(evidence, Mapping):
+        details.append(f"evidence.kind=`{evidence.get('kind')}`")
+    for key in ("confidence", "uncertain", "required", "occurs"):
+        if key not in value:
+            continue
+        current = value.get(key)
+        if isinstance(current, bool):
+            rendered = str(current).lower()
+        elif current is None:
+            rendered = "null"
+        else:
+            rendered = str(current)
+        details.append(f"{key}=`{rendered}`")
+    for key in ("sourceKind", "observedValue", "disposition", "operator", "literal", "effect"):
+        if key in value:
+            current = "null" if value.get(key) is None else str(value.get(key))
+            details.append(f"{key}=`{current}`")
+    return details
+
+
+def _schemair_model_notes(value: Mapping[str, Any]) -> list[str]:
+    notes: list[str] = []
+    candidates = [
+        ("uncertainReason", value.get("uncertainReason")),
+        ("reviewNote", value.get("reviewNote")),
+    ]
+    for label, raw in candidates:
+        text = _optional_text(raw)
+        if text is not None:
+            notes.append(f"{label}={text}")
+    return notes
+
+
+def _schemair_evidence_notes(value: Mapping[str, Any]) -> list[str]:
+    evidence = value.get("evidence")
+    note = _optional_text(evidence.get("note")) if isinstance(evidence, Mapping) else None
+    return [note] if note is not None else []
+
+
+def _join_chinese_sentences(values: list[str]) -> str:
+    normalized = [value.rstrip("。；") for value in values]
+    return "；".join(normalized) + "。"
+
+
+def _append_schemair_info_summary(
+    parts: list[str],
+    conditional_issues: list[Mapping[str, Any]],
+    other_issues: list[Mapping[str, Any]],
+    contexts: Mapping[str, Mapping[str, Any]],
+) -> None:
+    by_section: dict[str, list[str]] = {"Envelope": [], "ASSEMBLY": [], "PARSE": []}
+    unbound: list[Mapping[str, Any]] = []
+    for issue in conditional_issues:
+        key = _matching_schemair_context_key(issue.get("path"), contexts)
+        context = contexts.get(key) if key is not None else None
+        if context is None or context.get("section") not in by_section:
+            unbound.append(issue)
+            continue
+        value = context.get("value")
+        field_name = value.get("fieldName") if isinstance(value, Mapping) else None
+        name = str(field_name or context.get("path"))
+        if name not in by_section[str(context["section"])]:
+            by_section[str(context["section"])].append(name)
+    emitted = False
+    for section in ("Envelope", "ASSEMBLY", "PARSE"):
+        names = by_section[section]
+        if not names:
+            continue
+        emitted = True
+        rendered = "、".join(f"`{name}`" for name in names)
+        parts.append(
+            f"- {section}：条件字段 {len(names)} 个：{rendered}。完整逐条路径请查看 `schemair-validation-result.json`。"
+        )
+    for issue in sorted(unbound, key=lambda item: (str(item.get("path") or ""), str(item.get("code") or ""))):
+        emitted = True
+        explanation, _ = _schemair_issue_text(str(issue.get("code") or "UNKNOWN"))
+        parts.append(
+            f"- [未绑定] `{issue.get('code')}` `{issue.get('path') or '未提供'}`：{explanation}"
+        )
+    for issue in sorted(
+        other_issues,
+        key=lambda item: (str(item.get("path") or ""), str(item.get("code") or "")),
+    ):
+        emitted = True
+        context_key = _matching_schemair_context_key(issue.get("path"), contexts)
+        context = contexts.get(context_key) if context_key is not None else None
+        section = context.get("section") if context is not None else "未绑定"
+        explanation, _ = _schemair_issue_text(str(issue.get("code") or "UNKNOWN"))
+        parts.append(
+            f"- [{section}] `{issue.get('code')}` `{issue.get('path') or '未提供'}`：{explanation}"
+        )
+    if not emitted:
+        parts.append("- Validator 未报告 INFO。")
+
+
+def _normalization_action_zh(code: str) -> str:
+    if code == "SCALAR_REQUIRED_REMOVED":
+        return "已删除仅适用于 Object 字段的 `required` 属性；未复制被删除的原始值。"
+    if code == "NULLABLE_PROPERTY_FILLED":
+        return "已为缺失的 nullable 属性补入 `null`；未补造业务事实。"
+    if code == "NESTED_WIRE_SLOT_FILLED":
+        return "已为缺失的嵌套 wire slot 补入显式 `null` placeholder。"
+    return "已按内置 Profile 执行确定性归一化；未在 Notes 中复制原始值。"
+
+
+def _schemair_explicit_review_evidence(
+    contexts: list[Mapping[str, Any]],
+    *,
+    detailed_contexts: set[str],
+) -> list[str]:
+    items: list[str] = []
+    for context in sorted(contexts, key=lambda item: item["sortKey"]):
+        path = str(context["path"])
+        if path in detailed_contexts or context["section"] == "生命周期":
+            continue
+        value = context.get("value")
+        if not isinstance(value, Mapping):
+            continue
+        evidence = value.get("evidence")
+        evidence_kind = evidence.get("kind") if isinstance(evidence, Mapping) else None
+        review_note = _optional_text(value.get("reviewNote"))
+        uncertain_reason = _optional_text(value.get("uncertainReason"))
+        evidence_note = _optional_text(evidence.get("note")) if isinstance(evidence, Mapping) else None
+        is_condition = context["label"].startswith("条件 ")
+        if is_condition and evidence_kind == "DIRECT":
+            continue
+        if not is_condition and review_note is None and uncertain_reason is None and evidence_kind in {None, "DIRECT"}:
+            continue
+        details: list[str] = []
+        if evidence_kind is not None:
+            details.append(f"evidence.kind=`{evidence_kind}`")
+        if review_note is not None:
+            details.append(f"reviewNote={review_note}")
+        if uncertain_reason is not None:
+            details.append(f"uncertainReason={uncertain_reason}")
+        if evidence_note is not None:
+            details.append(f"evidence.note={evidence_note}")
+        if details:
+            items.append(
+                f"- [{context['section']}] {context['label']} `{path}`：" + "；".join(details)
+            )
+    return items
 
 
 def _validate_encoding_evidence(value: Any, *, label: str) -> None:

@@ -38,6 +38,34 @@ def _candidate() -> dict:
     return json.loads((CASE / "artifacts/schemair-draft.json").read_text(encoding="utf-8"))
 
 
+def _materialized_draft() -> dict:
+    return materialize_schemair_candidate(
+        _candidate(),
+        docir_final=_docir(),
+        schema_id="b2eboc-b2e0061-schema",
+        schema_version="v1",
+        interface_code="b2e0061",
+    )
+
+
+def _validation_result(*issues: dict) -> dict:
+    issue_list = list(issues)
+    return {
+        "contractVersion": "schemair-validation-result/v1",
+        "status": "failed" if any(item.get("blocking") for item in issue_list) else "passed",
+        "validatedArtifact": {
+            "contentHash": "sha256:" + "1" * 64,
+        },
+        "summary": {
+            "errorCount": sum(item["severity"] == "ERROR" for item in issue_list),
+            "warningCount": sum(item["severity"] == "WARNING" for item in issue_list),
+            "infoCount": sum(item["severity"] == "INFO" for item in issue_list),
+            "blockingCount": sum(item.get("blocking") is True for item in issue_list),
+        },
+        "issues": issue_list,
+    }
+
+
 def _metadata_segment(candidate: dict) -> dict:
     return {
         "contractVersion": SCHEMAIR_METADATA_SEGMENT_CONTRACT,
@@ -378,25 +406,132 @@ def test_bank_xml_profile_keeps_unknown_condition_path_for_invalid_draft() -> No
 
 
 def test_schemair_review_notes_are_deterministic_and_include_validator_issues() -> None:
-    candidate = _candidate()
-    validation = {
-        "issues": [
-            {
-                "severity": "ERROR",
-                "code": "TEST_ISSUE",
-                "path": "messages[0].fields[0]",
-                "message": "Test validation issue.",
-            }
-        ]
-    }
+    draft = _materialized_draft()
+    field = draft["envelope"]["fields"][1]
+    field["uncertain"] = True
+    field["uncertainReason"] = "模型原始说明。"
+    field["reviewNote"] = "需要人工确认。"
+    field["confidence"] = 0.72
+    field["evidence"] = {"kind": "DERIVED", "note": "从原文上下文推导。"}
+    validation = _validation_result(
+        {
+            "severity": "WARNING",
+            "blocking": True,
+            "code": "UNCERTAIN_FIELD",
+            "path": field["path"],
+            "message": "English validator message.",
+        },
+        {
+            "severity": "WARNING",
+            "blocking": False,
+            "code": "LOW_CONFIDENCE",
+            "path": field["path"],
+            "message": "English validator message.",
+        },
+        {
+            "severity": "WARNING",
+            "blocking": False,
+            "code": "NON_DIRECT_EVIDENCE",
+            "path": field["path"],
+            "message": "English validator message.",
+        },
+    )
 
-    first = render_schemair_review_notes(candidate, validation)
-    second = render_schemair_review_notes(deepcopy(candidate), deepcopy(validation))
+    first = render_schemair_review_notes(draft, validation)
+    second = render_schemair_review_notes(deepcopy(draft), deepcopy(validation))
 
     assert first == second
-    assert "envelope.fields[1] `@version`" in first
-    assert "TEST_ISSUE" in first
-    assert "Test validation issue." in first
+    assert first.startswith("# SchemaIR Draft 校验审查说明\n")
+    assert "内容 hash: `sha256:" in first
+    assert "状态: `failed`" in first
+    assert "ERROR=0，WARNING=3，INFO=0，BLOCKING=1" in first
+    assert "### 必须处理（Blocking）" in first
+    assert first.count(f"`{field['path']}`") == 1
+    assert "`UNCERTAIN_FIELD`、`LOW_CONFIDENCE`、`NON_DIRECT_EVIDENCE`" in first
+    assert "evidence.kind=`DERIVED`" in first
+    assert "confidence=`0.72`" in first
+    assert "uncertain=`true`" in first
+    assert "English validator message." not in first
+    assert "模型原始说明。" in first
+
+
+def test_schemair_review_notes_order_blocking_items_and_group_info_by_direction() -> None:
+    draft = _materialized_draft()
+    envelope = draft["envelope"]["fields"][1]
+    assembly = draft["messages"][0]["fields"][1]
+    parse = draft["messages"][1]["fields"][2]
+    validation = _validation_result(
+        {
+            "severity": "WARNING",
+            "blocking": True,
+            "code": "REVIEW_NOT_APPROVED",
+            "path": "review.status",
+            "message": "ignored",
+        },
+        {
+            "severity": "WARNING",
+            "blocking": True,
+            "code": "UNCERTAIN_FIELD",
+            "path": parse["path"],
+            "message": "ignored",
+        },
+        {
+            "severity": "INFO",
+            "blocking": False,
+            "code": "CONDITIONAL_FIELD",
+            "path": parse["path"],
+            "message": "ignored",
+        },
+        {
+            "severity": "WARNING",
+            "blocking": True,
+            "code": "UNCERTAIN_FIELD",
+            "path": envelope["path"],
+            "message": "ignored",
+        },
+        {
+            "severity": "INFO",
+            "blocking": False,
+            "code": "CONDITIONAL_FIELD",
+            "path": assembly["path"],
+            "message": "ignored",
+        },
+        {
+            "severity": "WARNING",
+            "blocking": True,
+            "code": "UNCERTAIN_FIELD",
+            "path": assembly["path"],
+            "message": "ignored",
+        },
+    )
+
+    notes = render_schemair_review_notes(draft, validation)
+
+    assert notes.index("[Envelope]") < notes.index("[ASSEMBLY]")
+    assert notes.index("[ASSEMBLY]") < notes.index("[PARSE]")
+    assert notes.index("[PARSE]") < notes.index("[生命周期]")
+    assert f"ASSEMBLY：条件字段 1 个：`{assembly['fieldName']}`" in notes
+    assert f"PARSE：条件字段 1 个：`{parse['fieldName']}`" in notes
+    assert "完整逐条路径请查看 `schemair-validation-result.json`" in notes
+
+
+def test_schemair_review_notes_use_chinese_fallback_for_unknown_issue_code() -> None:
+    validation = _validation_result(
+        {
+            "severity": "INFO",
+            "blocking": False,
+            "code": "FUTURE_SCHEMAIR_ISSUE",
+            "path": "future.path",
+            "message": "Do not surface this English sentence.",
+        }
+    )
+
+    notes = render_schemair_review_notes(_materialized_draft(), validation)
+
+    assert "`FUTURE_SCHEMAIR_ISSUE`" in notes
+    assert "Validator 报告了尚未注册中文解释的问题" in notes
+    assert "schemair-validation-result.json" in notes
+    assert "Do not surface this English sentence." not in notes
 
 
 def test_schemair_review_notes_include_normalization_diagnostics_without_values() -> None:
@@ -410,28 +545,32 @@ def test_schemair_review_notes_include_normalization_diagnostics_without_values(
     )
 
     notes = render_schemair_review_notes(
-        _candidate(), normalization_diagnostics=(diagnostic,)
+        _materialized_draft(),
+        _validation_result(),
+        normalization_diagnostics=(diagnostic,),
     )
 
-    assert "## Normalization Diagnostics" in notes
+    assert "## 确定性归一化记录" in notes
     assert "SCALAR_REQUIRED_REMOVED" in notes
     assert "parse:2" in notes
-    assert "removed required" in notes
+    assert "已删除仅适用于 Object 字段的 `required` 属性" in notes
+    assert "removed required" not in notes
 
 
 def test_schemair_review_notes_include_metadata_notes_and_non_direct_conditions() -> None:
-    candidate = _candidate()
-    assembly = candidate["messages"][0]
+    draft = _materialized_draft()
+    assembly = draft["messages"][0]
     assembly["xmlEncodingEvidence"][0]["reviewNote"] = "确认 encoding 冲突处置。"
     assembly["conditionalConstraints"][0]["evidence"] = {
         "kind": "DERIVED",
         "note": "条件 path 由原文位置推导。",
     }
 
-    notes = render_schemair_review_notes(candidate)
+    notes = render_schemair_review_notes(draft, _validation_result())
 
-    assert "assembly.xmlEncodingEvidence[0]" in notes
+    assert "## 显式 Review 证据" in notes
+    assert "[ASSEMBLY] XML encoding 证据 1" in notes
     assert "确认 encoding 冲突处置。" in notes
-    assert "assembly.conditionalConstraints[0]" in notes
-    assert "evidence=DERIVED" in notes
+    assert "[ASSEMBLY] 条件 1" in notes
+    assert "evidence.kind=`DERIVED`" in notes
     assert "条件 path 由原文位置推导。" in notes
