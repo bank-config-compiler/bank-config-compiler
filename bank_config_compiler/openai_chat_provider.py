@@ -441,11 +441,14 @@ class OpenAIChatDraftProvider:
         attempt_started = self._attempt_clock()
         physical_calls: list[ProviderFailureCallEvidence] = []
 
-        def before_call(spec: SegmentSpec, segment_attempt: int) -> float:
-            del spec, segment_attempt
-            remaining = self.attempt_deadline_seconds - (
+        def remaining_attempt_seconds() -> float:
+            return self.attempt_deadline_seconds - (
                 self._attempt_clock() - attempt_started
             )
+
+        def before_call(spec: SegmentSpec, segment_attempt: int) -> float:
+            del spec, segment_attempt
+            remaining = remaining_attempt_seconds()
             if remaining <= 0:
                 raise SegmentPreCallFailure("SchemaIR attempt deadline is exhausted")
             used_tokens = sum(
@@ -454,6 +457,14 @@ class OpenAIChatDraftProvider:
             if used_tokens >= self.attempt_token_budget:
                 raise SegmentPreCallFailure("SchemaIR attempt token budget is exhausted")
             return min(self.timeout_seconds, remaining)
+
+        def wait_before_retry(delay_seconds: float) -> None:
+            remaining = remaining_attempt_seconds()
+            if remaining <= 0 or delay_seconds >= remaining:
+                raise SegmentPreCallFailure(
+                    "SchemaIR attempt deadline cannot accommodate retry delay"
+                )
+            self._retry_wait(delay_seconds)
 
         def call_segment(
             spec: SegmentSpec, segment_attempt: int, timeout_seconds: float
@@ -503,7 +514,7 @@ class OpenAIChatDraftProvider:
                 current_attempt_id=self.attempt_id,
                 before_call=before_call,
                 call_segment=call_segment,
-                wait=self._retry_wait,
+                wait=wait_before_retry,
             )
         except (SegmentedExecutionFailure, ValueError) as exc:
             raise self._schemair_execution_failure(request, exc) from exc

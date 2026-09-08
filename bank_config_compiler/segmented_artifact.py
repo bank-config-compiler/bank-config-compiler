@@ -335,7 +335,17 @@ def execute_segment_plan(
                 )
                 if exc.retryable and segment_attempt <= max_retries:
                     if exc.retry_delay_seconds > 0:
-                        wait(exc.retry_delay_seconds)
+                        try:
+                            wait(exc.retry_delay_seconds)
+                        except SegmentPreCallFailure as wait_error:
+                            raise SegmentedExecutionFailure(
+                                str(wait_error),
+                                spec=spec,
+                                disposition=SegmentDisposition.HARD_FAIL,
+                                attempts=tuple(attempts),
+                                segments=tuple(resolved),
+                                cause=wait_error,
+                            ) from wait_error
                     continue
                 raise SegmentedExecutionFailure(
                     exc.detail,

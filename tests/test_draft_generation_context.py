@@ -4,19 +4,153 @@ import hashlib
 import json
 from pathlib import Path
 
+import pytest
+
 from bank_config_compiler.draft_generation import (
     DraftGenerationContext,
+    DraftGenerationError,
     DraftProviderResult,
     ProviderCallMetadata,
     ProviderSubcallMetadata,
     generate_docir_draft,
     generate_schemair_draft,
+    load_schemair_resume_evidence,
     publish_generated_draft,
 )
 from bank_config_compiler.workspace import ingest_raw_doc
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
+
+
+def _write_resume_summary(
+    workspace: Path,
+    *,
+    attempt_id: str,
+    contract_version: str,
+    extra: dict[str, object],
+) -> None:
+    root = workspace / "provider-attempts" / "schemair" / attempt_id
+    root.mkdir(parents=True)
+    filename = (
+        "provider-call-result.json"
+        if "call-result" in contract_version
+        else "provider-failure-result.json"
+    )
+    summary = {
+        "contractVersion": contract_version,
+        "taskId": "phase0-test",
+        "artifactKind": "schemair",
+        "sourceHash": "sha256:" + "1" * 64,
+        "provider": "openai-chat",
+        "attemptId": attempt_id,
+        "requestedModel": "qwen-test-snapshot",
+        "endpointFingerprint": "sha256:" + "2" * 64,
+        "promptContractVersion": "draft-prompt/v11",
+        "schemairFieldBatchSize": 8,
+        **extra,
+    }
+    (root / filename).write_text(
+        json.dumps(summary, ensure_ascii=False, indent=2) + "\n",
+        encoding="utf-8",
+        newline="",
+    )
+
+
+@pytest.mark.parametrize(
+    ("attempt_id", "contract_version", "extra"),
+    (
+        (
+            "schemair-007",
+            "draft-provider-failure-result/v2",
+            {
+                "calls": [
+                    {
+                        "sequence": 1,
+                        "segment": "../outside",
+                        "responseComplete": True,
+                        "finishReason": "stop",
+                        "responseContentHash": "sha256:" + "3" * 64,
+                        "segmentContractVersion": "schemair-field-semantics-segment/v1",
+                        "usage": {
+                            "promptTokens": 1,
+                            "completionTokens": 1,
+                            "totalTokens": 2,
+                        },
+                    }
+                ]
+            },
+        ),
+        (
+            "schemair-v3",
+            "draft-provider-call-result/v3",
+            {
+                "selectors": {
+                    "schemaId": "b2eboc-b2e0061-schema",
+                    "schemaVersion": "v1",
+                },
+                "calls": [],
+                "segments": [
+                    {
+                        "segment": "../outside",
+                        "source": "REUSED",
+                        "originAttemptId": "schemair-007",
+                        "originCallSequence": 1,
+                        "originResponseContentHash": "sha256:" + "3" * 64,
+                        "fingerprint": {},
+                        "usage": {
+                            "promptTokens": 1,
+                            "completionTokens": 1,
+                            "totalTokens": 2,
+                        },
+                    }
+                ],
+            },
+        ),
+        (
+            "schemair-v3-self",
+            "draft-provider-call-result/v3",
+            {
+                "selectors": {
+                    "schemaId": "b2eboc-b2e0061-schema",
+                    "schemaVersion": "v1",
+                },
+                "calls": [],
+                "segments": [
+                    {
+                        "segment": "schemair-metadata",
+                        "source": "REUSED",
+                        "originAttemptId": "schemair-v3-self",
+                        "originCallSequence": 1,
+                        "originResponseContentHash": "sha256:" + "3" * 64,
+                        "fingerprint": {},
+                        "usage": {
+                            "promptTokens": 1,
+                            "completionTokens": 1,
+                            "totalTokens": 2,
+                        },
+                    }
+                ],
+            },
+        ),
+    ),
+)
+def test_resume_loader_rejects_unsafe_segment_before_response_io(
+    tmp_path: Path,
+    attempt_id: str,
+    contract_version: str,
+    extra: dict[str, object],
+) -> None:
+    workspace = tmp_path / "workspace"
+    _write_resume_summary(
+        workspace,
+        attempt_id=attempt_id,
+        contract_version=contract_version,
+        extra=extra,
+    )
+
+    with pytest.raises(DraftGenerationError, match="segment"):
+        load_schemair_resume_evidence(workspace, attempt_id)
 
 
 def prepare_workspace(tmp_path: Path, *, task_id: str = "phase0-test") -> Path:

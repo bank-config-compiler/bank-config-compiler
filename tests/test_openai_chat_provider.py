@@ -11,6 +11,7 @@ from types import SimpleNamespace
 import httpx
 import pytest
 
+import bank_config_compiler.ir_materialization as ir_materialization
 import bank_config_compiler.openai_chat_provider as openai_chat_provider
 from bank_config_compiler.docir_draft import DocIRDraftError
 from bank_config_compiler.draft_generation import (
@@ -22,6 +23,7 @@ from bank_config_compiler.draft_generation import (
     generate_schemair_draft,
     load_schemair_resume_evidence,
     publish_generated_draft,
+    publish_provider_failure,
 )
 from bank_config_compiler.openai_chat_provider import (
     OpenAIChatDraftProvider,
@@ -772,6 +774,149 @@ def test_schemair_v3_evidence_preserves_retry_lineage_and_loads_for_resume(
     ]
     assert all(candidate.fingerprint is not None for candidate in loaded.segments)
 
+    resumed_provider = OpenAIChatDraftProvider(
+        api_key="test-key",
+        base_url="https://example.invalid/v1",
+        model="qwen-test-snapshot",
+        attempt_id="schemair-resumed",
+        resume_from_attempt="schemair-v3",
+        resume_evidence=loaded,
+        client=QueuedFakeClient([]),
+    )
+    resumed = generate_schemair_draft(
+        docir_final=docir_final,
+        provider=resumed_provider,
+        task_id="phase0-test",
+        interface_code="b2e0061",
+        schema_id="b2eboc-b2e0061-schema",
+        schema_version="v2",
+    )
+    publish_generated_draft(workspace, resumed, overwrite=True)
+    resumed_root = workspace / "provider-attempts/schemair/schemair-resumed"
+    resumed_summary = json.loads(
+        (resumed_root / "provider-call-result.json").read_text(encoding="utf-8")
+    )
+    assert resumed_summary["calls"] == []
+    assert resumed_summary["attemptUsage"] == {
+        "promptTokens": 0,
+        "completionTokens": 0,
+        "totalTokens": 0,
+    }
+    assert resumed_summary["effectiveUsage"]["totalTokens"] == 150
+    assert [segment["source"] for segment in resumed_summary["segments"]] == [
+        "REUSED"
+    ] * 5
+    assert list(resumed_root.glob("response-*.txt")) == []
+
+    mismatch_provider = OpenAIChatDraftProvider(
+        api_key="test-key",
+        base_url="https://example.invalid/v1",
+        model="different-model",
+        attempt_id="schemair-mismatch",
+        resume_from_attempt="schemair-v3",
+        resume_evidence=loaded,
+        client=QueuedFakeClient([]),
+    )
+    with pytest.raises(DraftProviderDiagnosticError, match="requested model") as caught:
+        generate_schemair_draft(
+            docir_final=docir_final,
+            provider=mismatch_provider,
+            task_id="phase0-test",
+            interface_code="b2e0061",
+            schema_id="b2eboc-b2e0061-schema",
+            schema_version="v2",
+        )
+    publish_provider_failure(workspace, caught.value)
+    mismatch_root = workspace / "provider-attempts/schemair/schemair-mismatch"
+    mismatch_summary = json.loads(
+        (mismatch_root / "provider-failure-result.json").read_text(encoding="utf-8")
+    )
+    assert mismatch_summary["calls"] == []
+    assert mismatch_summary["failureStage"] == "resume-validation"
+    assert mismatch_summary["selectors"] == {
+        "schemaId": "b2eboc-b2e0061-schema",
+        "schemaVersion": "v2",
+    }
+    assert list(mismatch_root.glob("response-*.txt")) == []
+
+    summary["segments"][0]["usage"]["totalTokens"] = 31
+    (attempt_root / "provider-call-result.json").write_text(
+        json.dumps(summary, ensure_ascii=False, indent=2) + "\n",
+        encoding="utf-8",
+        newline="",
+    )
+    with pytest.raises(DraftGenerationError, match="usage does not match origin call"):
+        load_schemair_resume_evidence(workspace, "schemair-v3")
+
+
+def test_schemair_v3_materialization_failure_preserves_real_segment_evidence(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    client = queued_schemair_client()
+    provider = OpenAIChatDraftProvider(
+        api_key="test-key",
+        base_url="https://example.invalid/v1",
+        model="qwen-test-snapshot",
+        attempt_id="schemair-materialization-failure",
+        client=client,
+    )
+    docir_final = (SAMPLE_ROOT / "docir-final.md").read_text(encoding="utf-8")
+
+    def fail_materialization(*args: object, **kwargs: object) -> object:
+        del args, kwargs
+        raise DraftGenerationError("synthetic materializer failure")
+
+    monkeypatch.setattr(
+        ir_materialization,
+        "materialize_schemair_candidate",
+        fail_materialization,
+    )
+
+    with pytest.raises(DraftProviderDiagnosticError, match="cannot be materialized") as caught:
+        generate_schemair_draft(
+            docir_final=docir_final,
+            provider=provider,
+            task_id="phase0-test",
+            interface_code="b2e0061",
+            schema_id="b2eboc-b2e0061-schema",
+            schema_version="v2",
+        )
+
+    workspace = tmp_path / "workspace"
+    raw_doc = tmp_path / "raw.md"
+    raw_doc.write_text("# Raw bank document\n", encoding="utf-8", newline="")
+    ingest_raw_doc(
+        raw_doc,
+        workspace,
+        task_id="phase0-test",
+        interface_code="b2e0061",
+    )
+    publish_provider_failure(workspace, caught.value)
+
+    attempt_root = (
+        workspace
+        / "provider-attempts/schemair/schemair-materialization-failure"
+    )
+    summary = json.loads(
+        (attempt_root / "provider-failure-result.json").read_text(encoding="utf-8")
+    )
+    assert summary["contractVersion"] == "draft-provider-failure-result/v3"
+    assert summary["failureStage"] == "materialization"
+    assert len(summary["calls"]) == 5
+    assert len(summary["segments"]) == 5
+    assert [call["segment"] for call in summary["calls"]] == [
+        "schemair-metadata",
+        "schemair-envelope-fields-001",
+        "schemair-assembly-fields-001",
+        "schemair-assembly-fields-002",
+        "schemair-parse-fields-001",
+    ]
+    assert "complete-artifact" not in json.dumps(summary)
+    assert len(list(attempt_root.glob("response-*-attempt-01.txt"))) == 5
+    assert (attempt_root / "candidate.json").is_file()
+    assert not (workspace / "schemair-draft.json").exists()
+
 
 def test_openai_chat_provider_schemair_hard_fails_after_binding_retry_exhausted() -> None:
     responses = schemair_segment_responses()
@@ -851,6 +996,31 @@ def test_openai_chat_provider_schemair_retries_transient_http_with_retry_after()
     assert len(client.completions.calls) == 6
     assert waits == [3.0]
     assert [call.segment_attempt for call in result.metadata.calls[:2]] == [1, 2]
+
+
+def test_schemair_retry_wait_fails_before_sleep_when_attempt_deadline_is_too_short() -> None:
+    waits: list[float] = []
+    client = QueuedFakeClient([FakeHttpError(429, "30")])
+    clock_values = iter((0.0, 0.0, 9.5))
+    provider = OpenAIChatDraftProvider(
+        api_key="test-key",
+        base_url="https://example.invalid/v1",
+        model="qwen-test-snapshot",
+        attempt_id="schemair-004",
+        attempt_deadline_seconds=10.0,
+        attempt_clock=lambda: next(clock_values),
+        retry_wait=waits.append,
+        client=client,
+    )
+    request, context = schemair_request_and_context()
+
+    with pytest.raises(DraftProviderDiagnosticError, match="retry delay") as caught:
+        provider.generate(request, context)
+
+    assert len(client.completions.calls) == 1
+    assert waits == []
+    assert caught.value.evidence is not None
+    assert caught.value.evidence.failure_stage == "attempt-budget"
 
 
 def test_openai_chat_provider_schemair_stops_before_call_when_token_budget_reached() -> None:

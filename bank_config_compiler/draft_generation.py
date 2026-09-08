@@ -1526,20 +1526,25 @@ def _load_v2_resume_candidates(
             isinstance(sequence, bool)
             or not isinstance(sequence, int)
             or sequence <= 0
-            or not isinstance(segment, str)
             or not isinstance(response_hash, str)
             or not SHA256_PATTERN.fullmatch(response_hash)
             or not isinstance(segment_contract, str)
             or sequence != expected_sequence
         ):
             raise DraftGenerationError("resume v2 completed call metadata is invalid")
+        if not isinstance(segment, str) or not STABLE_ID_PATTERN.fullmatch(segment):
+            raise DraftGenerationError("resume v2 segment identifier is invalid")
         if segment in seen_segments:
             raise DraftGenerationError("resume v2 contains duplicate completed segments")
         seen_segments.add(segment)
         response_text = _read_verified_resume_response(
-            root / f"response-{sequence:03d}-{segment}.txt", response_hash
+            root,
+            f"response-{sequence:03d}-{segment}.txt",
+            response_hash,
         )
-        usage = call.get("usage") if isinstance(call.get("usage"), dict) else {}
+        prompt_tokens, completion_tokens, total_tokens = _resume_usage(
+            call.get("usage"), label="resume v2 call usage"
+        )
         candidates.append(
             ResumeSegmentCandidate(
                 segment_id=segment,
@@ -1548,11 +1553,9 @@ def _load_v2_resume_candidates(
                 origin_attempt_id=attempt_id,
                 origin_call_sequence=sequence,
                 segment_contract_version=segment_contract,
-                prompt_tokens=_optional_non_negative_int(usage.get("promptTokens")),
-                completion_tokens=_optional_non_negative_int(
-                    usage.get("completionTokens")
-                ),
-                total_tokens=_optional_non_negative_int(usage.get("totalTokens")),
+                prompt_tokens=prompt_tokens,
+                completion_tokens=completion_tokens,
+                total_tokens=total_tokens,
             )
         )
     return candidates
@@ -1565,6 +1568,7 @@ def _load_v3_resume_candidates(
     if not isinstance(segments, list):
         raise DraftGenerationError("resume v3 segments must be an array")
     candidates: list[ResumeSegmentCandidate] = []
+    seen_segments: set[str] = set()
     for segment in segments:
         if not isinstance(segment, dict):
             raise DraftGenerationError("resume v3 segment must be an object")
@@ -1573,8 +1577,10 @@ def _load_v3_resume_candidates(
         origin_sequence = segment.get("originCallSequence")
         response_hash = segment.get("originResponseContentHash")
         fingerprint = segment.get("fingerprint")
+        source = segment.get("source")
         if (
             not isinstance(segment_id, str)
+            or not STABLE_ID_PATTERN.fullmatch(segment_id)
             or not isinstance(origin_attempt_id, str)
             or not STABLE_ID_PATTERN.fullmatch(origin_attempt_id)
             or isinstance(origin_sequence, bool)
@@ -1583,11 +1589,23 @@ def _load_v3_resume_candidates(
             or not isinstance(response_hash, str)
             or not SHA256_PATTERN.fullmatch(response_hash)
             or not isinstance(fingerprint, dict)
+            or source not in {"LIVE", "REUSED"}
+            or (source == "LIVE" and origin_attempt_id != attempt_id)
+            or (source == "REUSED" and origin_attempt_id == attempt_id)
         ):
             raise DraftGenerationError("resume v3 segment lineage is invalid")
+        if segment_id in seen_segments:
+            raise DraftGenerationError("resume v3 contains duplicate segments")
+        seen_segments.add(segment_id)
         origin_root, origin_summary = _load_schemair_attempt_summary(
             workspace_path, origin_attempt_id
         )
+        if (
+            origin_summary.get("provider") != "openai-chat"
+            or origin_summary.get("artifactKind") != "schemair"
+            or origin_summary.get("attemptId") != origin_attempt_id
+        ):
+            raise DraftGenerationError("resume v3 origin attempt identity is invalid")
         origin_calls = origin_summary.get("calls")
         if not isinstance(origin_calls, list) or origin_sequence > len(origin_calls):
             raise DraftGenerationError("resume v3 origin call does not exist")
@@ -1612,9 +1630,18 @@ def _load_v3_resume_candidates(
         if response_file is None or Path(response_file).name != response_file:
             raise DraftGenerationError("resume v3 origin response file is invalid")
         response_text = _read_verified_resume_response(
-            origin_root / response_file, response_hash
+            origin_root, response_file, response_hash
         )
-        usage = segment.get("usage") if isinstance(segment.get("usage"), dict) else {}
+        segment_usage = _resume_usage(
+            segment.get("usage"), label="resume v3 segment usage"
+        )
+        origin_usage = _resume_usage(
+            origin_call.get("usage"), label="resume v3 origin call usage"
+        )
+        if segment_usage != origin_usage:
+            raise DraftGenerationError(
+                "resume v3 segment usage does not match origin call"
+            )
         segment_contract = origin_call.get("segmentContractVersion")
         if not isinstance(segment_contract, str):
             raise DraftGenerationError("resume v3 origin segment contract is invalid")
@@ -1626,30 +1653,49 @@ def _load_v3_resume_candidates(
                 origin_attempt_id=origin_attempt_id,
                 origin_call_sequence=origin_sequence,
                 segment_contract_version=segment_contract,
-                prompt_tokens=_optional_non_negative_int(usage.get("promptTokens")),
-                completion_tokens=_optional_non_negative_int(
-                    usage.get("completionTokens")
-                ),
-                total_tokens=_optional_non_negative_int(usage.get("totalTokens")),
-                fingerprint={str(key): str(value) for key, value in fingerprint.items()},
+                prompt_tokens=origin_usage[0],
+                completion_tokens=origin_usage[1],
+                total_tokens=origin_usage[2],
+                fingerprint=dict(fingerprint),
             )
         )
     return candidates
 
 
-def _read_verified_resume_response(path: Path, expected_hash: str) -> str:
+def _read_verified_resume_response(
+    attempt_root: Path, filename: str, expected_hash: str
+) -> str:
+    if Path(filename).name != filename:
+        raise DraftGenerationError("resume response filename is outside attempt root")
+    try:
+        resolved_root = attempt_root.resolve(strict=True)
+        path = (attempt_root / filename).resolve(strict=True)
+        path.relative_to(resolved_root)
+    except (OSError, ValueError) as exc:
+        raise DraftGenerationError(
+            "resume response file is missing or outside attempt root"
+        ) from exc
     response_text = _read_utf8_text(path)
     if _text_hash(response_text) != expected_hash:
         raise DraftGenerationError("resume response hash does not match immutable summary")
     return response_text
 
 
-def _optional_non_negative_int(value: Any) -> int | None:
-    return (
-        value
-        if isinstance(value, int) and not isinstance(value, bool) and value >= 0
-        else None
-    )
+def _resume_usage(value: Any, *, label: str) -> tuple[int | None, int | None, int | None]:
+    properties = ("promptTokens", "completionTokens", "totalTokens")
+    if not isinstance(value, dict) or set(value) != set(properties):
+        raise DraftGenerationError(f"{label} must contain exact token properties")
+    result: list[int | None] = []
+    for property_name in properties:
+        token_value = value[property_name]
+        if token_value is not None and (
+            isinstance(token_value, bool)
+            or not isinstance(token_value, int)
+            or token_value < 0
+        ):
+            raise DraftGenerationError(f"{label} contains an invalid token count")
+        result.append(token_value)
+    return result[0], result[1], result[2]
 
 
 def _generation_result(generated: GeneratedDraft, task: dict[str, Any]) -> dict[str, Any]:
@@ -1702,7 +1748,8 @@ def _provider_call_result(generated: GeneratedDraft) -> dict[str, Any]:
     selector = generated.request.case_fingerprint()
     selector.pop("artifactKind")
     selector.pop("sourceHash")
-    calls = metadata.calls or (
+    is_v3 = metadata.segment_max_retries is not None
+    calls = metadata.calls if is_v3 else metadata.calls or (
         ProviderSubcallMetadata(
             segment="complete-artifact",
             outcome="succeeded",
@@ -1722,7 +1769,7 @@ def _provider_call_result(generated: GeneratedDraft) -> dict[str, Any]:
     result = {
         "contractVersion": (
             PROVIDER_CALL_RESULT_V3_CONTRACT
-            if metadata.segments
+            if is_v3
             else PROVIDER_CALL_RESULT_CONTRACT
         ),
         "taskId": generated.request.task_id,
@@ -1751,7 +1798,7 @@ def _provider_call_result(generated: GeneratedDraft) -> dict[str, Any]:
         ],
         "artifactContentHash": generated.content_hash,
     }
-    if metadata.segments:
+    if is_v3:
         result["segmentMaxRetries"] = metadata.segment_max_retries
         result["attemptDeadlineSeconds"] = metadata.attempt_deadline_seconds
         result["attemptTokenBudget"] = metadata.attempt_token_budget
@@ -1853,6 +1900,8 @@ def _provider_failure_calls(
     if evidence.calls:
         return evidence.calls
     metadata = evidence.metadata
+    if metadata.segment_max_retries is not None:
+        return ()
     return (
         ProviderFailureCallEvidence(
             metadata=ProviderSubcallMetadata(
