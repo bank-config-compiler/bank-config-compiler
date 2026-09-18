@@ -127,6 +127,33 @@ def test_schemair_materializer_rebuilds_locked_identity_and_all_structure() -> N
     assert result["summary"]["errorCount"] == 0
 
 
+def test_docir_structure_canonicalizes_leading_slash_root_paths() -> None:
+    docir = (
+        ROOT / "samples/draft-generation/b2eboc-b2e0061/docir-final.md"
+    ).read_text(encoding="utf-8")
+    docir = docir.replace("Root.bocb2e", "/bocb2e", 1)
+    docir = docir.replace(
+        "Root.bocb2e.trans.trn-b2e0061-rq",
+        "/bocb2e/trans/trn-b2e0061-rq",
+        1,
+    )
+    docir = docir.replace(
+        "Root.bocb2e.trans.trn-b2e0061-rs",
+        "/bocb2e/trans/trn-b2e0061-rs",
+        1,
+    )
+
+    structure = parse_final_docir_structure(docir)
+
+    assert structure["envelope"]["rootPath"] == "Root.bocb2e"
+    assert structure["assembly"]["rootPath"] == (
+        "Root.bocb2e.trans.trn-b2e0061-rq"
+    )
+    assert structure["parse"]["rootPath"] == (
+        "Root.bocb2e.trans.trn-b2e0061-rs"
+    )
+
+
 def test_schemair_materializer_rejects_missing_docir_tree_coverage() -> None:
     final = _schema_candidate_with_docir_lang()
     final["messages"][0]["fields"].pop()

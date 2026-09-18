@@ -97,7 +97,7 @@ def semantic_candidate() -> dict:
             "metadata": [
                 _metadata("Message Name", "test-rq"),
                 _metadata("Function Type", "ASSEMBLY"),
-                _metadata("Root Path", "bocb2e/trans/trn-test-rq"),
+                _metadata("Root Path", "bocb2e/trn-test-rq"),
                 _metadata("Description", "请求报文"),
             ],
             "conditions": ["原文未提供可确认条件。"],
@@ -121,7 +121,7 @@ def semantic_candidate() -> dict:
             "metadata": [
                 _metadata("Message Name", "test-rs"),
                 _metadata("Function Type", "PARSE"),
-                _metadata("Root Path", "bocb2e/trans/trn-test-rs"),
+                _metadata("Root Path", "bocb2e/trn-test-rs"),
                 _metadata("Description", "响应报文"),
             ],
             "conditions": ["原文未提供可确认条件。"],

@@ -19,6 +19,7 @@ from .docir_draft import render_docir_validation_review_notes, validate_docir_ma
 from .interface_standard_validator import validate_interface_standard
 from .interface_template_validator import validate_interface_template
 from .schemair_validator import validate_schemair
+from .segmented_artifact import NormalizationDiagnostic
 from .workspace import (
     WorkspaceError,
     artifact_path,
@@ -74,6 +75,20 @@ def load_approved_docir_final(
     try:
         approval = read_json_artifact(workspace, "docir-approval-result.json")
         _validate_docir_approval(approval, task=locked_task, final_hash=final_hash)
+        validation = validate_docir_markdown(final_text)
+        summary = validation.get("summary", {})
+        if summary.get("errorCount", 0) or summary.get("blockingCount", 0):
+            blocking_codes = sorted(
+                {
+                    issue.get("code")
+                    for issue in validation.get("issues", [])
+                    if issue.get("blocking") is True and isinstance(issue.get("code"), str)
+                }
+            )
+            raise DraftReviewError(
+                "current DocIR Validator rejected the approved Final"
+                + (f": {', '.join(blocking_codes)}" if blocking_codes else "")
+            )
     except (DraftReviewError, WorkspaceError) as exc:
         LOGGER.warning(
             "DocIR approval evidence rejected",
@@ -156,17 +171,27 @@ def validate_current_draft(
         standard_version=standard_version,
         rule_package=rule_package,
     )
-    notes = (
-        render_docir_validation_review_notes(
+    if artifact_kind == "docir":
+        notes = render_docir_validation_review_notes(
             draft_bytes.decode(
                 "utf-8-sig" if draft_bytes.startswith(b"\xef\xbb\xbf") else "utf-8",
                 errors="replace",
             ),
             result,
         )
-        if artifact_kind == "docir"
-        else _render_validation_notes(result)
-    )
+    elif artifact_kind == "schemair":
+        from .schemair_draft import render_schemair_review_notes
+
+        artifact = _decode_artifact("schemair", draft_bytes)
+        notes = render_schemair_review_notes(
+            artifact,
+            result,
+            normalization_diagnostics=_load_schemair_normalization_diagnostics(
+                workspace, task, names
+            ),
+        )
+    else:
+        notes = _render_validation_notes(result)
     _atomic_replace_set(
         {
             "notes": artifact_path(workspace, names["notes"]),
@@ -181,6 +206,92 @@ def validate_current_draft(
         label=f"{artifact_kind} validation outputs",
     )
     return result
+
+
+_SCHEMAIR_ATTEMPT_ID_PATTERN = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
+_NORMALIZATION_DIAGNOSTIC_PROPERTIES = {
+    "segment",
+    "selector",
+    "path",
+    "code",
+    "action",
+    "severity",
+}
+
+
+def _load_schemair_normalization_diagnostics(
+    workspace: Path,
+    task: dict[str, Any],
+    names: dict[str, str],
+) -> tuple[NormalizationDiagnostic, ...] | None:
+    """只接受与当前 generation lineage 精确绑定的 v3 结构化诊断。"""
+
+    try:
+        generation = read_json_artifact(workspace, names["generation"])
+        source_hash = _dependency_hash(workspace, names["dependency"])
+    except (WorkspaceError, DraftReviewError, OSError):
+        return None
+    attempt_id = generation.get("attemptId")
+    expected_generation = {
+        "contractVersion": "draft-generation-result/v1",
+        "taskId": task.get("taskId"),
+        "interfaceCode": task.get("interfaceCode"),
+        "artifactKind": "schemair",
+        "sourceHash": source_hash,
+    }
+    if (
+        not isinstance(attempt_id, str)
+        or not _SCHEMAIR_ATTEMPT_ID_PATTERN.fullmatch(attempt_id)
+        or any(generation.get(key) != value for key, value in expected_generation.items())
+    ):
+        return None
+    try:
+        summary = read_json_artifact(
+            workspace,
+            f"provider-attempts/schemair/{attempt_id}/provider-call-result.json",
+        )
+    except WorkspaceError:
+        return None
+    expected_summary = {
+        "contractVersion": "draft-provider-call-result/v3",
+        "taskId": task.get("taskId"),
+        "artifactKind": "schemair",
+        "sourceHash": source_hash,
+        "provider": "openai-chat",
+        "attemptId": attempt_id,
+    }
+    if any(summary.get(key) != value for key, value in expected_summary.items()):
+        return None
+    segments = summary.get("segments")
+    if not isinstance(segments, list):
+        return None
+    diagnostics: list[NormalizationDiagnostic] = []
+    for segment in segments:
+        if not isinstance(segment, dict):
+            return None
+        raw_diagnostics = segment.get("normalizationDiagnostics")
+        if not isinstance(raw_diagnostics, list):
+            return None
+        for raw in raw_diagnostics:
+            if not isinstance(raw, dict) or set(raw) != _NORMALIZATION_DIAGNOSTIC_PROPERTIES:
+                return None
+            required = (raw.get("segment"), raw.get("code"), raw.get("action"), raw.get("severity"))
+            optional = (raw.get("selector"), raw.get("path"))
+            if any(not isinstance(value, str) or not value for value in required):
+                return None
+            if any(value is not None and (not isinstance(value, str) or not value) for value in optional):
+                return None
+            diagnostics.append(
+                NormalizationDiagnostic(
+                    segment=raw["segment"],
+                    selector=raw["selector"],
+                    path=raw["path"],
+                    code=raw["code"],
+                    action=raw["action"],
+                    severity=raw["severity"],
+                )
+            )
+    return tuple(diagnostics)
 
 
 def approve_draft(

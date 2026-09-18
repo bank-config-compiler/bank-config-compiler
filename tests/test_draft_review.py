@@ -443,6 +443,132 @@ def _write_json_review_case(
     )
 
 
+def _prepare_schemair_review_case(tmp_path: Path, *, attempt_id: str = "schemair-test") -> Path:
+    workspace = _workspace(tmp_path)
+    chain = REPO_ROOT / "samples/trusted-chain/b2eboc-b2e0061"
+    schema = json.loads((chain / "schemair-final.json").read_text(encoding="utf-8"))
+    (workspace / "docir-final.md").write_bytes(
+        (workspace / "docir-draft.md").read_bytes()
+    )
+    _write_json_review_case(
+        workspace,
+        kind="schemair",
+        draft_path="schemair-draft.json",
+        generation_path="schemair-generation-result.json",
+        artifact=schema,
+        source_path="docir-final.md",
+        selectors={
+            "schemaId": schema["schemaId"],
+            "schemaVersion": schema["schemaVersion"],
+        },
+    )
+    generation_path = workspace / "schemair-generation-result.json"
+    generation = json.loads(generation_path.read_text(encoding="utf-8"))
+    generation["attemptId"] = attempt_id
+    generation_path.write_text(
+        json.dumps(generation, ensure_ascii=False), encoding="utf-8", newline=""
+    )
+    task = json.loads((workspace / "task.json").read_text(encoding="utf-8"))
+    attempt_root = workspace / "provider-attempts" / "schemair" / attempt_id
+    attempt_root.mkdir(parents=True)
+    (attempt_root / "provider-call-result.json").write_text(
+        json.dumps(
+            {
+                "contractVersion": "draft-provider-call-result/v3",
+                "taskId": task["taskId"],
+                "artifactKind": "schemair",
+                "sourceHash": generation["sourceHash"],
+                "provider": "openai-chat",
+                "attemptId": attempt_id,
+                "promptContractVersion": "draft-prompt/v11",
+                "segments": [
+                    {
+                        "segment": "schemair-parse-fields-001",
+                        "normalizationDiagnostics": [
+                            {
+                                "segment": "schemair-parse-fields-001",
+                                "selector": "parse:3",
+                                "path": "Root.bocb2e.trans.trn-b2e0061-rs.status.rspcod",
+                                "code": "SCALAR_REQUIRED_REMOVED",
+                                "action": "removed required",
+                                "severity": "WARNING",
+                            }
+                        ],
+                    }
+                ],
+            },
+            ensure_ascii=False,
+        ),
+        encoding="utf-8",
+        newline="",
+    )
+    return workspace
+
+
+def test_validate_current_schemair_uses_trusted_v3_diagnostics_and_preserves_draft(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    workspace = _prepare_schemair_review_case(tmp_path)
+    draft_before = (workspace / "schemair-draft.json").read_bytes()
+    original_replace = draft_review.os.replace
+    targets: list[str] = []
+
+    def recording_replace(source: Path, target: Path) -> None:
+        targets.append(Path(target).name)
+        original_replace(source, target)
+
+    monkeypatch.setattr(draft_review.os, "replace", recording_replace)
+
+    result = validate_current_draft(workspace, "schemair")
+
+    assert (workspace / "schemair-draft.json").read_bytes() == draft_before
+    notes = (workspace / "schemair-review-notes.md").read_text(encoding="utf-8")
+    assert notes.startswith("# SchemaIR Draft 校验审查说明\n")
+    assert result["validatedArtifact"]["contentHash"] in notes
+    assert "`SCALAR_REQUIRED_REMOVED`" in notes
+    assert "已删除仅适用于 Object 字段的 `required` 属性" in notes
+    assert "removed required" not in notes
+    assert "未取得可信归一化记录" not in notes
+    assert targets[-2:] == [
+        "schemair-review-notes.md",
+        "schemair-validation-result.json",
+    ]
+
+
+@pytest.mark.parametrize(
+    ("field", "value"),
+    (
+        ("contractVersion", "draft-provider-call-result/v2"),
+        ("taskId", "other-task"),
+        ("artifactKind", "docir"),
+        ("sourceHash", "sha256:" + "f" * 64),
+        ("attemptId", "other-attempt"),
+    ),
+)
+def test_validate_current_schemair_ignores_untrusted_normalization_evidence(
+    tmp_path: Path,
+    field: str,
+    value: str,
+) -> None:
+    workspace = _prepare_schemair_review_case(tmp_path)
+    summary_path = (
+        workspace
+        / "provider-attempts/schemair/schemair-test/provider-call-result.json"
+    )
+    summary = json.loads(summary_path.read_text(encoding="utf-8"))
+    summary[field] = value
+    summary_path.write_text(
+        json.dumps(summary, ensure_ascii=False), encoding="utf-8", newline=""
+    )
+
+    validate_current_draft(workspace, "schemair")
+
+    notes = (workspace / "schemair-review-notes.md").read_text(encoding="utf-8")
+    assert "未取得可信归一化记录" in notes
+    assert "`SCALAR_REQUIRED_REMOVED`" not in notes
+
+
 def test_json_draft_approval_adds_only_lifecycle_metadata_and_final_validates(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,

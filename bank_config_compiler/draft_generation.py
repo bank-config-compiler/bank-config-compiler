@@ -22,6 +22,13 @@ from .docir_draft import (
 from .interface_standard_validator import validate_interface_standard
 from .interface_template_validator import validate_interface_template
 from .schemair_validator import validate_schemair
+from .segmented_artifact import (
+    NormalizationDiagnostic,
+    ResumeAttemptEvidence,
+    ResumeSegmentCandidate,
+    SegmentDisposition,
+    SegmentFingerprint,
+)
 from .workspace import artifact_path, ensure_workspace_dir, load_task_manifest
 
 
@@ -30,6 +37,8 @@ LOGGER = logging.getLogger(__name__)
 PROVIDER_RESPONSE_CONTRACT = "draft-provider-response/v1"
 PROVIDER_CALL_RESULT_CONTRACT = "draft-provider-call-result/v2"
 PROVIDER_FAILURE_RESULT_CONTRACT = "draft-provider-failure-result/v2"
+PROVIDER_CALL_RESULT_V3_CONTRACT = "draft-provider-call-result/v3"
+PROVIDER_FAILURE_RESULT_V3_CONTRACT = "draft-provider-failure-result/v3"
 DRAFT_GENERATION_RESULT_CONTRACT = "draft-generation-result/v1"
 STUB_CASE_CONTRACT = "draft-stub-case/v1"
 ARTIFACT_KINDS = {"docir", "schemair", "standard", "template"}
@@ -43,6 +52,7 @@ CASE_ENTRY_PROPERTIES = {"request", "artifactFile", "reviewNotesFile"}
 CASE_REQUEST_PROPERTIES = {
     "artifactKind",
     "sourceHash",
+    "interfaceCode",
     "schemaId",
     "schemaVersion",
     "standardId",
@@ -62,6 +72,8 @@ ProviderFailureStage = Literal[
     "merge-validation",
     "provider-response",
     "materialization",
+    "resume-validation",
+    "attempt-budget",
 ]
 
 
@@ -106,6 +118,7 @@ class DraftGenerationRequest:
     task_id: str
     artifact_kind: ArtifactKind
     source_hash: str
+    interface_code: str | None = None
     schema_id: str | None = None
     schema_version: str | None = None
     standard_id: str | None = None
@@ -126,6 +139,13 @@ class DraftGenerationRequest:
             raise DraftGenerationError("source_hash must use sha256:<64 lowercase hex>")
         if self.direction is not None and self.direction not in DIRECTIONS:
             raise DraftGenerationError("direction must be exactly ASSEMBLY or PARSE")
+        if self.interface_code is not None and (
+            not isinstance(self.interface_code, str)
+            or re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._-]*", self.interface_code) is None
+        ):
+            raise DraftGenerationError(
+                "interface_code must contain only letters, digits, dot, underscore or hyphen"
+            )
         if self.standard_version is not None and not VERSION_PATTERN.fullmatch(
             self.standard_version
         ):
@@ -167,6 +187,10 @@ class DraftGenerationRequest:
             ):
                 raise DraftGenerationError(f"{self.artifact_kind} request does not accept selectors")
             return
+        if self.interface_code is not None:
+            raise DraftGenerationError(
+                f"{self.artifact_kind} request does not accept interface_code"
+            )
         if self.artifact_kind == "schemair":
             if self.schema_id is None or self.schema_version is None:
                 raise DraftGenerationError(
@@ -226,6 +250,7 @@ class DraftGenerationRequest:
         values = {
             "artifactKind": self.artifact_kind,
             "sourceHash": self.source_hash,
+            "interfaceCode": self.interface_code,
             "schemaId": self.schema_id,
             "schemaVersion": self.schema_version,
             "standardId": self.standard_id,
@@ -284,6 +309,7 @@ class ProviderSubcallMetadata:
     finish_reason: str | None = None
     prompt_contract_version: str | None = None
     segment_contract_version: str | None = None
+    segment_attempt: int = 1
 
     def __post_init__(self) -> None:
         if not isinstance(self.segment, str) or not STABLE_ID_PATTERN.fullmatch(
@@ -323,6 +349,56 @@ class ProviderSubcallMetadata:
                 raise DraftGenerationError(
                     f"provider subcall {label} must be a non-negative integer"
                 )
+        if (
+            isinstance(self.segment_attempt, bool)
+            or not isinstance(self.segment_attempt, int)
+            or self.segment_attempt <= 0
+        ):
+            raise DraftGenerationError("provider subcall segment_attempt must be positive")
+
+
+@dataclass(frozen=True, slots=True)
+class ProviderSegmentMetadata:
+    segment: str
+    source: Literal["LIVE", "REUSED"]
+    origin_attempt_id: str
+    origin_call_sequence: int
+    response_content_hash: str
+    fingerprint: SegmentFingerprint
+    disposition: SegmentDisposition
+    normalization_diagnostics: tuple[NormalizationDiagnostic, ...] = ()
+    prompt_tokens: int | None = None
+    completion_tokens: int | None = None
+    total_tokens: int | None = None
+
+    def __post_init__(self) -> None:
+        if not STABLE_ID_PATTERN.fullmatch(self.segment):
+            raise DraftGenerationError("provider segment identifier is invalid")
+        if self.source not in {"LIVE", "REUSED"}:
+            raise DraftGenerationError("provider segment source is invalid")
+        if not STABLE_ID_PATTERN.fullmatch(self.origin_attempt_id):
+            raise DraftGenerationError("provider segment origin attempt ID is invalid")
+        if (
+            isinstance(self.origin_call_sequence, bool)
+            or not isinstance(self.origin_call_sequence, int)
+            or self.origin_call_sequence <= 0
+        ):
+            raise DraftGenerationError("provider segment origin call sequence must be positive")
+        if not SHA256_PATTERN.fullmatch(self.response_content_hash):
+            raise DraftGenerationError("provider segment response hash is invalid")
+        if not isinstance(self.normalization_diagnostics, tuple):
+            raise DraftGenerationError("provider segment diagnostics must be a tuple")
+        for label, value in (
+            ("prompt_tokens", self.prompt_tokens),
+            ("completion_tokens", self.completion_tokens),
+            ("total_tokens", self.total_tokens),
+        ):
+            if value is not None and (
+                isinstance(value, bool) or not isinstance(value, int) or value < 0
+            ):
+                raise DraftGenerationError(
+                    f"provider segment {label} must be a non-negative integer"
+                )
 
 
 @dataclass(frozen=True, slots=True)
@@ -358,6 +434,15 @@ class ProviderCallMetadata:
     prompt_contract_version: str | None = None
     calls: tuple[ProviderSubcallMetadata, ...] = ()
     docir_field_batch_size: int | None = None
+    schemair_field_batch_size: int | None = None
+    segments: tuple[ProviderSegmentMetadata, ...] = ()
+    effective_prompt_tokens: int | None = None
+    effective_completion_tokens: int | None = None
+    effective_total_tokens: int | None = None
+    segment_max_retries: int | None = None
+    attempt_deadline_seconds: float | None = None
+    attempt_token_budget: int | None = None
+    resume_from_attempt: str | None = None
 
     def __post_init__(self) -> None:
         if not isinstance(self.provider_name, str) or not self.provider_name.strip():
@@ -394,12 +479,48 @@ class ProviderCallMetadata:
             raise DraftGenerationError("provider endpoint fingerprint must be a SHA-256 hash")
         if not isinstance(self.calls, tuple):
             raise DraftGenerationError("provider metadata calls must be a tuple")
+        if not isinstance(self.segments, tuple):
+            raise DraftGenerationError("provider metadata segments must be a tuple")
         if self.docir_field_batch_size is not None and (
             isinstance(self.docir_field_batch_size, bool)
             or not isinstance(self.docir_field_batch_size, int)
             or self.docir_field_batch_size <= 0
         ):
             raise DraftGenerationError("provider DocIR field batch size must be a positive integer")
+        if self.schemair_field_batch_size is not None and (
+            isinstance(self.schemair_field_batch_size, bool)
+            or not isinstance(self.schemair_field_batch_size, int)
+            or self.schemair_field_batch_size <= 0
+        ):
+            raise DraftGenerationError(
+                "provider SchemaIR field batch size must be a positive integer"
+            )
+        for label, value in (
+            ("effective_prompt_tokens", self.effective_prompt_tokens),
+            ("effective_completion_tokens", self.effective_completion_tokens),
+            ("effective_total_tokens", self.effective_total_tokens),
+            ("attempt_token_budget", self.attempt_token_budget),
+        ):
+            if value is not None and (
+                isinstance(value, bool) or not isinstance(value, int) or value < 0
+            ):
+                raise DraftGenerationError(f"provider metadata {label} must be non-negative")
+        if self.segment_max_retries is not None and (
+            isinstance(self.segment_max_retries, bool)
+            or not isinstance(self.segment_max_retries, int)
+            or self.segment_max_retries < 0
+        ):
+            raise DraftGenerationError("provider segment max retries must be non-negative")
+        if self.attempt_deadline_seconds is not None and (
+            isinstance(self.attempt_deadline_seconds, bool)
+            or not isinstance(self.attempt_deadline_seconds, (int, float))
+            or self.attempt_deadline_seconds <= 0
+        ):
+            raise DraftGenerationError("provider attempt deadline must be positive")
+        if self.resume_from_attempt is not None and not STABLE_ID_PATTERN.fullmatch(
+            self.resume_from_attempt
+        ):
+            raise DraftGenerationError("provider resume attempt ID is invalid")
 
 
 @dataclass(frozen=True, slots=True)
@@ -433,6 +554,8 @@ class ProviderFailureEvidence:
             "merge-validation",
             "provider-response",
             "materialization",
+            "resume-validation",
+            "attempt-budget",
         }:
             raise DraftGenerationError("provider failure stage is invalid")
         if not isinstance(self.failure_detail, str) or not self.failure_detail.strip():
@@ -470,11 +593,11 @@ class ProviderFailureEvidence:
                 "provider failed segment is required when a subcall failed"
             )
         if self.failed_segment is not None and (
-            len(failed_calls) != 1
-            or failed_calls[0].metadata.segment != self.failed_segment
+            failed_calls
+            and failed_calls[-1].metadata.segment != self.failed_segment
         ):
             raise DraftGenerationError(
-                "provider failed segment must identify the single failed subcall"
+                "provider failed segment must identify the final failed retry subcall"
             )
         if self.failed_segment is not None and (
             not isinstance(self.failed_segment, str) or not self.failed_segment.strip()
@@ -488,6 +611,7 @@ class DraftProviderResult:
     metadata: ProviderCallMetadata
     candidate_content: str | None = None
     materializer_contract_version: str | None = None
+    subcall_response_texts: tuple[str | None, ...] = ()
 
 
 @dataclass(frozen=True, slots=True)
@@ -503,6 +627,7 @@ class GeneratedDraft:
     provider_response_text: str
     materializer_contract_version: str
     candidate_content: str | None = None
+    subcall_response_texts: tuple[str | None, ...] = ()
 
     @property
     def publication_state(self) -> Literal["invalid", "reviewable"]:
@@ -608,6 +733,7 @@ def generate_docir_draft(
         task_id=task_id,
         artifact_kind="docir",
         source_hash=_text_hash(raw_doc),
+        interface_code=interface_code,
     )
     (
         artifact_content,
@@ -616,6 +742,7 @@ def generate_docir_draft(
         response_text,
         candidate_content,
         materializer_contract_version,
+        _,
     ) = _provider_content(
         provider,
         request,
@@ -678,7 +805,15 @@ def generate_schemair_draft(
         schema_id=schema_id,
         schema_version=schema_version,
     )
-    artifact_content, review_notes, metadata, response_text, _, _ = _provider_content(
+    (
+        artifact_content,
+        review_notes,
+        metadata,
+        response_text,
+        _,
+        _,
+        subcall_response_texts,
+    ) = _provider_content(
         provider,
         request,
         _text_context(docir_final),
@@ -699,6 +834,18 @@ def generate_schemair_draft(
         )
         _require_pending_draft(artifact, label="SchemaIR")
         result = validate_schemair(artifact)
+        from .schemair_draft import render_schemair_review_notes
+
+        normalization_diagnostics = tuple(
+            diagnostic
+            for segment in metadata.segments
+            for diagnostic in segment.normalization_diagnostics
+        )
+        review_notes = render_schemair_review_notes(
+            artifact,
+            result,
+            normalization_diagnostics=normalization_diagnostics,
+        )
         return _generated_json(
             request,
             provider,
@@ -710,6 +857,8 @@ def generate_schemair_draft(
             provider_response_text=response_text,
             materializer_contract_version=SCHEMAIR_MATERIALIZER_CONTRACT,
             candidate_content=artifact_content,
+            subcall_response_texts=subcall_response_texts,
+            review_notes_are_hash_bound=True,
         )
     except DraftGenerationError as exc:
         if metadata.attempt_id is None:
@@ -720,6 +869,7 @@ def generate_schemair_draft(
             response_text=response_text,
             candidate_text=artifact_content,
             error=exc,
+            subcall_response_texts=subcall_response_texts,
         ) from exc
 
 
@@ -746,7 +896,7 @@ def generate_interface_standard_draft(
         standard_version=standard_version,
         rule_package_version=rule_package.version,
     )
-    artifact_content, review_notes, metadata, response_text, _, _ = _provider_content(
+    artifact_content, review_notes, metadata, response_text, _, _, _ = _provider_content(
         provider,
         request,
         _json_context(schemair_final, rule_package),
@@ -841,7 +991,7 @@ def generate_interface_template_draft(
         template_version=template_version,
         rule_package_version=rule_package.version,
     )
-    artifact_content, review_notes, metadata, response_text, _, _ = _provider_content(
+    artifact_content, review_notes, metadata, response_text, _, _, _ = _provider_content(
         provider,
         request,
         _json_context(standard_final, rule_package),
@@ -907,8 +1057,32 @@ def _post_provider_materialization_failure(
     response_text: str,
     candidate_text: str,
     error: DraftGenerationError,
+    subcall_response_texts: tuple[str | None, ...] = (),
 ) -> DraftProviderDiagnosticError:
     detail = f"{request.artifact_kind} candidate cannot be materialized: {error}"
+    if metadata.schemair_field_batch_size is not None:
+        call_evidence = tuple(
+            ProviderFailureCallEvidence(call, response)
+            for call, response in zip(
+                metadata.calls, subcall_response_texts, strict=True
+            )
+        )
+        return DraftProviderDiagnosticError(
+            detail,
+            evidence=ProviderFailureEvidence(
+                request=request,
+                metadata=metadata,
+                failure_stage="materialization",
+                failure_detail=detail,
+                error_type=type(error).__name__,
+                response_complete=True,
+                response_text=None,
+                finish_reason=None,
+                candidate_text=candidate_text,
+                calls=call_evidence,
+                failed_segment=None,
+            ),
+        )
     # 此处的 response_text 是 canonical provider envelope，不是 metadata.calls
     # 所引用的原始 chat 内容；为 envelope 单独建 evidence，避免把 hash 绑定到不同字节。
     call_evidence = (
@@ -1024,9 +1198,14 @@ def publish_provider_failure(
     for sequence, call in enumerate(failure_calls, start=1):
         if call.response_text is None:
             continue
+        response_filename = (
+            _provider_response_filename(sequence, call.metadata)
+            if evidence.metadata.segment_max_retries is not None
+            else f"response-{sequence:03d}-{call.metadata.segment}.txt"
+        )
         response_path = artifact_path(
             workspace_path,
-            f"{attempt_root}/response-{sequence:03d}-{call.metadata.segment}.txt",
+            f"{attempt_root}/{response_filename}",
         )
         key = f"failure_response_{sequence:03d}"
         outputs[key] = response_path
@@ -1191,6 +1370,34 @@ def _successful_attempt_artifacts(
     if generated.candidate_content is not None:
         outputs["candidate"] = artifact_path(workspace_path, f"{root}/candidate.json")
         payloads["candidate"] = generated.candidate_content.encode("utf-8")
+    if generated.provider_metadata.segments:
+        if len(generated.subcall_response_texts) != len(
+            generated.provider_metadata.calls
+        ):
+            raise DraftGenerationError(
+                "SchemaIR v3 call responses must match physical calls"
+            )
+        for sequence, (call, response_text) in enumerate(
+            zip(
+                generated.provider_metadata.calls,
+                generated.subcall_response_texts,
+                strict=True,
+            ),
+            start=1,
+        ):
+            if response_text is None:
+                continue
+            key = f"call_response_{sequence:03d}"
+            outputs[key] = artifact_path(
+                workspace_path,
+                f"{root}/{_provider_response_filename(sequence, call)}",
+            )
+            payloads[key] = response_text.encode("utf-8")
+        # v3 result 是完整 lineage 的提交标记，必须在所引用的原始响应之后替换。
+        result_output = outputs.pop("provider_call_result")
+        result_payload = payloads.pop("provider_call_result")
+        outputs["provider_call_result"] = result_output
+        payloads["provider_call_result"] = result_payload
     return outputs, payloads
 
 
@@ -1207,6 +1414,289 @@ def assert_provider_attempt_unused(
         for path in attempt_root.glob(f"*/{attempt_id}")
     ):
         raise DraftGenerationError(f"provider attempt ID already exists: {attempt_id}")
+
+
+def load_schemair_resume_evidence(
+    workspace_path: Path, attempt_id: str
+) -> ResumeAttemptEvidence:
+    """Load one explicitly named immutable attempt without selecting history."""
+
+    if not isinstance(attempt_id, str) or not STABLE_ID_PATTERN.fullmatch(attempt_id):
+        raise DraftGenerationError("resume attempt ID must be lowercase kebab-case")
+    root, summary = _load_schemair_attempt_summary(workspace_path, attempt_id)
+    contract = summary.get("contractVersion")
+    if contract not in {
+        PROVIDER_CALL_RESULT_CONTRACT,
+        PROVIDER_FAILURE_RESULT_CONTRACT,
+        PROVIDER_CALL_RESULT_V3_CONTRACT,
+        PROVIDER_FAILURE_RESULT_V3_CONTRACT,
+    }:
+        raise DraftGenerationError("resume attempt evidence contract is unsupported")
+    required_strings = {
+        "taskId": summary.get("taskId"),
+        "sourceHash": summary.get("sourceHash"),
+        "requestedModel": summary.get("requestedModel"),
+        "endpointFingerprint": summary.get("endpointFingerprint"),
+        "promptContractVersion": summary.get("promptContractVersion"),
+    }
+    missing = [
+        name
+        for name, value in required_strings.items()
+        if not isinstance(value, str) or not value
+    ]
+    if missing:
+        raise DraftGenerationError(
+            "resume attempt summary is incomplete: " + ", ".join(missing)
+        )
+    if (
+        summary.get("provider") != "openai-chat"
+        or summary.get("artifactKind") != "schemair"
+        or summary.get("attemptId") != attempt_id
+    ):
+        raise DraftGenerationError("resume attempt identity does not match SchemaIR request")
+    if not SHA256_PATTERN.fullmatch(required_strings["sourceHash"]):
+        raise DraftGenerationError("resume attempt source hash is invalid")
+    if not SHA256_PATTERN.fullmatch(required_strings["endpointFingerprint"]):
+        raise DraftGenerationError("resume attempt endpoint fingerprint is invalid")
+    batch_size = summary.get("schemairFieldBatchSize")
+    if isinstance(batch_size, bool) or not isinstance(batch_size, int) or batch_size <= 0:
+        raise DraftGenerationError("resume attempt SchemaIR batch size is invalid")
+    if contract in {PROVIDER_CALL_RESULT_CONTRACT, PROVIDER_FAILURE_RESULT_CONTRACT}:
+        candidates = _load_v2_resume_candidates(root, summary, attempt_id)
+    else:
+        candidates = _load_v3_resume_candidates(
+            workspace_path, summary, attempt_id
+        )
+    return ResumeAttemptEvidence(
+        contract_version=contract,
+        task_id=required_strings["taskId"],
+        source_hash=required_strings["sourceHash"],
+        requested_model=required_strings["requestedModel"],
+        endpoint_fingerprint=required_strings["endpointFingerprint"],
+        prompt_contract_version=required_strings["promptContractVersion"],
+        schemair_field_batch_size=batch_size,
+        attempt_id=attempt_id,
+        selectors=(
+            summary.get("selectors")
+            if isinstance(summary.get("selectors"), dict)
+            else None
+        ),
+        segments=tuple(candidates),
+    )
+
+
+def _load_schemair_attempt_summary(
+    workspace_path: Path, attempt_id: str
+) -> tuple[Path, dict[str, Any]]:
+    root = artifact_path(
+        workspace_path, f"provider-attempts/schemair/{attempt_id}"
+    )
+    result_paths = [
+        path
+        for name in ("provider-call-result.json", "provider-failure-result.json")
+        if (path := root / name).is_file()
+    ]
+    if len(result_paths) != 1:
+        raise DraftGenerationError(
+            "resume attempt must contain exactly one provider result summary"
+        )
+    summary = _strict_json_object(
+        _read_utf8_text(result_paths[0]), label=result_paths[0].name
+    )
+    return root, summary
+
+
+def _load_v2_resume_candidates(
+    root: Path, summary: dict[str, Any], attempt_id: str
+) -> list[ResumeSegmentCandidate]:
+    calls = summary.get("calls")
+    if not isinstance(calls, list):
+        raise DraftGenerationError("resume v2 calls must be an array")
+    candidates: list[ResumeSegmentCandidate] = []
+    seen_segments: set[str] = set()
+    for expected_sequence, call in enumerate(calls, start=1):
+        if not isinstance(call, dict):
+            raise DraftGenerationError("resume v2 call must be an object")
+        if call.get("responseComplete") is not True or call.get("finishReason") != "stop":
+            continue
+        sequence = call.get("sequence")
+        segment = call.get("segment")
+        response_hash = call.get("responseContentHash")
+        segment_contract = call.get("segmentContractVersion")
+        if (
+            isinstance(sequence, bool)
+            or not isinstance(sequence, int)
+            or sequence <= 0
+            or not isinstance(response_hash, str)
+            or not SHA256_PATTERN.fullmatch(response_hash)
+            or not isinstance(segment_contract, str)
+            or sequence != expected_sequence
+        ):
+            raise DraftGenerationError("resume v2 completed call metadata is invalid")
+        if not isinstance(segment, str) or not STABLE_ID_PATTERN.fullmatch(segment):
+            raise DraftGenerationError("resume v2 segment identifier is invalid")
+        if segment in seen_segments:
+            raise DraftGenerationError("resume v2 contains duplicate completed segments")
+        seen_segments.add(segment)
+        response_text = _read_verified_resume_response(
+            root,
+            f"response-{sequence:03d}-{segment}.txt",
+            response_hash,
+        )
+        prompt_tokens, completion_tokens, total_tokens = _resume_usage(
+            call.get("usage"), label="resume v2 call usage"
+        )
+        candidates.append(
+            ResumeSegmentCandidate(
+                segment_id=segment,
+                response_text=response_text,
+                response_hash=response_hash,
+                origin_attempt_id=attempt_id,
+                origin_call_sequence=sequence,
+                segment_contract_version=segment_contract,
+                prompt_tokens=prompt_tokens,
+                completion_tokens=completion_tokens,
+                total_tokens=total_tokens,
+            )
+        )
+    return candidates
+
+
+def _load_v3_resume_candidates(
+    workspace_path: Path, summary: dict[str, Any], attempt_id: str
+) -> list[ResumeSegmentCandidate]:
+    segments = summary.get("segments")
+    if not isinstance(segments, list):
+        raise DraftGenerationError("resume v3 segments must be an array")
+    candidates: list[ResumeSegmentCandidate] = []
+    seen_segments: set[str] = set()
+    for segment in segments:
+        if not isinstance(segment, dict):
+            raise DraftGenerationError("resume v3 segment must be an object")
+        segment_id = segment.get("segment")
+        origin_attempt_id = segment.get("originAttemptId")
+        origin_sequence = segment.get("originCallSequence")
+        response_hash = segment.get("originResponseContentHash")
+        fingerprint = segment.get("fingerprint")
+        source = segment.get("source")
+        if (
+            not isinstance(segment_id, str)
+            or not STABLE_ID_PATTERN.fullmatch(segment_id)
+            or not isinstance(origin_attempt_id, str)
+            or not STABLE_ID_PATTERN.fullmatch(origin_attempt_id)
+            or isinstance(origin_sequence, bool)
+            or not isinstance(origin_sequence, int)
+            or origin_sequence <= 0
+            or not isinstance(response_hash, str)
+            or not SHA256_PATTERN.fullmatch(response_hash)
+            or not isinstance(fingerprint, dict)
+            or source not in {"LIVE", "REUSED"}
+            or (source == "LIVE" and origin_attempt_id != attempt_id)
+            or (source == "REUSED" and origin_attempt_id == attempt_id)
+        ):
+            raise DraftGenerationError("resume v3 segment lineage is invalid")
+        if segment_id in seen_segments:
+            raise DraftGenerationError("resume v3 contains duplicate segments")
+        seen_segments.add(segment_id)
+        origin_root, origin_summary = _load_schemair_attempt_summary(
+            workspace_path, origin_attempt_id
+        )
+        if (
+            origin_summary.get("provider") != "openai-chat"
+            or origin_summary.get("artifactKind") != "schemair"
+            or origin_summary.get("attemptId") != origin_attempt_id
+        ):
+            raise DraftGenerationError("resume v3 origin attempt identity is invalid")
+        origin_calls = origin_summary.get("calls")
+        if not isinstance(origin_calls, list) or origin_sequence > len(origin_calls):
+            raise DraftGenerationError("resume v3 origin call does not exist")
+        origin_call = origin_calls[origin_sequence - 1]
+        if (
+            not isinstance(origin_call, dict)
+            or origin_call.get("sequence") != origin_sequence
+            or origin_call.get("segment") != segment_id
+            or origin_call.get("responseComplete") is not True
+            or origin_call.get("finishReason") != "stop"
+            or origin_call.get("responseContentHash") != response_hash
+        ):
+            raise DraftGenerationError("resume v3 origin call segment does not match")
+        response_file = origin_call.get("responseFile")
+        if not isinstance(response_file, str):
+            response_file = (
+                f"response-{origin_sequence:03d}-{segment_id}.txt"
+                if origin_summary.get("contractVersion")
+                in {PROVIDER_CALL_RESULT_CONTRACT, PROVIDER_FAILURE_RESULT_CONTRACT}
+                else None
+            )
+        if response_file is None or Path(response_file).name != response_file:
+            raise DraftGenerationError("resume v3 origin response file is invalid")
+        response_text = _read_verified_resume_response(
+            origin_root, response_file, response_hash
+        )
+        segment_usage = _resume_usage(
+            segment.get("usage"), label="resume v3 segment usage"
+        )
+        origin_usage = _resume_usage(
+            origin_call.get("usage"), label="resume v3 origin call usage"
+        )
+        if segment_usage != origin_usage:
+            raise DraftGenerationError(
+                "resume v3 segment usage does not match origin call"
+            )
+        segment_contract = origin_call.get("segmentContractVersion")
+        if not isinstance(segment_contract, str):
+            raise DraftGenerationError("resume v3 origin segment contract is invalid")
+        candidates.append(
+            ResumeSegmentCandidate(
+                segment_id=segment_id,
+                response_text=response_text,
+                response_hash=response_hash,
+                origin_attempt_id=origin_attempt_id,
+                origin_call_sequence=origin_sequence,
+                segment_contract_version=segment_contract,
+                prompt_tokens=origin_usage[0],
+                completion_tokens=origin_usage[1],
+                total_tokens=origin_usage[2],
+                fingerprint=dict(fingerprint),
+            )
+        )
+    return candidates
+
+
+def _read_verified_resume_response(
+    attempt_root: Path, filename: str, expected_hash: str
+) -> str:
+    if Path(filename).name != filename:
+        raise DraftGenerationError("resume response filename is outside attempt root")
+    try:
+        resolved_root = attempt_root.resolve(strict=True)
+        path = (attempt_root / filename).resolve(strict=True)
+        path.relative_to(resolved_root)
+    except (OSError, ValueError) as exc:
+        raise DraftGenerationError(
+            "resume response file is missing or outside attempt root"
+        ) from exc
+    response_text = _read_utf8_text(path)
+    if _text_hash(response_text) != expected_hash:
+        raise DraftGenerationError("resume response hash does not match immutable summary")
+    return response_text
+
+
+def _resume_usage(value: Any, *, label: str) -> tuple[int | None, int | None, int | None]:
+    properties = ("promptTokens", "completionTokens", "totalTokens")
+    if not isinstance(value, dict) or set(value) != set(properties):
+        raise DraftGenerationError(f"{label} must contain exact token properties")
+    result: list[int | None] = []
+    for property_name in properties:
+        token_value = value[property_name]
+        if token_value is not None and (
+            isinstance(token_value, bool)
+            or not isinstance(token_value, int)
+            or token_value < 0
+        ):
+            raise DraftGenerationError(f"{label} contains an invalid token count")
+        result.append(token_value)
+    return result[0], result[1], result[2]
 
 
 def _generation_result(generated: GeneratedDraft, task: dict[str, Any]) -> dict[str, Any]:
@@ -1259,7 +1749,8 @@ def _provider_call_result(generated: GeneratedDraft) -> dict[str, Any]:
     selector = generated.request.case_fingerprint()
     selector.pop("artifactKind")
     selector.pop("sourceHash")
-    calls = metadata.calls or (
+    is_v3 = metadata.segment_max_retries is not None
+    calls = metadata.calls if is_v3 else metadata.calls or (
         ProviderSubcallMetadata(
             segment="complete-artifact",
             outcome="succeeded",
@@ -1276,8 +1767,12 @@ def _provider_call_result(generated: GeneratedDraft) -> dict[str, Any]:
             prompt_contract_version=metadata.prompt_contract_version,
         ),
     )
-    return {
-        "contractVersion": PROVIDER_CALL_RESULT_CONTRACT,
+    result = {
+        "contractVersion": (
+            PROVIDER_CALL_RESULT_V3_CONTRACT
+            if is_v3
+            else PROVIDER_CALL_RESULT_CONTRACT
+        ),
         "taskId": generated.request.task_id,
         "artifactKind": generated.request.artifact_kind,
         "sourceHash": generated.request.source_hash,
@@ -1292,6 +1787,7 @@ def _provider_call_result(generated: GeneratedDraft) -> dict[str, Any]:
         "startedAt": metadata.started_at,
         "completedAt": metadata.completed_at,
         "docirFieldBatchSize": metadata.docir_field_batch_size,
+        "schemairFieldBatchSize": metadata.schemair_field_batch_size,
         "usage": {
             "promptTokens": metadata.prompt_tokens,
             "completionTokens": metadata.completion_tokens,
@@ -1303,13 +1799,37 @@ def _provider_call_result(generated: GeneratedDraft) -> dict[str, Any]:
         ],
         "artifactContentHash": generated.content_hash,
     }
+    if is_v3:
+        result["segmentMaxRetries"] = metadata.segment_max_retries
+        result["attemptDeadlineSeconds"] = metadata.attempt_deadline_seconds
+        result["attemptTokenBudget"] = metadata.attempt_token_budget
+        result["resumeFromAttempt"] = metadata.resume_from_attempt
+        result["attemptUsage"] = result.pop("usage")
+        result["effectiveUsage"] = {
+            "promptTokens": metadata.effective_prompt_tokens,
+            "completionTokens": metadata.effective_completion_tokens,
+            "totalTokens": metadata.effective_total_tokens,
+        }
+        result["calls"] = [
+            _provider_subcall_result(sequence, call, include_v3=True)
+            for sequence, call in enumerate(calls, start=1)
+        ]
+        result["segments"] = [
+            _provider_segment_result(segment) for segment in metadata.segments
+        ]
+    return result
 
 
 def _provider_failure_result(evidence: ProviderFailureEvidence) -> dict[str, Any]:
     metadata = evidence.metadata
     calls = _provider_failure_calls(evidence)
-    return {
-        "contractVersion": PROVIDER_FAILURE_RESULT_CONTRACT,
+    result = {
+        "contractVersion": (
+            PROVIDER_FAILURE_RESULT_V3_CONTRACT
+            if metadata.segments
+            or metadata.segment_max_retries is not None
+            else PROVIDER_FAILURE_RESULT_CONTRACT
+        ),
         "taskId": evidence.request.task_id,
         "artifactKind": evidence.request.artifact_kind,
         "sourceHash": evidence.request.source_hash,
@@ -1323,6 +1843,7 @@ def _provider_failure_result(evidence: ProviderFailureEvidence) -> dict[str, Any
         "startedAt": metadata.started_at,
         "completedAt": metadata.completed_at,
         "docirFieldBatchSize": metadata.docir_field_batch_size,
+        "schemairFieldBatchSize": metadata.schemair_field_batch_size,
         "failureStage": evidence.failure_stage,
         "failureDetail": evidence.failure_detail,
         "errorType": evidence.error_type,
@@ -1349,6 +1870,29 @@ def _provider_failure_result(evidence: ProviderFailureEvidence) -> dict[str, Any
             for sequence, call in enumerate(calls, start=1)
         ],
     }
+    if result["contractVersion"] == PROVIDER_FAILURE_RESULT_V3_CONTRACT:
+        selector = evidence.request.case_fingerprint()
+        selector.pop("artifactKind")
+        selector.pop("sourceHash")
+        result["selectors"] = selector
+        result["segmentMaxRetries"] = metadata.segment_max_retries
+        result["attemptDeadlineSeconds"] = metadata.attempt_deadline_seconds
+        result["attemptTokenBudget"] = metadata.attempt_token_budget
+        result["resumeFromAttempt"] = metadata.resume_from_attempt
+        result["attemptUsage"] = result.pop("usage")
+        result["effectiveUsage"] = {
+            "promptTokens": metadata.effective_prompt_tokens,
+            "completionTokens": metadata.effective_completion_tokens,
+            "totalTokens": metadata.effective_total_tokens,
+        }
+        result["calls"] = [
+            _provider_subcall_result(sequence, call.metadata, include_v3=True)
+            for sequence, call in enumerate(calls, start=1)
+        ]
+        result["segments"] = [
+            _provider_segment_result(segment) for segment in metadata.segments
+        ]
+    return result
 
 
 def _provider_failure_calls(
@@ -1357,6 +1901,8 @@ def _provider_failure_calls(
     if evidence.calls:
         return evidence.calls
     metadata = evidence.metadata
+    if metadata.segment_max_retries is not None:
+        return ()
     return (
         ProviderFailureCallEvidence(
             metadata=ProviderSubcallMetadata(
@@ -1383,8 +1929,10 @@ def _provider_failure_calls(
 def _provider_subcall_result(
     sequence: int,
     metadata: ProviderSubcallMetadata,
+    *,
+    include_v3: bool = False,
 ) -> dict[str, Any]:
-    return {
+    result = {
         "sequence": sequence,
         "segment": metadata.segment,
         "outcome": metadata.outcome,
@@ -1404,6 +1952,44 @@ def _provider_subcall_result(
             "totalTokens": metadata.total_tokens,
         },
     }
+    if include_v3:
+        result["segmentAttempt"] = metadata.segment_attempt
+        result["responseFile"] = (
+            _provider_response_filename(sequence, metadata)
+            if metadata.response_content_hash is not None
+            else None
+        )
+    return result
+
+
+def _provider_segment_result(metadata: ProviderSegmentMetadata) -> dict[str, Any]:
+    return {
+        "segment": metadata.segment,
+        "source": metadata.source,
+        "originAttemptId": metadata.origin_attempt_id,
+        "originCallSequence": metadata.origin_call_sequence,
+        "originResponseContentHash": metadata.response_content_hash,
+        "fingerprint": metadata.fingerprint.as_dict(),
+        "disposition": metadata.disposition.value,
+        "normalizationDiagnostics": [
+            diagnostic.as_dict()
+            for diagnostic in metadata.normalization_diagnostics
+        ],
+        "usage": {
+            "promptTokens": metadata.prompt_tokens,
+            "completionTokens": metadata.completion_tokens,
+            "totalTokens": metadata.total_tokens,
+        },
+    }
+
+
+def _provider_response_filename(
+    sequence: int, metadata: ProviderSubcallMetadata
+) -> str:
+    return (
+        f"response-{sequence:03d}-{metadata.segment}"
+        f"-attempt-{metadata.segment_attempt:02d}.txt"
+    )
 
 
 def _serialize_artifact(artifact: str | dict[str, Any]) -> bytes:
@@ -1432,6 +2018,7 @@ def _provider_content(
     str,
     str | None,
     str | None,
+    tuple[str | None, ...],
 ]:
     provider_name = getattr(provider, "name", None)
     if not isinstance(provider_name, str) or not provider_name:
@@ -1555,6 +2142,31 @@ def _provider_content(
         raise DraftGenerationError(
             "provider materializer_contract_version must be non-empty"
         )
+    if not isinstance(provider_result.subcall_response_texts, tuple) or any(
+        response is not None and (not isinstance(response, str) or not response)
+        for response in provider_result.subcall_response_texts
+    ):
+        raise DraftGenerationError(
+            "provider subcall_response_texts must be a tuple of non-empty text"
+        )
+    if provider_result.metadata.schemair_field_batch_size is not None:
+        if len(provider_result.subcall_response_texts) != len(
+            provider_result.metadata.calls
+        ):
+            raise DraftGenerationError(
+                "segmented SchemaIR provider responses must match metadata calls"
+            )
+        for call, response in zip(
+            provider_result.metadata.calls,
+            provider_result.subcall_response_texts,
+            strict=True,
+        ):
+            if call.response_content_hash != (
+                _text_hash(response) if response is not None else None
+            ):
+                raise DraftGenerationError(
+                    "segmented SchemaIR provider response hash does not match call metadata"
+                )
     return (
         artifact_content,
         review_notes,
@@ -1562,6 +2174,7 @@ def _provider_content(
         provider_result.response_text,
         provider_result.candidate_content,
         provider_result.materializer_contract_version,
+        provider_result.subcall_response_texts,
     )
 
 
@@ -1577,6 +2190,8 @@ def _generated_json(
     provider_response_text: str,
     materializer_contract_version: str,
     candidate_content: str,
+    subcall_response_texts: tuple[str | None, ...] = (),
+    review_notes_are_hash_bound: bool = False,
 ) -> GeneratedDraft:
     validated = result.get("validatedArtifact")
     draft_hash = validated.get("contentHash") if isinstance(validated, dict) else None
@@ -1594,6 +2209,8 @@ def _generated_json(
         provider_response_text=provider_response_text,
         materializer_contract_version=materializer_contract_version,
         candidate_content=candidate_content,
+        subcall_response_texts=subcall_response_texts,
+        review_notes_are_hash_bound=review_notes_are_hash_bound,
     )
 
 
@@ -1610,15 +2227,20 @@ def _generated(
     provider_response_text: str,
     materializer_contract_version: str,
     candidate_content: str | None = None,
+    subcall_response_texts: tuple[str | None, ...] = (),
+    review_notes_are_hash_bound: bool = False,
 ) -> GeneratedDraft:
-    bound_notes = (
-        "# Generated Draft Review Context\n\n"
-        f"Artifact content hash: `{draft_hash}`\n\n"
-        f"Provider: `{provider.name}`\n\n"
-        f"Artifact kind: `{request.artifact_kind}`\n\n"
-        "---\n\n"
-        f"{review_notes.strip()}\n"
-    )
+    if review_notes_are_hash_bound:
+        bound_notes = f"{review_notes.strip()}\n"
+    else:
+        bound_notes = (
+            "# Generated Draft Review Context\n\n"
+            f"Artifact content hash: `{draft_hash}`\n\n"
+            f"Provider: `{provider.name}`\n\n"
+            f"Artifact kind: `{request.artifact_kind}`\n\n"
+            "---\n\n"
+            f"{review_notes.strip()}\n"
+        )
     generated = GeneratedDraft(
         request=request,
         provider_name=provider.name,
@@ -1631,6 +2253,7 @@ def _generated(
         provider_response_text=provider_response_text,
         materializer_contract_version=materializer_contract_version,
         candidate_content=candidate_content,
+        subcall_response_texts=subcall_response_texts,
     )
     LOGGER.info(
         "Generated IR Draft",
@@ -1736,6 +2359,7 @@ def _request_from_case(value: Any, *, label: str) -> DraftGenerationRequest:
         task_id="fixture-case-validation",
         artifact_kind=value.get("artifactKind"),
         source_hash=value.get("sourceHash"),
+        interface_code=value.get("interfaceCode"),
         schema_id=value.get("schemaId"),
         schema_version=value.get("schemaVersion"),
         standard_id=value.get("standardId"),

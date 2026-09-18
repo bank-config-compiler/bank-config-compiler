@@ -212,6 +212,34 @@ def test_schemair_generator_validates_pending_draft_and_rejects_final_output() -
 
     assert generated.artifact["status"] == "DRAFT"
     assert generated.artifact["review"]["status"] == "PENDING"
+    assert generated.review_notes.startswith("# SchemaIR Draft 校验审查说明\n")
+    assert "# Generated Draft Review Context" not in generated.review_notes
+    assert f"内容 hash: `{generated.content_hash}`" in generated.review_notes
+
+
+def test_schemair_generator_keeps_materializable_validator_errors_as_invalid_draft() -> None:
+    docir_final = (REPO_ROOT / "samples/golden/b2eboc-b2e0061/docir.expected.md").read_text(
+        encoding="utf-8"
+    )
+    schemair_final = load_json("samples/trusted-chain/b2eboc-b2e0061/schemair-final.json")
+    candidate = schema_candidate(schemair_final)
+    candidate["envelope"]["fields"][0]["confidence"] = 2.0
+
+    generated = generate_schemair_draft(
+        docir_final=docir_final,
+        provider=StaticProvider(
+            artifact_content=json.dumps(candidate, ensure_ascii=False),
+            review_notes="# SchemaIR Review\n",
+        ),
+        task_id="phase0-test",
+        interface_code="b2e0061",
+        schema_id="b2eboc-b2e0061-schema",
+        schema_version="v1",
+    )
+
+    assert generated.publication_state == "invalid"
+    assert generated.validation_result["summary"]["errorCount"] > 0
+    assert "## 问题清单" in generated.review_notes
 
 
 def test_standard_and_template_generators_require_exact_final_dependencies() -> None:
@@ -541,7 +569,12 @@ def test_controlled_b2e0061_fixture_generates_all_six_drafts() -> None:
     standard_rules = load_rule_package(REPO_ROOT / "configuration-rules/v1")
     template_rules = load_rule_package(REPO_ROOT / "configuration-rules/v2")
 
-    docir = generate_docir_draft(raw_doc=raw_doc, provider=provider, task_id="fixture-test")
+    docir = generate_docir_draft(
+        raw_doc=raw_doc,
+        provider=provider,
+        task_id="fixture-test",
+        interface_code="b2e0061",
+    )
     schemair = generate_schemair_draft(
         docir_final=docir_candidate,
         provider=provider,

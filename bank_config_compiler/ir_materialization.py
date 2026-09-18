@@ -7,7 +7,12 @@ from typing import Any
 
 from .artifact_validation import content_hash
 from .configuration_rules import RulePackage
-from .docir_draft import FIELDS_HEADER, METADATA_HEADER
+from .docir_draft import (
+    FIELDS_HEADER,
+    METADATA_HEADER,
+    DocIRDraftError,
+    canonical_docir_root_path,
+)
 from .draft_generation import DraftGenerationError
 
 
@@ -410,13 +415,15 @@ def _materialize_schema_fields(
             # DocIR 的 Object.Required 是 N/A；容器出现性属于 SchemaIR 的独立语义，
             # 不能从内部必填叶子反推，但 maximum 仍必须受 Final DocIR Mult. 约束。
             required = supplied.get("required")
-            if not isinstance(required, bool):
+            if required is not None and not isinstance(required, bool):
                 raise DraftGenerationError(
-                    f"{label}[{position}] Object required must be proposed as a boolean"
+                    f"{label}[{position}] Object required must be boolean or null"
                 )
             materialized.update(derived)
             materialized["required"] = required
-            materialized["occurs"] = _schema_occurs(1 if required else 0, maximum)
+            materialized["occurs"] = (
+                None if required is None else _schema_occurs(1 if required else 0, maximum)
+            )
         else:
             materialized.update(derived)
         _require_candidate_object(
@@ -435,9 +442,9 @@ def _materialize_schema_fields(
     return result
 
 
-def _materialize_schema_encoding_evidence(value: Any, *, label: str) -> list[dict[str, Any]]:
+def _materialize_schema_encoding_evidence(value: Any, *, label: str) -> Any:
     if not isinstance(value, list):
-        raise DraftGenerationError(f"{label} must be an array")
+        return deepcopy(value)
     result: list[dict[str, Any]] = []
     for index, item in enumerate(value):
         evidence = _require_candidate_object(
@@ -450,9 +457,9 @@ def _materialize_schema_encoding_evidence(value: Any, *, label: str) -> list[dic
     return result
 
 
-def _materialize_schema_conditions(value: Any, *, label: str) -> list[dict[str, Any]]:
+def _materialize_schema_conditions(value: Any, *, label: str) -> Any:
     if not isinstance(value, list):
-        raise DraftGenerationError(f"{label} must be an array")
+        return deepcopy(value)
     result: list[dict[str, Any]] = []
     for index, item in enumerate(value):
         condition = _require_candidate_object(
@@ -629,12 +636,10 @@ def _split_row(line: str) -> list[str]:
 
 
 def _canonical_root_path(value: str) -> str:
-    value = value.strip()
-    if not value:
-        raise DraftGenerationError("Final DocIR Root Path must be non-empty")
-    if value == "Root" or value.startswith("Root."):
-        return value
-    return f"Root.{value.replace('/', '.')}"
+    try:
+        return canonical_docir_root_path(value)
+    except DocIRDraftError as exc:
+        raise DraftGenerationError(f"Final {exc}") from exc
 
 
 def _occurs(value: str) -> tuple[int | None, int | str | None]:

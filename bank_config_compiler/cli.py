@@ -21,6 +21,7 @@ from .draft_generation import (
     generate_interface_standard_draft,
     generate_interface_template_draft,
     generate_schemair_draft,
+    load_schemair_resume_evidence,
     publish_generated_draft,
     publish_provider_failure,
 )
@@ -31,9 +32,14 @@ from .draft_review import (
     validate_current_draft,
 )
 from .openai_chat_provider import (
+    DEFAULT_ATTEMPT_DEADLINE_SECONDS,
+    DEFAULT_ATTEMPT_TOKEN_BUDGET,
     DEFAULT_DOCIR_FIELD_BATCH_SIZE,
+    DEFAULT_SCHEMAIR_FIELD_BATCH_SIZE,
+    DEFAULT_SEGMENT_MAX_RETRIES,
     OpenAIChatDraftProvider,
 )
+from .segmented_artifact import ResumeAttemptEvidence
 from .workspace import (
     Phase0Selection,
     WorkspaceError,
@@ -117,6 +123,42 @@ def build_parser() -> argparse.ArgumentParser:
 
     schemair = draft_kinds.add_parser("schemair", help="Generate SchemaIR Draft from docir-final.md.")
     _add_draft_provider_arguments(schemair)
+    schemair.add_argument(
+        "--schemair-field-batch-size",
+        type=_positive_integer,
+        help=(
+            "Maximum fields per Envelope/ASSEMBLY/PARSE semantics subcall; "
+            f"defaults to {DEFAULT_SCHEMAIR_FIELD_BATCH_SIZE} for openai-chat."
+        ),
+    )
+    schemair.add_argument(
+        "--segment-max-retries",
+        type=_non_negative_integer,
+        help=(
+            "Maximum retries for one failed SchemaIR logical segment; "
+            f"defaults to {DEFAULT_SEGMENT_MAX_RETRIES}."
+        ),
+    )
+    schemair.add_argument(
+        "--attempt-deadline-seconds",
+        type=_positive_float,
+        help=(
+            "Absolute SchemaIR attempt wall-clock deadline; "
+            f"defaults to {DEFAULT_ATTEMPT_DEADLINE_SECONDS:g}."
+        ),
+    )
+    schemair.add_argument(
+        "--attempt-token-budget",
+        type=_positive_integer,
+        help=(
+            "Maximum reported tokens before starting another physical call; "
+            f"defaults to {DEFAULT_ATTEMPT_TOKEN_BUDGET}."
+        ),
+    )
+    schemair.add_argument(
+        "--resume-from-attempt",
+        help="Explicit prior SchemaIR attempt ID whose proven segments may be reused.",
+    )
     schemair.add_argument("--schema-id", required=True, help="Locked SchemaIR stable ID.")
     schemair.add_argument("--schema-version", required=True, help="Locked SchemaIR version.")
 
@@ -246,6 +288,26 @@ def _positive_integer(raw_value: str) -> int:
         raise argparse.ArgumentTypeError("must be a positive integer") from exc
     if value <= 0:
         raise argparse.ArgumentTypeError("must be a positive integer")
+    return value
+
+
+def _non_negative_integer(raw_value: str) -> int:
+    try:
+        value = int(raw_value)
+    except ValueError as exc:
+        raise argparse.ArgumentTypeError("must be a non-negative integer") from exc
+    if value < 0:
+        raise argparse.ArgumentTypeError("must be a non-negative integer")
+    return value
+
+
+def _positive_float(raw_value: str) -> float:
+    try:
+        value = float(raw_value)
+    except ValueError as exc:
+        raise argparse.ArgumentTypeError("must be a positive number") from exc
+    if value <= 0:
+        raise argparse.ArgumentTypeError("must be a positive number")
     return value
 
 
@@ -390,7 +452,16 @@ def _generate_draft(args: argparse.Namespace) -> tuple[Path, int]:
     if args.draft_kind == "schemair":
         # approval result 是可信链提交标记；先校验，再构造任何可能访问外部 provider 的对象。
         approved_docir_final = load_approved_docir_final(workspace, task=task)
-    provider = _draft_provider(args)
+    resume_evidence = None
+    if args.draft_kind == "schemair" and getattr(args, "resume_from_attempt", None):
+        resume_evidence = load_schemair_resume_evidence(
+            workspace, args.resume_from_attempt
+        )
+    provider = (
+        _draft_provider(args, resume_evidence=resume_evidence)
+        if resume_evidence is not None
+        else _draft_provider(args)
+    )
     if args.provider == "openai-chat":
         assert_provider_attempt_unused(
             workspace, getattr(provider, "attempt_id", None)
@@ -451,7 +522,9 @@ def _generate_draft(args: argparse.Namespace) -> tuple[Path, int]:
     return outputs["artifact"], 3 if generated.publication_state == "invalid" else 0
 
 
-def _draft_provider(args: argparse.Namespace) -> DraftProvider:
+def _draft_provider(
+    args: argparse.Namespace, *, resume_evidence: ResumeAttemptEvidence | None = None
+) -> DraftProvider:
     if args.provider == "fixture":
         if args.fixture_root is None:
             raise DraftGenerationError("fixture provider requires --fixture-root")
@@ -463,6 +536,11 @@ def _draft_provider(args: argparse.Namespace) -> DraftProvider:
                 args.chat_timeout_seconds,
                 args.attempt_id,
                 getattr(args, "docir_field_batch_size", None),
+                getattr(args, "schemair_field_batch_size", None),
+                getattr(args, "segment_max_retries", None),
+                getattr(args, "attempt_deadline_seconds", None),
+                getattr(args, "attempt_token_budget", None),
+                getattr(args, "resume_from_attempt", None),
             )
         ):
             raise DraftGenerationError(
@@ -522,6 +600,28 @@ def _draft_provider(args: argparse.Namespace) -> DraftProvider:
             getattr(args, "docir_field_batch_size", None)
             or DEFAULT_DOCIR_FIELD_BATCH_SIZE
         )
+    if getattr(args, "draft_kind", None) == "schemair":
+        provider_arguments["schemair_field_batch_size"] = (
+            getattr(args, "schemair_field_batch_size", None)
+            or DEFAULT_SCHEMAIR_FIELD_BATCH_SIZE
+        )
+        provider_arguments["segment_max_retries"] = (
+            getattr(args, "segment_max_retries", None)
+            if getattr(args, "segment_max_retries", None) is not None
+            else DEFAULT_SEGMENT_MAX_RETRIES
+        )
+        provider_arguments["attempt_deadline_seconds"] = (
+            getattr(args, "attempt_deadline_seconds", None)
+            or DEFAULT_ATTEMPT_DEADLINE_SECONDS
+        )
+        provider_arguments["attempt_token_budget"] = (
+            getattr(args, "attempt_token_budget", None)
+            or DEFAULT_ATTEMPT_TOKEN_BUDGET
+        )
+        provider_arguments["resume_from_attempt"] = getattr(
+            args, "resume_from_attempt", None
+        )
+        provider_arguments["resume_evidence"] = resume_evidence
     return OpenAIChatDraftProvider(
         **provider_arguments,
     )

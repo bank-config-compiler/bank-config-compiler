@@ -171,7 +171,11 @@ def prepare_docir_case(tmp_path: Path) -> tuple[Path, Path]:
                 "caseId": "cli-docir-case",
                 "responses": [
                     {
-                        "request": {"artifactKind": "docir", "sourceHash": source_hash},
+                        "request": {
+                            "artifactKind": "docir",
+                            "sourceHash": source_hash,
+                            "interfaceCode": "b2e0061",
+                        },
                         "artifactFile": "docir.md",
                         "reviewNotesFile": "notes.md",
                     }
@@ -432,6 +436,140 @@ def test_docir_batch_size_is_not_available_to_other_artifacts() -> None:
                 "--docir-field-batch-size",
                 "8",
             ]
+        )
+
+
+@pytest.mark.parametrize(("configured", "expected"), [(None, 16), (5, 5)])
+def test_schemair_batch_size_is_forwarded_with_default(
+    configured: int | None,
+    expected: int,
+    monkeypatch,
+) -> None:
+    captured: dict[str, object] = {}
+
+    def provider_factory(**kwargs: object) -> object:
+        captured.update(kwargs)
+        return object()
+
+    monkeypatch.setenv("BANK_CONFIG_COMPILER_LLM_API_KEY", "runtime-key")
+    monkeypatch.setattr(cli, "OpenAIChatDraftProvider", provider_factory)
+    cli._draft_provider(
+        SimpleNamespace(
+            draft_kind="schemair",
+            provider="openai-chat",
+            fixture_root=None,
+            chat_base_url="https://example.invalid/v1",
+            chat_model="qwen-test-snapshot",
+            chat_timeout_seconds=45.5,
+            attempt_id="schemair-004",
+            schemair_field_batch_size=configured,
+            segment_max_retries=None,
+            attempt_deadline_seconds=None,
+            attempt_token_budget=None,
+            resume_from_attempt=None,
+        )
+    )
+
+    assert captured["schemair_field_batch_size"] == expected
+    assert captured["segment_max_retries"] == 1
+    assert captured["attempt_deadline_seconds"] == 3600.0
+    assert captured["attempt_token_budget"] == 150000
+    assert "docir_field_batch_size" not in captured
+
+
+def test_schemair_batch_size_must_be_positive() -> None:
+    with pytest.raises(SystemExit):
+        cli.build_parser().parse_args(
+            [
+                "generate-draft",
+                "schemair",
+                "--workspace",
+                "workspace",
+                "--provider",
+                "openai-chat",
+                "--schemair-field-batch-size",
+                "0",
+            ]
+        )
+
+
+def test_schemair_batch_size_is_not_available_to_other_artifacts() -> None:
+    with pytest.raises(SystemExit):
+        cli.build_parser().parse_args(
+            [
+                "generate-draft",
+                "standard",
+                "--workspace",
+                "workspace",
+                "--provider",
+                "openai-chat",
+                "--schemair-field-batch-size",
+                "8",
+            ]
+        )
+
+
+@pytest.mark.parametrize(
+    ("argument", "value"),
+    [
+        ("--segment-max-retries", "-1"),
+        ("--attempt-deadline-seconds", "0"),
+        ("--attempt-token-budget", "0"),
+    ],
+)
+def test_schemair_attempt_limits_reject_invalid_values(
+    argument: str, value: str
+) -> None:
+    with pytest.raises(SystemExit):
+        cli.build_parser().parse_args(
+            [
+                "generate-draft",
+                "schemair",
+                "--workspace",
+                "workspace",
+                "--provider",
+                "openai-chat",
+                argument,
+                value,
+            ]
+        )
+
+
+def test_schemair_recovery_arguments_are_not_available_to_other_artifacts() -> None:
+    for argument, value in (
+        ("--segment-max-retries", "1"),
+        ("--attempt-deadline-seconds", "3600"),
+        ("--attempt-token-budget", "150000"),
+        ("--resume-from-attempt", "schemair-007"),
+    ):
+        with pytest.raises(SystemExit):
+            cli.build_parser().parse_args(
+                [
+                    "generate-draft",
+                    "standard",
+                    "--workspace",
+                    "workspace",
+                    "--provider",
+                    "openai-chat",
+                    argument,
+                    value,
+                ]
+            )
+
+
+def test_fixture_provider_rejects_explicit_schemair_batch_size(tmp_path: Path) -> None:
+    with pytest.raises(DraftGenerationError, match="does not accept chat configuration"):
+        cli._draft_provider(
+            SimpleNamespace(
+                draft_kind="schemair",
+                provider="fixture",
+                fixture_root=tmp_path,
+                chat_base_url=None,
+                chat_model=None,
+                chat_timeout_seconds=None,
+                attempt_id=None,
+                schemair_field_batch_size=8,
+            )
         )
 
 
@@ -801,9 +939,9 @@ def test_schemair_materialization_failure_saves_candidate_and_consumes_attempt(
     schema["envelope"]["fields"].pop()
     candidate_text = json.dumps(schema, ensure_ascii=False)
     review_notes = "# Review\n\nPending.\n"
-    raw_response_text = json.dumps(
-        {"artifact": schema, "reviewNotes": review_notes},
-        ensure_ascii=False,
+    raw_response_texts = (
+        '{"contractVersion":"schemair-metadata-segment/v1"}',
+        '{"contractVersion":"schemair-field-semantics-segment/v1"}',
     )
     provider_response_text = json.dumps(
         {
@@ -832,30 +970,43 @@ def test_schemair_materialization_failure_saves_candidate_and_consumes_attempt(
                     attempt_id=self.attempt_id,
                     requested_model=self.model,
                     response_model=self.model,
-                    response_id="chatcmpl-schemair-materialization-failure",
                     started_at="2026-08-12T10:00:00+08:00",
                     completed_at="2026-08-12T10:00:01+08:00",
                     endpoint_fingerprint="sha256:" + "a" * 64,
-                    prompt_contract_version="draft-prompt/v9",
-                    calls=(
+                    prompt_contract_version="draft-prompt/v12",
+                    schemair_field_batch_size=8,
+                    calls=tuple(
                         ProviderSubcallMetadata(
-                            segment="complete-artifact",
+                            segment=segment,
                             outcome="succeeded",
                             response_complete=True,
                             response_content_hash=(
                                 "sha256:"
-                                + hashlib.sha256(raw_response_text.encode("utf-8")).hexdigest()
+                                + hashlib.sha256(response.encode("utf-8")).hexdigest()
                             ),
                             requested_model=self.model,
                             response_model=self.model,
-                            response_id="chatcmpl-schemair-materialization-failure",
+                            response_id=f"chatcmpl-schemair-{sequence}",
                             started_at="2026-08-12T10:00:00+08:00",
                             completed_at="2026-08-12T10:00:01+08:00",
                             finish_reason="stop",
-                            prompt_contract_version="draft-prompt/v9",
-                        ),
+                            prompt_contract_version="draft-prompt/v12",
+                        )
+                        for sequence, (segment, response) in enumerate(
+                            zip(
+                                (
+                                    "schemair-metadata",
+                                    "schemair-envelope-fields-001",
+                                ),
+                                raw_response_texts,
+                                strict=True,
+                            ),
+                            start=1,
+                        )
                     ),
                 ),
+                candidate_content=candidate_text,
+                subcall_response_texts=raw_response_texts,
             )
 
     provider = InvalidCandidateProvider()
@@ -877,12 +1028,23 @@ def test_schemair_materialization_failure_saves_candidate_and_consumes_attempt(
         (attempt / "provider-failure-result.json").read_text(encoding="utf-8")
     )
     assert summary["failureStage"] == "materialization"
+    assert summary["failedSegment"] is None
+    assert summary["responseContentHash"] is None
+    assert summary["schemairFieldBatchSize"] == 8
     assert summary["candidateContentHash"].startswith("sha256:")
-    assert summary["calls"][0]["outcome"] == "succeeded"
+    assert [call["segment"] for call in summary["calls"]] == [
+        "schemair-metadata",
+        "schemair-envelope-fields-001",
+    ]
+    assert all(call["outcome"] == "succeeded" for call in summary["calls"])
     assert (attempt / "candidate.json").read_text(encoding="utf-8") == candidate_text
     assert (
-        attempt / "response-001-complete-artifact.txt"
-    ).read_text(encoding="utf-8") == provider_response_text
+        attempt / "response-001-schemair-metadata.txt"
+    ).read_text(encoding="utf-8") == raw_response_texts[0]
+    assert (
+        attempt / "response-002-schemair-envelope-fields-001.txt"
+    ).read_text(encoding="utf-8") == raw_response_texts[1]
+    assert not (attempt / "response-001-complete-artifact.txt").exists()
     assert not (workspace / "schemair-draft.json").exists()
 
     with pytest.raises(DraftGenerationError, match="attempt ID.*already exists"):
@@ -1054,6 +1216,45 @@ def test_schemair_generation_rejects_untrusted_docir_final_before_provider_call(
     )
 
     with pytest.raises(cli.DraftReviewError, match="approval"):
+        cli._generate_draft(args)
+
+    assert provider.calls == 0
+    assert not (workspace / "schemair-draft.json").exists()
+
+
+def test_schemair_generation_revalidates_approved_docir_before_provider_call(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    workspace = tmp_path / "approved-but-currently-invalid-docir"
+    workspace.mkdir()
+    (workspace / "raw-doc.md").write_text("# Raw\n", encoding="utf-8", newline="")
+    bind_task(workspace)
+    source = REPO_ROOT / "samples/golden/b2eboc-b2e0061/docir.expected.md"
+    invalid_source = tmp_path / "invalid-approved-docir.md"
+    invalid_source.write_text(
+        source.read_text(encoding="utf-8").replace(
+            "Root.bocb2e.trans.trn-b2e0061-rq",
+            "/trn-b2e0061-rq",
+            1,
+        ),
+        encoding="utf-8",
+        newline="",
+    )
+    bind_approved_docir_final(workspace, invalid_source)
+
+    provider = UnexpectedProvider("schemair-invalid-current-docir")
+    monkeypatch.setattr(cli, "_draft_provider", lambda args: provider)
+    args = SimpleNamespace(
+        workspace=workspace,
+        draft_kind="schemair",
+        provider="openai-chat",
+        overwrite=False,
+        schema_id="b2eboc-b2e0061-schema",
+        schema_version="v1",
+    )
+
+    with pytest.raises(cli.DraftReviewError, match="current DocIR Validator"):
         cli._generate_draft(args)
 
     assert provider.calls == 0
