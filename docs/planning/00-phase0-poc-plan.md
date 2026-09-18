@@ -2,9 +2,9 @@
 
 ## Status
 
-**In Progress。修正后的 Final DocIR 已获批；`schemair-005` 至 `schemair-007` 已消费且未形成可批准 SchemaIR。F-007 修订版与 ADR-0022 中文审查输出均已完成全部离线门禁；经明确授权执行的 `schemair-008` 已原子发布完整 Draft并离线重建 Review Notes。当前仍由准确 hash 上的 Human review 阻塞，不自动继续调用 provider。**
+**In Progress。修正后的 Final DocIR 与当前 Final SchemaIR 均已获批；P0-T6.1 已完成。下一阶段只能从匹配 Final SchemaIR 的双方向 Standard Draft 开始，仍需分别取得真实调用授权并经过各自 Human Gate。**
 
-P0-T3 trusted chain、P0-T4 deterministic Draft-to-Workbook closure 与历史 P0-T5 真实 DocIR Human Gate 已完成。`docir-026` 经 Human 修订后形成准确 Final DocIR `sha256:04e8e71b773dfb3f2203fe4ed10a30475fdbf1876d481bbe5fd9db9d1040258b`，0 ERROR、1 个已接受的非阻塞 `actacn` WARNING。`schemair-004` 以 batch 8 完成 9 个 subcall，使用 77,742 tokens并发布 16 ERROR、4 WARNING 的 Invalid Draft。`schemair-005` 在 metadata 调用超时，`schemair-006` 因已下架模型被拒绝，均未形成 Draft。更新模型后，`schemair-007` 已获得前 7 个有效段和完整第 8 段，但旧 validator 因 PARSE scalar 回显 `required:null` hard fail，第 9 段未执行；该 attempt 使用 109,896 tokens、耗时 28 分 59 秒。所有历史 attempt 保持 immutable。修订版 F-007 经离线验证和独立 review 后，显式从 `schemair-007` 恢复执行 `schemair-008`：8 段复用、1 段 LIVE、无重试，本 attempt 使用 6,547 tokens，effective usage 为 116,443 tokens。生成 Draft hash 为 `sha256:f767ce9eeb1cc8ae3b72de469d833783ddc250f3aece9669237527d68ee6ec42`，0 ERROR、37 WARNING、28 blocking。
+P0-T3 trusted chain、P0-T4 deterministic Draft-to-Workbook closure、历史 P0-T5 真实 DocIR Human Gate 与当前 P0-T6.1 均已完成。`docir-026` 形成准确 Final DocIR `sha256:04e8e71b773dfb3f2203fe4ed10a30475fdbf1876d481bbe5fd9db9d1040258b`。F-007/ADR-0022 完成离线门禁后，v12 `schemair-009` 获得前三个有效段，`schemair-010`/`schemair-011` 在同一 ASSEMBLY 第二批因连接/流中断失败且保持 immutable；`schemair-012` 从失败 attempt 严格复用三个有效段并一次完成剩余两段，本 attempt 使用 38,024 tokens，effective usage 为 92,250 tokens。Human Review 通过技术辅助临时流程处置字段语义、条件、UTF-8/GB2312 差异并加入银行方 UTF-8 现场确认 evidence。准确 Draft hash `sha256:6a2d8ab0d7755f8d2b1732016a21530482a4957a925654e86479e2a70f44051b` 已由 `deng` 批准，Final SchemaIR hash 为 `sha256:c713e10eeb4323f9139a44050a23351bc6483352186f6dea6a99fab8c59a1af8`；最终校验为 0 ERROR、7 个非阻塞 WARNING、11 INFO、0 blocking，`finalEligible=true`。
 
 ## 1. 目标与可信边界
 
@@ -88,9 +88,9 @@ SchemaIR、Standard、Template 的 semantic materializer、统一 validate/appro
 | 5 | 非敏感 P0-T5 真实验收摘要 | 真实 Final DocIR 与 approval evidence 确认 | P0-T6 开始 |
 | 5A | P0-T6.1 DocIR approval gate、失败证据与 SchemaIR candidate contract 修复 | 审批前置、attempt evidence、v10 prompt/strict materialization 离线门禁通过；`schemair-003` 已验证 hard-fail 边界 | F-007 开始 |
 | 5B | ADR-0020 与 F-007 有界 SchemaIR 分段提取 | Done：联合 metadata、默认 8 字段批次、Envelope/ASSEMBLY/PARSE selector coverage、原子 evidence、离线回归/docs-sync/review；`schemair-004` 已完成并暴露 Root Path/prompt 缺口 | 已满足；真实后续验证暴露的恢复成本转入 5C |
-| 5C | ADR-0021 与 F-007 可恢复分段及分层验证 | Done：默认 batch 16、当前段有界重试、完整 fingerprint 显式复用、attempt budget、evidence v3、内置 Bank XML Profile、全量门禁、docs-sync、独立 review 均已完成；`schemair-008` 已验证 8 段复用加 1 段 LIVE | 对 `schemair-008` Draft 做 Human review；不得自动进入 Standard |
-| 5D | ADR-0022 与 SchemaIR 中文审查输出 | Done：Prompt v12、中文行动导向 Notes、可信 v3 diagnostics 读取、Markdown-safe 原始 evidence、`schemair-008` 离线重建、全量门禁和独立 review 均通过 | 仅准备全新 `schemair-009` 摘要并等待真实调用授权 |
-| 6 | SchemaIR 闭环 | 真实 Final SchemaIR | Standard 开始 |
+| 5C | ADR-0021 与 F-007 可恢复分段及分层验证 | Done：默认 batch 16、当前段有界重试、完整 fingerprint 显式复用、attempt budget、evidence v3、内置 Bank XML Profile、全量门禁、docs-sync、独立 review 均已完成；`schemair-012` 验证失败 attempt 的三段复用加两段 LIVE | Human Review 与 Final Validator 闭环 |
+| 5D | ADR-0022 与 SchemaIR 中文审查输出 | Done：Prompt v12、中文行动导向 Notes、可信 v3 diagnostics、Markdown-safe 原始 evidence、真实 v12 中文 Draft 和独立 review 均通过 | 记录 Human Review Decision 能力缺口 |
+| 6 | SchemaIR 闭环 | Done：Final hash `sha256:c713e10eeb4323f9139a44050a23351bc6483352186f6dea6a99fab8c59a1af8`，0 ERROR、0 blocking、`finalEligible=true` | 双方向 Standard 开始 |
 | 7 | 两个 Standard 闭环 | 两个真实 Final Standard | Template 开始 |
 | 8 | 两个 Template 闭环 | 两个真实 Final Template | closure 开始 |
 | 9 | 双向 Workbook 与 Phase0 收口 | 全部门禁通过，Phase0 Done | Phase1 planning |
@@ -114,8 +114,9 @@ git diff --check
 
 - 历史 P0-T5 已完成且 `docir-022` approval 事实保持不变；当前执行 workspace 按操作者决策不恢复该链，必须由新的 DocIR Draft 重新经过 Human Gate。`docir-023`/`docir-024`/`docir-025` 和 `schemair-001`/`schemair-002`/`schemair-003` 均已消费且不得复用。
 - F-007 修订版已完成默认 16 字段批次、当前段有界重试、显式 fingerprint 复用和分层验证，并通过目标与全量测试、lock/build、docs-sync 和独立 review；不得覆盖 selector、猜测 Object required，或自动选择历史 evidence 绕过门禁。
-- `schemair-004` 至 `schemair-007` 均已消费且保持 immutable。经明确授权执行的 `schemair-008` 从 `schemair-007` 复用前 8 段，第 8 段保留 4 条 `SCALAR_REQUIRED_REMOVED` 诊断；唯一 LIVE 段 `schemair-parse-fields-002` 已接受且无重试。当前 Draft 为 0 ERROR、37 WARNING、28 blocking，必须由 Human 在准确 hash 上逐项处置，不能继续调用 provider 自动修复或进入 Standard。
-- `schemair-008` Review Notes 已通过离线 `validate-draft schemair` 重建为中文行动导向结构，准确 Draft bytes/hash `sha256:f767ce9eeb1cc8ae3b72de469d833783ddc250f3aece9669237527d68ee6ec42` 与 0 ERROR、37 WARNING、28 INFO、28 blocking 计数均未改变。既有 v11 英文模型说明保持历史原始 evidence；完整中文模型语义只能由另行授权的全新 v12 `schemair-009` 验证。
+- `schemair-004` 至 `schemair-011` 均已消费且保持 immutable。`schemair-012` 的五个 v12 segment 全部 `ACCEPT`，三个来自 `schemair-009` 的严格 fingerprint 复用，两个为一次成功的 LIVE 调用；Human 修订只作用于当前 Draft，不回写 provider evidence。
+- 当前 Final SchemaIR 已绑定 `deng` 的准确 Draft hash approval 和银行方 UTF-8 现场确认 evidence；7 个 WARNING 均非阻塞（5 个低置信度、2 个已处置 encoding 差异），不得把它们改写成“无差异”或删除来源证据。
+- 已确认一项 Human Review 能力缺口：Phase0 的 JSON IR 只能由技术人员直接编辑完整 Draft，尚无绑定 Draft hash 的逐项 Review Decision、before/after 预览和确定性 apply。当前 SchemaIR 采用“Human 给出自然语言决定 → 技术人员按决定修改 Draft → `validate-draft` 重建 Notes/Result → Human 对新 hash 批准”的临时流程；Notes 与 `--review-note` 均不得充当逐字段修改输入。后续应以独立、可审计的 Review Decision evidence 补齐该能力，完整 UI 仍属于 Phase1。
 - P0-T6 的每一层均受前一层 Human-approved Final 阻塞。
 - Phase0 Done 仍受五份下游真实 Final、双方向 `check --profile phase0` 和 Workbook 验收阻塞。
 

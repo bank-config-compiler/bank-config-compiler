@@ -167,6 +167,8 @@ Validator 不判断某个 function、mapping、目的系统业务 Condition 或�
 
 Phase0 可以用受控 fixture 或命令流程表达人工确认；Phase1 才提供 UI。任何 Draft 被修改后，都必须重新进入对应 Validator。
 
+当前命令流程仍缺少面向业务审查者的结构化 JSON IR Review Decision 入口：`review-notes.md` 是只读派生结果，`--review-note` 只表达产物级批准说明，均不能承载逐字段修改；直接编辑完整 `schemair-draft.json` 仅适合由技术人员辅助的 PoC 临时流程。后续 Review Workbench 应提供绑定基准 Draft hash 的逐项决定、结构化修改值、理由与证据、reviewer/time、应用前后预览和确定性 apply，并让最终 approval 绑定准确 Revised Draft hash 与 Review Decision evidence。在该能力实现前，Human 以自然语言或审查表给出逐项决定，技术人员只按已确认决定修改 Draft，再运行 `validate-draft` 生成新的 hash-bound Notes；不得把对 Notes 的手工修改视为输入或批准证据。
+
 ### 2.5 Workbook Generator
 
 输入：
@@ -204,7 +206,7 @@ Phase0 可以用受控 fixture 或命令流程表达人工确认；Phase1 才提
 
 规则版本一旦发布不可原地覆盖。InterfaceStandardIR、InterfaceTemplateIR、Validator result 和 Configuration Workbook 必须记录实际使用的精确规则版本及 Rule ID。标准和后续模板可以使用不同规则版本，但模板对标准 artifact 的绑定不因此改变。
 
-`configuration-rules/v1` 与只修订方向相关 Standard projection 的 v2 均已发布并冻结。SchemaIR v2、InterfaceStandardIR、InterfaceTemplateIR、Configuration Workbook、双方向 Golden 与匹配 validation results 均已实现并冻结；P0-T3 已完成。P0-T4 的 provider-neutral runtime、六个受控 response、四类 CLI 和准确 hash 的 reviewed Final DocIR 已冻结；完整受控回归显式装载已审核 Final fixtures，双方向 Workbook 结构化内容均与 Golden 一致。P0-T5 的真实 provider adapter、九列 DocIR v4 materialization、Required/Conditions 门禁与统一 Human Gate 已完成，历史 `docir-022` approval 事实保持不变。当前执行链的 `docir-026` 已经 Human 修订并以准确 hash `sha256:04e8e71b773dfb3f2203fe4ed10a30475fdbf1876d481bbe5fd9db9d1040258b` 获批，校验为 0 ERROR、1 个已接受的非阻塞 WARNING。`schemair-004` 至 `schemair-007` 均已消费且未形成可批准 SchemaIR；F-007 修订版通过全部离线门禁后，经明确授权执行 `schemair-008`，从 `schemair-007` 复用 8 个已验证段并仅真实调用缺失的 PARSE 第 2 批。新 Draft hash 为 `sha256:f767ce9eeb1cc8ae3b72de469d833783ddc250f3aece9669237527d68ee6ec42`，Validator 为 0 ERROR、37 WARNING、28 blocking；Review Notes 已离线重建为 ADR-0022 的中文行动导向格式，Draft bytes/hash 与计数未改变。该历史 v11 Draft 仍需 Human review；完整中文模型语义只能由另行授权的全新 v12 `schemair-009` 验证。真实 Final SchemaIR、双方向 Standard/Template、两个 `check --profile phase0` 与 Workbook 验收仍未完成，因此 Phase0-PoC 仍为 In Progress。Golden 不参与真实候选自动语义判定。Final IR 必须精确引用适用的 `RELEASED` 规则版本。
+`configuration-rules/v1` 与只修订方向相关 Standard projection 的 v2 均已发布并冻结。SchemaIR v2、InterfaceStandardIR、InterfaceTemplateIR、Configuration Workbook、双方向 Golden 与匹配 validation results 均已实现并冻结；P0-T3 已完成。P0-T4 的 provider-neutral runtime、六个受控 response、四类 CLI 和准确 hash 的 reviewed Final DocIR 已冻结；完整受控回归显式装载已审核 Final fixtures，双方向 Workbook 结构化内容均与 Golden 一致。P0-T5 的真实 provider adapter、九列 DocIR v4 materialization、Required/Conditions 门禁与统一 Human Gate 已完成，历史 `docir-022` approval 事实保持不变。当前执行链的 `docir-026` 已以准确 hash `sha256:04e8e71b773dfb3f2203fe4ed10a30475fdbf1876d481bbe5fd9db9d1040258b` 获批。F-007 修订版和 ADR-0022 完成离线门禁后，v12 `schemair-009` 获得三个有效段，`schemair-010`/`schemair-011` 在同一 ASSEMBLY 第二批因连接/流中断失败，`schemair-012` 严格复用前三段并一次完成剩余两段。Human Review 以技术辅助临时流程处理字段、条件与 encoding 差异，并补充银行方 UTF-8 现场确认；Draft hash `sha256:6a2d8ab0d7755f8d2b1732016a21530482a4957a925654e86479e2a70f44051b` 由 `deng` 批准后发布 Final SchemaIR hash `sha256:c713e10eeb4323f9139a44050a23351bc6483352186f6dea6a99fab8c59a1af8`，最终 Validator 为 0 ERROR、7 个非阻塞 WARNING、11 INFO、0 blocking，`finalEligible=true`。P0-T6.1 已完成；双方向 Standard/Template、两个 `check --profile phase0` 与 Workbook 验收仍未完成，因此 Phase0-PoC 仍为 In Progress。Golden 不参与真实候选自动语义判定。Final IR 必须精确引用适用的 `RELEASED` 规则版本。
 
 ## 4. 候选任务状态
 

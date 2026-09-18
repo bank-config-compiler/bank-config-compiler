@@ -2,7 +2,7 @@
 
 ## Status
 
-In Progress. P0-T3 trusted chain、P0-T4 deterministic Draft-to-Workbook closure 与历史 P0-T5 真实 DocIR Human Gate 已完成。当前执行链的 `docir-026` 已经 Human 修订、校验并以准确 hash `sha256:04e8e71b773dfb3f2203fe4ed10a30475fdbf1876d481bbe5fd9db9d1040258b` 获批，校验为 0 ERROR、1 个已接受的非阻塞 WARNING。`schemair-004` 至 `schemair-007` 已消费且未形成可批准 SchemaIR。F-007 修订版完成全部离线门禁后，经明确授权执行 `schemair-008`：复用前 8 段，只真实调用 `schemair-parse-fields-002`，生成 Draft hash `sha256:f767ce9eeb1cc8ae3b72de469d833783ddc250f3aece9669237527d68ee6ec42`。该 Draft 为 0 ERROR、37 WARNING、28 blocking；其 Review Notes 已按 ADR-0022 离线重建，Draft bytes/hash 和校验计数均未改变。历史 v11 模型原文不翻译，完整中文模型语义需要另行授权全新 v12 `schemair-009`。当前 Draft 仍必须经过 Human review；其余五类下游真实 Final、双方向 Workbook 和最终门禁仍需各自授权与 Human Gate。
+In Progress. P0-T3 trusted chain、P0-T4 deterministic Draft-to-Workbook closure、历史 P0-T5 真实 DocIR Human Gate 与当前 P0-T6.1 Final SchemaIR 均已完成。`docir-026` 以准确 hash `sha256:04e8e71b773dfb3f2203fe4ed10a30475fdbf1876d481bbe5fd9db9d1040258b` 获批。v12 `schemair-009` 获得前三个有效段，`schemair-010`/`schemair-011` 在同一 ASSEMBLY 第二批遭遇连接/流中断；`schemair-012` 从失败 attempt 严格复用三个有效段并一次完成剩余 ASSEMBLY/PARSE 两段，attempt usage 为 38,024 tokens、effective usage 为 92,250 tokens。Human Review 通过临时技术辅助流程处理字段语义、条件与 UTF-8/GB2312 差异，并保存 `deng` 作为银行方现场确认 UTF-8 的 evidence。准确 Draft hash `sha256:6a2d8ab0d7755f8d2b1732016a21530482a4957a925654e86479e2a70f44051b` 已获批，Final SchemaIR hash 为 `sha256:c713e10eeb4323f9139a44050a23351bc6483352186f6dea6a99fab8c59a1af8`，最终校验为 0 ERROR、7 个非阻塞 WARNING、11 INFO、0 blocking，`finalEligible=true`。其余四份 Standard/Template Final、双方向 Workbook 和最终门禁仍需各自授权与 Human Gate。
 
 ## 1. 阶段目标
 
